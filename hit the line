@@ -1,0 +1,79 @@
+You are given an infinite two-dimensional grid. There are N balloons placed at certain coordinates of the grid. You have an arrow with yourself, which you will be using to shoot the balloons. 
+You can select any point on the grid as your starting point and any point on the grid as the target point.
+When you fire the arrow, all ballons lying on the shortest path between the starting point and target point will be burst. Given the coordinates of the N ballons in an array arr, your task is to
+find out the maximum number of balloons that you can fire in one arrow shot.
+
+
+Input:
+N = 3
+arr[] = {{1, 2}, {2, 3}, {3, 4}}
+Output:
+3
+Explanation:
+If you position yourself at point (1,2)
+and fire the arrow aiming at the point (3,4).
+Then all the balloons will burst.
+
+
+// { Driver Code Starts
+// Initial Template for C++
+#include <bits/stdc++.h>
+using namespace std;
+
+ // } Driver Code Ends
+// User function Template for C++
+
+class Solution {
+  public:
+    int mostBalloons(int N, pair<int, int> arr[]) {
+        // Code here
+        map<double, int> slopeCount;// Map to keep count of number of points lies on single line
+        int count = 0;
+        int res = -1;
+        double slope = 0;
+        for(int i = 0; i < N; i++)
+        {
+            slopeCount.clear(); // Clear map after before checking for new slope from point P1
+            pair<int, int> p1 = arr[i];
+            count = 0;
+            
+            for(int j = 0; j < N; j++)
+            {
+                pair<int, int> p2 = arr[j]; // Loop through P2
+                if(p1 ==  p2)
+                {
+                    count++; // By default on starting point bursted ballons by 1
+                }
+                else{
+                    slope = (p2.second - p1.second)/((p2.first -p1.first) * 1.0);// Find slope
+                    slopeCount[slope]++;//Increment same slope count
+                }
+            }
+            for(auto it = slopeCount.begin(); it != slopeCount.end(); it++)
+            {
+                res = max(res, it->second+count);// Find Max in interation
+            }
+        }
+        return res;
+    }
+};
+
+// { Driver Code Starts.
+
+int main() {
+    int t;
+    cin >> t;
+    while (t--) {
+        int N;
+        cin >> N;
+        pair<int, int> arr[N];
+        for (int i = 0; i < N; i++) {
+            cin >> arr[i].first;
+        }
+        for (int i = 0; i < N; i++) {
+            cin >> arr[i].second;
+        }
+        Solution ob;
+        cout << ob.mostBalloons(N, arr) << endl;
+    }
+}  // } Driver Code Ends
