@@ -1,1 +1,1 @@
-# gfgdaily
+# gfg/leecode_daily
