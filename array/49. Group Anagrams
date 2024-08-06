@@ -1,0 +1,17 @@
+class Solution:
+    def groupAnagrams(self, strs: List[str]) -> List[List[str]]:
+
+        table = {}
+
+        while strs:
+            word = strs.pop()
+            basis = "".join(sorted(word))
+            
+            if basis in table:
+                table[basis].append(word)
+            else:
+                table[basis] = [word]
+
+        answer = [group for _, group in table.items()]
+        
+        return answer
