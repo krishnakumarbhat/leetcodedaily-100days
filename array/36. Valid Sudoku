@@ -1,0 +1,20 @@
+class Solution:
+    def isValidSudoku(self, board: List[List[str]]) -> bool:
+        rows = [[] for _ in range(9)]
+        cols = [[] for _ in range(9)]
+        box = [[] for _ in range(9)]
+
+        for i in range(9):
+            for j in range(9):
+                curr_num = board[i][j]
+                if curr_num != '.':
+                    box_idx  =(i//3) * 3 + (j//3)
+                    if curr_num in rows[i] or curr_num in cols[j] or curr_num in box[box_idx]:
+                        return False
+                    rows[i].append(curr_num)
+                    cols[j].append(curr_num)
+                    box[box_idx].append(curr_num)
+        return True
+
+
+        
