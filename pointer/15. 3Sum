@@ -1,0 +1,30 @@
+class Solution:
+    def counter(self, nums: list, sign: int, targets: set, max_target: int) -> int:
+        n = len(nums)
+        a = -1
+        for i in range(n-1):
+            if nums[i] == a: continue
+            a = nums[i]
+            if a > max_target // 2: break
+            b = -1
+            for j in range(i+1, n):
+                if nums[j] == b: continue
+                b = nums[j]
+                c = a + b
+                if c > max_target: break
+                if c in targets: self.rs.append([sign*a, sign*b, -sign*c])
+
+    def threeSum(self, nums: List[int]) -> List[List[int]]:
+        pos_nums = [num for num in nums if num >= 0]
+        neg_nums = [-num for num in nums if num < 0]
+
+        pos_nums.sort()
+        neg_nums.sort()
+
+        self.rs = []
+        if len(pos_nums) and len(neg_nums):
+            self.counter(pos_nums, 1, set(neg_nums), neg_nums[-1])
+            self.counter(neg_nums, -1, set(pos_nums), pos_nums[-1])
+        if len(pos_nums) > 2 and pos_nums[2] == 0: self.rs.append([0, 0, 0])
+        
+        return self.rs 
