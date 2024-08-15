@@ -1,0 +1,25 @@
+class Solution:
+    def trap(self, height: List[int]) -> int:
+        i=0
+        j=len(height)-1
+
+        l=height[i]
+        r=height[j]
+        c=0
+        while i<j:
+
+            if l<=r:
+                i+=1
+                if height[i]<l:
+                    c+=l-height[i]
+                else:
+                    l=height[i]
+            else:
+                j-=1
+                if height[j]<r:
+                    c+=r-height[j]
+                else:
+                    r=height[j]
+
+
+        return c
