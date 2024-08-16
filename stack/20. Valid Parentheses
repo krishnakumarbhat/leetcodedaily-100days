@@ -1,0 +1,29 @@
+from collections import Counter
+
+class Solution:
+    def isValid(self, s: str) -> bool:
+        paran_list = list(s)
+        count = dict(Counter(paran_list))
+        
+        # first check if it even matches
+        if count.get('(',0) != count.get(')',0) or count.get('[',0) != count.get(']',0) or count.get('{',0) != count.get('}',0):
+            return False
+
+        stack = list()
+        paran_pair = {')':'(', '}':'{', ']':'['}
+        for paran in s:
+            # open brackets
+            if paran in paran_pair.values(): 
+                stack.append(paran)
+            
+            # close brackets
+            else: 
+                if len(stack) == 0 or stack[-1] != paran_pair[paran]: # if list empty or no pair
+                    return False
+
+                # pair found
+                stack.pop()
+        return True
+
+        # empty list gives True
+        
