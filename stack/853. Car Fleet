@@ -1,0 +1,16 @@
+class Solution:
+    def carFleet(self, target: int, position: List[int], speed: List[int]) -> int:
+        n = len(position)
+        pos = list(range(0, n))
+        pos = sorted(pos, key=lambda x: position[x], reverse=True)
+        result = 0
+        cur_max_time = -1
+        for i in pos:
+            itime = self.time_to_reach(position[i], speed[i], target)
+            if itime > cur_max_time:
+                result += 1
+                cur_max_time = itime
+        return result
+
+    def time_to_reach(self, pos, speed, target):
+        return (target - pos) / speed
