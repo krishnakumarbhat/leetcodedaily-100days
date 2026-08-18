@@ -27,7 +27,7 @@ class Solution_v1:
             return 1 + max(l, r)
         return dfs(root) != -1
 if __name__ == "__main__":
-    tracemalloc.start(); t0=time.perf_counter(); r=Solution_v1().isBalanced(build([3,9,20,None,None,15,7]))
+    tracemalloc.start(); t0=time.perf_counter(); r=Solution_v1().isBalanced(build([3,9,20,1,23,15,7]))
     t1=time.perf_counter(); mem=tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
     print(f"var1: result={r}, mem = {mem} bytes, time = {(t1-t0)*1e6:.2f} us")
 # var1 mem = {} and time = {}

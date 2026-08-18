@@ -38,7 +38,7 @@ class Solution_v2:
         return res
 
 if __name__ == "__main__":
-    s, k = "AABABBA", 1
+    s, k = "AABABBA", 2
     for i, (Sol, name) in enumerate(zip([Solution_v1, Solution_v2], ["Brute Force", "Sliding Window"]), 1):
         tracemalloc.start(); t0 = time.perf_counter()
         result = Sol().characterReplacement(s, k)

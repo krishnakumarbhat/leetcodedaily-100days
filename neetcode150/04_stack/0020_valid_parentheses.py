@@ -10,7 +10,7 @@ import time, tracemalloc
 # replace them with nothing. If the string clears to empty, it was valid.
 # Time Complexity: O(n^2)   Space Complexity: O(n)
 class Solution_v1:
-    def isValid(self, s: str) -> bool:
+    def isValid(self, s: str) ->  bool:
         while '()' in s or '{}' in s or '[]' in s:
             s = s.replace('()', '').replace('{}', '').replace('[]', '')
         return s == ''

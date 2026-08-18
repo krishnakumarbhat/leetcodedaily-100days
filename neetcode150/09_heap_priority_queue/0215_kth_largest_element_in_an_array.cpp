@@ -20,3 +20,9 @@ int main(){
 // var1 mem = {} and time = {}
 // var2 mem = {} and time = {}
 // var3 mem = {} and time = {}
+
+
+what is this radom quik sort 
+
+
+

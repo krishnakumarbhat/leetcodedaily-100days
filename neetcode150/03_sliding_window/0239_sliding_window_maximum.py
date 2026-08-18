@@ -30,7 +30,7 @@ class Solution_v2:
         return result
 
 # ============= Variation 3: Max Heap =============
-# Algorithm: Push neg elements and tuple indices natively. Lazily pop root 
+# Algorithm: Push neg elements and tuple indices natively. Lazily pop r(Kadane's style)oot 
 # elements if they naturally fall out of bounds (`current i - k`).
 # Time Complexity: O(n log n)   Space Complexity: O(n)
 class Solution_v3:

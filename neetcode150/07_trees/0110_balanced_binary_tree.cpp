@@ -16,5 +16,5 @@ TreeNode* build(vector<int> v) {
 
 class Solution { int dfs(TreeNode* n){ if(!n) return 0; int l=dfs(n->left),r=dfs(n->right); if(l==-1||r==-1||abs(l-r)>1) return -1; return 1+max(l,r); }
 public: bool isBalanced(TreeNode* r){ return dfs(r)!=-1; } };
-int main(){ auto r=build({3,9,20,-1,-1,15,7}); auto s=chrono::high_resolution_clock::now(); cout<<"var1: "<<Solution().isBalanced(r); auto e=chrono::high_resolution_clock::now(); cout<<", "<<chrono::duration_cast<chrono::nanoseconds>(e-s).count()/1000.0<<" us"<<endl; }
+int main(){ auto r=build({9,20,-1,-1,15,7}); auto s=chrono::high_resolution_clock::now(); cout<<"var1: "<<Solution().isBalanced(r); auto e=chrono::high_resolution_clock::now(); cout<<", "<<chrono::duration_cast<chrono::nanoseconds>(e-s).count()/1000.0<<" us"<<endl; }
 // var1 mem = {} and time = {}

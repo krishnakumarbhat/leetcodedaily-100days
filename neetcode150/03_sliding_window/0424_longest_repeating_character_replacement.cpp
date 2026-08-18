@@ -19,7 +19,7 @@ public:
     }
 };
 int main() {
-    string s="AABABBA"; int k=1;
+    string s="AABABBA"; int k=2;
     auto st=chrono::high_resolution_clock::now(); int r=Solution_v1().characterReplacement(s,k); auto e=chrono::high_resolution_clock::now();
     cout<<"var1 (SW): "<<r<<", "<<chrono::duration_cast<chrono::nanoseconds>(e-st).count()/1000.0<<" us"<<endl;
     return 0;
