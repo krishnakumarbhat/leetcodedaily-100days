@@ -1,98 +1,138 @@
 """
-LeetCode 128: Longest Consecutive Sequence
-Link: https://leetcode.com/problems/longest-consecutive-sequence/
-Difficulty: Medium
+=====================================================================
+LeetCode 128 : Longest Consecutive Sequence                    (Medium)
+https://leetcode.com/problems/longest-consecutive-sequence/
+Category   : Arrays & Hashing
+---------------------------------------------------------------------
+PROBLEM
+    Given an unsorted array, return the length of the longest run of
+    consecutive integers (e.g. [100,4,200,1,3,2] → 4 for 1,2,3,4).
+    MUST run in O(n) time.
+---------------------------------------------------------------------
+INTUITION
+    A run like 1,2,3,4 can be grown from its FIRST element only:
+    count up while (x+1) exists — an O(1) hash-set lookup. To avoid
+    restarting from the middle of an existing run, only start
+    counting at numbers whose predecessor (x-1) is NOT in the set.
+    Every number is then touched O(1) times amortized → O(n) total.
+---------------------------------------------------------------------
+APPROACH 1 — Hash set + head-of-run growth (BEST)
+    Time  Complexity : O(n)   Space Complexity : O(n)
+    WHY the "x-1 in set?" guard matters: without it, [1,2,3,4] would
+    trigger counting from 1,2,3,4 → O(n²). With it, only 1 counts.
+    Python set = open addressing + linear probing: h(k,i) =
+    (hash(k)+i) mod m → one contiguous table, great cache locality.
+---------------------------------------------------------------------
+APPROACH 2 — Sort + linear scan
+    Time  Complexity : O(n log n)   Space Complexity : O(1)
+    Wins when memory is tight; loses the O(n) requirement.
+=====================================================================
 """
-import time, tracemalloc
+
+from __future__ import annotations
+import time
+import tracemalloc
 from typing import List
 
-# ============= Variation 1: Sorting =============
-# Algorithm: Sort the array first. Iterate through, counting consecutive numbers.
-# Reset the counter when the sequence breaks (i.e. diff > 1). Keep track of the max.
-# Time Complexity: O(n log n)   Space Complexity: O(1)
-class Solution_v1:
+
+# =====================================================================
+# APPROACH 1 : Hash set + head-of-run growth — O(n)
+# =====================================================================
+class Solution_HashSet:
+    """
+    Purpose : Return the longest run of consecutive integers.
+    Inputs  : nums — unsorted array of integers.
+    Output  : length of the longest consecutive sequence.
+    """
+
     def longestConsecutive(self, nums: List[int]) -> int:
+        # Throw everything into a set: O(1) "does x exist?" later.
+        # Python's set = dict without values (linear probing table).
+        seen = set(nums)
+
+        # best : longest run discovered so far.
+        best = 0
+
+        # Inspect every distinct number exactly once.
+        for x in seen:
+            # Only start a run at its HEAD: x-1 must be absent.
+            # This single guard keeps the whole algorithm O(n).
+            if x - 1 in seen:
+                continue  # x is mid-run → some smaller head owns it
+
+            # Grow the run upward while consecutive numbers exist.
+            length = 1
+            while x + length in seen:
+                length += 1  # extend the run by one
+
+            # Keep the global maximum.
+            best = max(best, length)
+
+        return best
+
+
+# =====================================================================
+# APPROACH 2 : Sort + linear scan — O(n log n)
+# =====================================================================
+class Solution_SortScan:
+    """
+    Purpose : Return the longest run of consecutive integers.
+    Inputs  : nums — unsorted array of integers.
+    Output  : length of the longest consecutive sequence.
+    """
+
+    def longestConsecutive(self, nums: List[int]) -> int:
+        # Sorting groups each run into a contiguous stretch — O(n log n).
+        nums.sort()
+
+        # Edge case: empty input has no run at all.
         if not nums:
             return 0
-        nums.sort()
-        longest = 1
-        current = 1
+
+        # cur/best : run length ending here / global maximum.
+        cur = 1
+        best = 1
+
+        # Sweep the sorted array once.
         for i in range(1, len(nums)):
+            # Duplicates do not extend a run — skip them silently.
             if nums[i] == nums[i - 1]:
                 continue
+
+            # Consecutive value → the current run grows by one.
             if nums[i] == nums[i - 1] + 1:
-                current += 1
+                cur += 1
             else:
-                current = 1
-            longest = max(longest, current)
-        return longest
+                # Gap → the run broke; start a fresh run of length 1.
+                cur = 1
 
-# ============= Variation 2: Hash Set =============
-# Algorithm: Add all numbers to a hash set for O(1) lookups. Iterate through the set.
-# If `num - 1` is not in the set, `num` is the start of a sequence. Count upwards 
-# to find the length of the sequence. This ensures O(n) overall time.
-# Time Complexity: O(n)   Space Complexity: O(n)
-class Solution_v2:
-    def longestConsecutive(self, nums: List[int]) -> int:
-        num_set = set(nums)
-        longest = 0
-        for num in num_set:
-            if num - 1 not in num_set:  # start of sequence
-                current = num
-                streak = 1
-                while current + 1 in num_set:
-                    current += 1
-                    streak += 1
-                longest = max(longest, streak)
-        return longest
+            # Track the global maximum after every element.
+            best = max(best, cur)
 
-# ============= Variation 3: Union Find =============
-# Algorithm: Treat each number as a node. Connect consecutive numbers using Union-Find.
-# The maximum component size in the disjoint set is the longest consecutive sequence.
-# Time Complexity: O(n α(n))   Space Complexity: O(n)
-class Solution_v3:
-    def longestConsecutive(self, nums: List[int]) -> int:
-        if not nums:
-            return 0
-        parent = {}
-        size = {}
+        return best
 
-        def find(x):
-            if parent[x] != x:
-                parent[x] = find(parent[x])
-            return parent[x]
 
-        def union(x, y):
-            px, py = find(x), find(y)
-            if px == py: return
-            if size[px] < size[py]: px, py = py, px
-            parent[py] = px
-            size[px] += size[py]
-
-        for num in nums:
-            if num not in parent:
-                parent[num] = num
-                size[num] = 1
-                if num - 1 in parent: union(num, num - 1)
-                if num + 1 in parent: union(num, num + 1)
-
-        return max(size.values()) if size else 0
-
-# ============= Benchmarking =============
+# =====================================================================
+# BENCHMARK — time + peak memory for both approaches
+# =====================================================================
 if __name__ == "__main__":
-    nums = [100, 4, 200, 1, 3, 2, 5, 6, 7, 8]
-    solutions = [Solution_v1, Solution_v2, Solution_v3]
-    names = ["Sorting", "Hash Set", "Union Find"]
+    # Official example (1,2,3,4 → 4).
+    nums = [100, 4, 200, 1, 3, 2]
 
-    for i, (Sol, name) in enumerate(zip(solutions, names), 1):
-        tracemalloc.start()
-        t0 = time.perf_counter()
-        result = Sol().longestConsecutive(nums[:])
-        t1 = time.perf_counter()
-        mem = tracemalloc.get_traced_memory()[1]
-        tracemalloc.stop()
-        print(f"var{i} ({name}): result={result}, mem = {mem} bytes, time = {(t1-t0)*1e6:.2f} µs")
+    tracemalloc.start()
+    t0 = time.perf_counter()
+    r1 = Solution_HashSet().longestConsecutive(nums)
+    t1 = time.perf_counter()
+    _, peak1 = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-# var1 mem = 1792 bytes and time = 30.26 µs
-# var2 mem = 1488 bytes and time = 15.22 µs
-# var3 mem = 3456 bytes and time = 41.32 µs
+    tracemalloc.start()
+    t2 = time.perf_counter()
+    r2 = Solution_SortScan().longestConsecutive(nums)
+    t3 = time.perf_counter()
+    _, peak2 = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    print(f"Approach 1 (hash set, head-of-run) : {r1}  time = {(t1 - t0) * 1e6:.2f} µs  peak-mem = {peak1} bytes")
+    print(f"Approach 2 (sort + scan)           : {r2}  time = {(t3 - t2) * 1e6:.2f} µs  peak-mem = {peak2} bytes")
+    print("PASS : both approaches agree." if r1 == r2 else "FAIL : approaches disagree.")

@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · Arrays & Hashing — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "01", title: "Arrays & Hashing" };
+const U = window.NC150.utils;
+
+/* helper: empty hash slots for open addressing visual */
+function emptySlots(m) { return new Array(m).fill(null); }
+function hmod(k, m) { return ((k % m) + m) % m; }
+/* simulate linear-probing lookup; returns {hit:slot|null, probe:[...]} */
+function probeFind(slots, m, key) {
+  const probe = [];
+  for (let j = 0; j < m; j++) {
+    const s = hmod(key + j, m);
+    probe.push(s);
+    if (slots[s] && slots[s].k === key) return { hit: s, probe };
+    if (!slots[s]) return { hit: null, probe };
+  }
+  return { hit: null, probe };
+}
+/* simulate linear-probing insert; returns placed slot */
+function probeInsert(slots, m, key, val) {
+  for (let j = 0; j < m; j++) {
+    const s = hmod(key + j, m);
+    if (!slots[s]) { slots[s] = { k: key, v: val }; return s; }
+  }
+  return -1;
+}
+
+/* ================================================================
+ * PROBLEM 0001 — TWO SUM
+ * ================================================================ */
+NC150.register({
+  id: "0001", title: "Two Sum", difficulty: "Easy",
+  url: "https://leetcode.com/problems/two-sum/",
+  tags: ["hashmap", "array"],
+  approaches: ["Approach 1 · One-pass hash map (best)", "Approach 2 · Sort + two pointers"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — one pass, hash map" },
+    { time: "O(n log n)", space: "O(n)", note: "no hash map needed" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "nested loops", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "One-pass hash map", tech: "complement lookup", time: "O(n)", space: "O(n)", when: "general case", best: true },
+    { name: "Sort + two pointers", tech: "sorted two-pointer", time: "O(n log n)", space: "O(n)", when: "memory-constrained, no hash", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[2,7,11,15]" },
+    { name: "target", label: "target =", type: "int", default: "9" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,7,11,15]", target: "9" }, result: "[0,1]" },
+    { label: "Ex 2", values: { nums: "[3,2,4]", target: "6" }, result: "[1,2]" },
+    { label: "Ex 3", values: { nums: "[3,3]", target: "6" }, result: "[0,1]" },
+    { label: "Collision!", values: { nums: "[1,9,3,5,1]", target: "6" }, result: "shows probing" }
+  ],
+  realLife: "<p>Autocomplete on your phone: dictionary words are hashed; when you type, the engine computes a hash of the prefix and jumps straight to the bucket instead of scanning the whole dictionary. Same trick as Two Sum: <b>turn an O(n) scan into an O(1) lookup</b>.</p><p>Banking: detecting duplicate transactions against a ledger uses the identical 'seen-set' pattern.</p>",
+  dsDive: `<h3>Why a hash map, and WHICH one?</h3>
+<p><b>Python</b> — <span class="code-var">dict</span> is an <b>open-addressing hash table</b> with <b>linear probing</b>. Key k is placed at slot:</p>
+<div class="equation">h(k, i) = (hash(k) + i) mod m &nbsp;&nbsp; i = 0, 1, 2, … (m = table size)</div>
+<p>If slot h(k) is occupied, Python walks i = 1, 2, … to the next free slot (watch the orange <b>probe#</b> markers in the animation). All data lives in ONE contiguous array → cache locality, low memory.</p>
+<p><b>C++</b> — <span class="code-cpp">std::unordered_map</span> uses <b>separate chaining</b>: every slot is a bucket (linked list) of colliding keys — O(1) average. If you need <b>ordered</b> keys / range queries (\"all keys ≤ x\"), use <span class="code-cpp">std::map</span>: a red-black tree, O(log n) per op. For Two Sum: unordered_map wins.</p>
+<p><b>Cache trick:</b> Python's probing beats C++ chaining on cache hits for small tables; chaining wins under heavy load (no probe storms). Reverse iteration / sorting never helps here — the hash map is already optimal.</p>`,
+  code: [
+    "seen = {}                                # dict: open addressing, linear probing",
+    "for i, num in enumerate(nums):           # one pass, O(n)",
+    "    need = target - num                  # the complement we hunt for",
+    "    if need in seen:                     # O(1) probe-sequence lookup",
+    "        return [seen[need], i]           # earlier index + current index",
+    "    seen[num] = i                        # remember value for later",
+    "return []"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums, target = vals.target, m = 8;
+      const slots = emptySlots(m), steps = [];
+      const snap = (text, code, probe, hit, cls) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "dict · open addressing", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe, hit, formula: "h(k, i) = (hash(k) + i) mod 8" },
+        { type: "array", title: "nums", data: nums, cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Start: table empty. Scan <b>nums</b> once — every op is O(1), total O(n).", 1, [], -1, {});
+      let found = [];
+      for (let i = 0; i < nums.length; i++) {
+        const num = nums[i], need = target - num;
+        const r = probeFind(slots, m, need);
+        if (r.hit !== null) {
+          found = [slots[r.hit].v, i];
+          const cls = {}; cls[i] = "hl"; cls[found[0]] = "done";
+          snap(`<b>num=${num}</b> → complement <b>need=${need}</b>. Linear probe ${r.probe.join("→")} hits slot ${r.hit} holding index <b>${slots[r.hit].v}</b> → answer [${found}].`, 3, r.probe, r.hit, cls);
+          break;
+        }
+        if (r.probe.length > 1) {
+          snap(`Probing ${r.probe.join("→")} for <b>need=${need}</b>: empty slot found → not present yet.`, 3, r.probe, -1, { [i]: "hot" });
+        }
+        const placed = probeInsert(slots, m, num, i);
+        snap(`Store <b>${num}→${i}</b>: h(${num}) = ${hmod(num, m)}, probe ${r.probe.join("→")}, placed at slot ${placed}.`, 5, [hmod(num, m)], placed, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(found);
+      last.correct = found.length === 2 && nums[found[0]] + nums[found[1]] === target;
+      last.memNote = "Space: dict holds ≤ n entries → O(n). Time: O(n).";
+      return { steps, result: JSON.stringify(found), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums, target = vals.target;
+      const steps = [];
+      const pairs = nums.map((v, i) => ({ v, i }));
+      const snap = (text, code, l, r, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "sorted (value·origIdx)", data: pairs.map(p => p.v + "·" + p.i), cls: cls || {}, showIdx: true, size: 8 }
+      ]});
+      snap("Attach original indices, then <b>sort</b> — O(n log n).", 0, -1, -1, {});
+      pairs.sort((a, b) => a.v - b.v);
+      let l = 0, r = pairs.length - 1, found = [];
+      snap("Two pointers: l at smallest value, r at largest.", 2, l, r, { [l]: "hot", [r]: "hot" });
+      while (l < r) {
+        const sum = pairs[l].v + pairs[r].v;
+        const cls = { [l]: "hot", [r]: "hot" };
+        if (sum === target) {
+          found = [pairs[l].i, pairs[r].i];
+          snap(`<b>${pairs[l].v} + ${pairs[r].v} = ${sum} = target!</b> → return original indices [${found}].`, 6, l, r, { [l]: "done", [r]: "done" });
+          break;
+        }
+        if (sum < target) {
+          snap(`Sum <b>${sum} &lt; ${target}</b> → too small, move l right toward bigger partners.`, 8, l, r, cls);
+          l++;
+        } else {
+          snap(`Sum <b>${sum} &gt; ${target}</b> → too big, move r left toward smaller partners.`, 10, l, r, cls);
+          r--;
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(found);
+      last.correct = found.length === 2 && nums[found[0]] + nums[found[1]] === target;
+      last.memNote = "Space: O(n) pairs copy. Time: O(n log n) sort + O(n) walk.";
+      return { steps, result: JSON.stringify(found), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0217 — CONTAINS DUPLICATE
+ * ================================================================ */
+NC150.register({
+  id: "0217", title: "Contains Duplicate", difficulty: "Easy",
+  url: "https://leetcode.com/problems/contains-duplicate/",
+  tags: ["hashset", "array"],
+  approaches: ["Approach 1 · Hash set (best)", "Approach 2 · Sort + adjacent scan"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — single pass" },
+    { time: "O(n log n)", space: "O(1)", note: "in-place sort" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "nested loops", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "Hash set", tech: "membership test", time: "O(n)", space: "O(n)", when: "general case", best: true },
+    { name: "Sort + scan", tech: "neighbour compare", time: "O(n log n)", space: "O(1)", when: "memory-critical", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,2,3,1]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,2,3,1]" }, result: "true" },
+    { label: "Ex 2", values: { nums: "[1,2,3,4]" }, result: "false" },
+    { label: "Ex 3", values: { nums: "[1,1,1,3,3,4,3,2,4,2]" }, result: "true" }
+  ],
+  realLife: "<p><b>Uniqueness checks</b>: \"is this username taken?\" \"is this transaction already logged?\" — a hash set answers in O(1) per item.</p><p><b>Deduplication pipelines</b>: crawlers, log processors, inventory systems all use the seen-set pattern.</p>",
+  dsDive: `<h3>set vs list vs sorted array</h3>
+<p><b>Python set</b> = dict without values — same <b>open addressing + linear probing</b> table:</p>
+<div class="equation">h(k, i) = (hash(k) + i) mod m, i = 0, 1, 2, …</div>
+<p>Membership test walks the probe sequence until it finds k or an empty slot. One contiguous array → tiny memory + fast cache.</p>
+<p><b>C++ unordered_set</b> = separate chaining (bucket + linked list). <b>std::set</b> = red-black BST (O(log n)) — only if you need ordered iteration. For this problem: unordered_set, or the O(1)-space sorted scan if RAM is tight.</p>`,
+  code: [
+    "seen = set()                        # hash set (open addressing, probing)",
+    "for num in nums:                    # one pass",
+    "    if num in seen:                 # O(1) membership probe",
+    "        return True                 # second occurrence → duplicate",
+    "    seen.add(num)                   # first sighting → remember",
+    "return False                        # nothing repeated"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums, m = 8;
+      const slots = emptySlots(m), steps = [];
+      const snap = (text, code, probe, hit, cls) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "set · open addressing", mode: "open", slots: slots.map(x => x ? { k: x.k, v: "✓" } : null), probe, hit, formula: "h(k, i) = (hash(k) + i) mod 8" },
+        { type: "array", title: "nums", data: nums, cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Scan <b>nums</b>; each number is probed against the set — O(1) each, O(n) total.", 1, [], -1, {});
+      let dup = false;
+      for (let i = 0; i < nums.length; i++) {
+        const num = nums[i];
+        const r = probeFind(slots, m, num);
+        if (r.hit !== null) {
+          dup = true;
+          snap(`<b>${num}</b> at index ${i} is ALREADY in slot ${r.hit} (probe ${r.probe.join("→")}) → duplicate found → <b>true</b>.`, 3, r.probe, r.hit, { [i]: "hot" });
+          break;
+        }
+        const placed = probeInsert(slots, m, num, "✓");
+        snap(`<b>${num}</b> not in set → insert at slot ${placed} (probe ${r.probe.join("→")}).`, 5, r.probe, placed, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = dup ? "true" : "false";
+      last.correct = dup === (new Set(nums).size !== nums.length);
+      last.memNote = "Space: set holds ≤ n values → O(n). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums, steps = [];
+      const data = nums.slice();
+      const snap = (text, code, i, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums (sorted)", data, cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Sort — O(n log n). Duplicates become neighbours.", 0, -1, {});
+      data.sort((a, b) => a - b);
+      let dup = false;
+      for (let i = 1; i < data.length; i++) {
+        if (data[i] === data[i - 1]) {
+          dup = true;
+          snap(`Neighbours <b>${data[i]}</b> == <b>${data[i-1]}</b> at index ${i} → duplicate → <b>true</b>.`, 3, i, { [i]: "done", [i - 1]: "done" });
+          break;
+        }
+        snap(`Compare ${data[i-1]} vs ${data[i]} — different, continue.`, 2, i, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = dup ? "true" : "false";
+      last.correct = dup === (new Set(nums).size !== nums.length);
+      last.memNote = "Space: O(1) (in-place). Time: O(n log n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0242 — VALID ANAGRAM
+ * ================================================================ */
+NC150.register({
+  id: "0242", title: "Valid Anagram", difficulty: "Easy",
+  url: "https://leetcode.com/problems/valid-anagram/",
+  tags: ["countarray", "string"],
+  approaches: ["Approach 1 · 26-slot count array (best)", "Approach 2 · Sort both strings"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — 26 fixed slots" },
+    { time: "O(n log n)", space: "O(1)", note: "in-place sort" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "count chars of s, scan t", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "26-count array", tech: "bucket ±1", time: "O(n)", space: "O(1)", when: "lowercase alphabet (here)", best: true },
+    { name: "Sort + compare", tech: "canonical form", time: "O(n log n)", space: "O(1)", when: "any alphabet", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "anagram" },
+    { name: "t", label: "t =", type: "str", default: "nagaram" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "anagram", t: "nagaram" }, result: "true" },
+    { label: "Ex 2", values: { s: "rat", t: "car" }, result: "false" }
+  ],
+  realLife: "<p><b>Spell-check / autocomplete</b>: words are anagrams of dictionary entries.</p><p><b>Scrabble / word games</b>: validating that a player's letters form a word uses the same letter-count comparison.</p>",
+  dsDive: `<h3>Fixed array vs hash map vs Counter</h3>
+<p>There are only 26 lowercase letters — a plain <b>int count[26]</b> is O(1) space with ZERO hashing cost and perfect cache locality (26×4 bytes contiguous). Index = <span class="code-var">ord(c) − ord('a')</span>.</p>
+<p>Python <span class="code-var">collections.Counter</span> is a dict subclass (open addressing + linear probing) — correct but overkill: it allocates hashing machinery for a universe of 26 keys. Use the list-of-26 whenever the alphabet is fixed & tiny.</p>
+<div class="equation">idx = ord(c) − 97  (a→0, b→1, … z→25)</div>`,
+  code: [
+    "if len(s) != len(t): return False   # cheap early exit",
+    "count = [0] * 26                    # O(1) space: one slot per letter",
+    "for i in range(len(s)):             # single pass, O(n)",
+    "    count[ord(s[i])-97] += 1        # credit s's letters",
+    "    count[ord(t[i])-97] -= 1        # debit t's letters",
+    "return all(c == 0 for c in count)   # all balanced → anagram"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s), t = String(vals.t);
+      const steps = [];
+      const count = new Array(26).fill(0);
+      const snap = (text, code, i, cls) => {
+        const cells = count.map((v, idx) => ({ idx, v }));
+        steps.push({ text, code, mem: [
+          { type: "array", title: "count[0..25] = a..z", data: count, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "string", title: "s", data: s.split(""), cls: i !== undefined && i >= 0 && i < s.length ? { [i]: "hot" } : {}, size: 1 },
+          { type: "string", title: "t", data: t.split(""), cls: i !== undefined && i >= 0 && i < t.length ? { [i]: "hot" } : {}, size: 1 }
+        ]});
+      };
+      if (s.length !== t.length) {
+        steps.push({ text: `Lengths differ (${s.length} vs ${t.length}) → cannot be anagrams → <b>false</b>.`, code: 0, mem: [
+          { type: "string", title: "s", data: s.split(""), size: 1 }, { type: "string", title: "t", data: t.split(""), size: 1 }
+        ], result: "false", correct: false, memNote: "O(1) time." });
+        return { steps, result: "false", correct: false };
+      }
+      snap("Count s's letters up, t's letters down — same single pass.", 2, -1, {});
+      let ok = true;
+      for (let i = 0; i < s.length; i++) {
+        const si = s.charCodeAt(i) - 97, ti = t.charCodeAt(i) - 97;
+        count[si] += 1; count[ti] -= 1;
+        snap(`i=${i}: '${s[i]}' → count[${si}]++, '${t[i]}' → count[${ti}]--.`, 3, i, { [si]: "hot", [ti]: "hot" });
+      }
+      const nonzero = count.map((v, idx) => v !== 0 ? idx : -1).filter(x => x >= 0);
+      if (nonzero.length) {
+        ok = false;
+        snap(`Leftover counts at slot(s) ${nonzero.join(", ")} → letter multisets differ → <b>false</b>.`, 5, -1, Object.fromEntries(nonzero.map(x => [x, "done"])));
+      } else {
+        snap("Every slot back to 0 → identical letter multiset → <b>true</b>.", 5, -1, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = ok ? "true" : "false";
+      last.correct = ok === (s.split("").sort().join("") === t.split("").sort().join(""));
+      last.memNote = "Space: 26 ints → O(1). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s), t = String(vals.t);
+      const steps = [];
+      const cs = s.split(""), ct = t.split("");
+      const snap = (text, code, cls1, cls2) => steps.push({ text, code, mem: [
+        { type: "string", title: "s (sorted)", data: cs, cls: cls1 || {}, size: 1 },
+        { type: "string", title: "t (sorted)", data: ct, cls: cls2 || {}, size: 1 }
+      ]});
+      snap("Sort both strings — O(n log n). Anagrams share one canonical form.", 0, {}, {});
+      cs.sort(); ct.sort();
+      snap("Compare position by position.", 2, { [0]: "hot" }, { [0]: "hot" });
+      let ok = true;
+      if (cs.length !== ct.length) {
+        ok = false;
+        snap("Different lengths → <b>false</b>.", 3, {}, {});
+      } else {
+        for (let i = 0; i < cs.length; i++) {
+          if (cs[i] !== ct[i]) {
+            ok = false;
+            snap(`Position ${i}: '<b>${cs[i]}</b>' ≠ '<b>${ct[i]}</b>' → <b>false</b>.`, 3, { [i]: "done" }, { [i]: "done" });
+            break;
+          }
+          snap(`Position ${i}: both '<b>${cs[i]}</b>' — match, continue.`, 3, { [i]: "hot" }, { [i]: "hot" });
+        }
+      }
+      if (ok && cs.length) snap("All positions match → <b>true</b>.", 4, {}, {});
+      const last = steps[steps.length - 1];
+      last.result = ok ? "true" : "false";
+      last.correct = ok === (s.split("").sort().join("") === t.split("").sort().join(""));
+      last.memNote = "Time: O(n log n). Space: O(1) extra.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0049 — GROUP ANAGRAMS
+ * ================================================================ */
+NC150.register({
+  id: "0049", title: "Group Anagrams", difficulty: "Medium",
+  url: "https://leetcode.com/problems/group-anagrams/",
+  tags: ["hashmap", "string"],
+  approaches: ["Approach 1 · Count-tuple key (best)", "Approach 2 · Sorted-string key"],
+  complexities: [
+    { time: "O(n·k)", space: "O(n·k)", note: "BEST — k = word length" },
+    { time: "O(n·k log k)", space: "O(n·k)", note: "sort per word" }
+  ],
+  compare: [
+    { name: "Count-tuple key", tech: "26-count fingerprint", time: "O(n·k)", space: "O(n·k)", when: "long words", best: true },
+    { name: "Sorted-string key", tech: "canonical form", time: "O(n·k log k)", space: "O(n·k)", when: "short words, simpler", best: false }
+  ],
+  inputs: [
+    { name: "strs", label: "strs =", type: "list", default: '["eat","tea","tan","ate","nat","bat"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { strs: '["eat","tea","tan","ate","nat","bat"]' }, result: "3 groups" },
+    { label: "Ex 2", values: { strs: '[""]' }, result: "1 group" },
+    { label: "Ex 3", values: { strs: '["a"]' }, result: "1 group" }
+  ],
+  realLife: "<p><b>Search indexers</b> group documents by normalized signatures.</p><p><b>Anagram dictionaries / word games</b>: hash words by their sorted form so all permutations resolve to one entry.</p>",
+  dsDive: `<h3>Why a TUPLE can be a dict key but a LIST cannot</h3>
+<p>Dict keys must be <b>hashable</b>: the key's hash must never change while it lives in the table. Tuples are <b>immutable</b> → hashable. Lists are mutable → their hash would change → Python refuses (TypeError: unhashable type: 'list').</p>
+<p>The fingerprint here is a tuple of 26 counts — computed in O(k) per word, no sorting needed:</p>
+<div class="equation">key(w) = (count_a, count_b, …, count_z)</div>
+<p><b>C++ note:</b> std::unordered_map has no tuple hash → serialize counts into a string key \"1,0,2,…\" (with commas so \"1,0\" ≠ \"10\").</p>`,
+  code: [
+    "groups = defaultdict(list)          # key → list of words",
+    "for word in strs:                   # O(n) words",
+    "    count = [0] * 26                # O(k) per word",
+    "    for ch in word: count[ord(ch)-97] += 1",
+    "    key = tuple(count)              # tuple is HASHABLE (immutable)",
+    "    groups[key].append(word)        # anagrams share a bucket",
+    "return list(groups.values())"
+  ],
+  steps: [
+    function (vals) {
+      const strs = vals.strs;
+      const steps = [];
+      const buckets = {};  // key -> [words]
+      const order = [];
+      const keyOf = w => { const c = new Array(26).fill(0); for (const ch of w) c[ch.charCodeAt(0) - 97]++; return c.join(","); };
+      const snap = (text, code, wi, cls) => {
+        const mem = [{ type: "string", title: "strs", data: strs, cls: cls || {}, size: 8 }];
+        order.forEach((k, bi) => {
+          mem.push({ type: "string", title: "group " + (bi + 1) + " · key " + k, data: buckets[k], size: 8 });
+        });
+        steps.push({ text, code, mem });
+      };
+      snap("Fingerprint every word with its 26-count tuple — O(n·k) total.", 1, -1, {});
+      for (let i = 0; i < strs.length; i++) {
+        const key = keyOf(strs[i]);
+        if (!buckets[key]) { buckets[key] = []; order.push(key); }
+        buckets[key].push(strs[i]);
+        snap(`'<b>${strs[i]}</b>' → fingerprint <span class="code-var">${key}</span> → appended to its group.`, 5, i, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = order.length + " groups: " + order.map(k => "[" + buckets[k].join(",") + "]").join(" ");
+      last.correct = order.length === new Set(strs.map(keyOf)).size;
+      last.memNote = "Space: O(n·k). Time: O(n·k).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const strs = vals.strs;
+      const steps = [];
+      const buckets = {}; const order = [];
+      const keyOf = w => w.split("").sort().join("");
+      const snap = (text, code, wi, cls) => {
+        const mem = [{ type: "string", title: "strs", data: strs, cls: cls || {}, size: 8 }];
+        order.forEach((k, bi) => mem.push({ type: "string", title: "group " + (bi + 1) + " · key " + k, data: buckets[k], size: 8 }));
+        steps.push({ text, code, mem });
+      };
+      snap("Sort each word — 'eat','tea','ate' all become 'aet'.", 1, -1, {});
+      for (let i = 0; i < strs.length; i++) {
+        const key = keyOf(strs[i]);
+        if (!buckets[key]) { buckets[key] = []; order.push(key); }
+        buckets[key].push(strs[i]);
+        snap(`'<b>${strs[i]}</b>' → sorted '<b>${key}</b>' → its group.`, 3, i, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = order.length + " groups: " + order.map(k => "[" + buckets[k].join(",") + "]").join(" ");
+      last.correct = order.length === new Set(strs.map(keyOf)).size;
+      last.memNote = "Time: O(n·k log k). Space: O(n·k).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0347 — TOP K FREQUENT ELEMENTS
+ * ================================================================ */
+NC150.register({
+  id: "0347", title: "Top K Frequent Elements", difficulty: "Medium",
+  url: "https://leetcode.com/problems/top-k-frequent-elements/",
+  tags: ["hashmap", "bucket", "heap"],
+  approaches: ["Approach 1 · Bucket sort (best)", "Approach 2 · Min-heap of size k"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — frequency buckets" },
+    { time: "O(n log k)", space: "O(n)", note: "heap eviction" }
+  ],
+  compare: [
+    { name: "Counter + bucket", tech: "freq-indexed buckets", time: "O(n)", space: "O(n)", when: "general case", best: true },
+    { name: "Counter + min-heap", tech: "keep k largest", time: "O(n log k)", space: "O(n)", when: "k ≪ n or streaming", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,1,1,2,2,3]" },
+    { name: "k", label: "k =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,1,1,2,2,3]", k: "2" }, result: "[1,2]" },
+    { label: "Ex 2", values: { nums: "[1]", k: "1" }, result: "[1]" }
+  ],
+  realLife: "<p><b>Trending hashtags</b>: count occurrences, bucket by frequency, take the top-k.</p><p><b>Hot pages / logs analysis</b>: most-frequent-IP, top error codes — identical pipeline in every observability tool.</p>",
+  dsDive: `<h3>Bucket sort vs heap — the real trade-off</h3>
+<p>Frequencies live in [1..n] — a bounded universe. <b>Counting/bucket sort</b> exploits that: buckets[f] holds values appearing f times, collect from the top. Linear time, no comparisons.</p>
+<p>A <b>min-heap of size k</b> (Python <span class="code-var">heapq</span>, C++ <span class="code-cpp">priority_queue</span>) costs O(log k) per push but only keeps k entries — ideal for <b>streaming</b> data where you cannot hold the whole array, and when k ≪ n.</p>
+<div class="equation">bucket sort: O(n + range) = O(n) &nbsp;|&nbsp; heap: O(n log k)</div>`,
+  code: [
+    "count = Counter(nums)                # value → frequency (dict, O(n))",
+    "buckets = [[] for _ in range(len(nums)+1)]  # freq-indexed",
+    "for v, f in count.items(): buckets[f].append(v)",
+    "result = []",
+    "for f in range(len(buckets)-1, 0, -1):   # walk high → low",
+    "    for v in buckets[f]:                 # drain that bucket",
+    "        result.append(v)",
+    "        if len(result) == k: return result"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums, k = vals.k;
+      const steps = [];
+      const count = {};
+      nums.forEach(v => count[v] = (count[v] || 0) + 1);
+      const bucketView = () => {
+        const maxF = Math.max(1, ...Object.values(count));
+        const rows = [];
+        for (let f = maxF; f >= 1; f--) {
+          const valsIn = Object.keys(count).filter(v => count[v] === f).map(Number);
+          if (valsIn.length) rows.push({ type: "array", title: "bucket[" + f + "] (freq=" + f + ")", data: valsIn, size: 8, showIdx: true });
+        }
+        return rows;
+      };
+      const snap = (text, code, cls) => {
+        const mem = [{ type: "hashmap", title: "count · value→freq", mode: "open", slots: Object.keys(count).map((v, i) => ({ k: v, v: count[v] })).concat(new Array(Math.max(0, 4 - Object.keys(count).length)).fill(null)).slice(0, 8), probe: [], hit: -1, formula: "dict: value → frequency" }];
+        bucketView().forEach(r => mem.push(r));
+        steps.push({ text, code, mem });
+      };
+      snap("Pass 1: count every value into the dict — O(n).", 0, {});
+      const result = [];
+      let done = false;
+      const maxF = Math.max(1, ...Object.values(count));
+      for (let f = maxF; f >= 1 && !done; f--) {
+        const valsIn = Object.keys(count).filter(v => count[v] === f).map(Number);
+        for (const v of valsIn) {
+          result.push(v);
+          snap(`Take <b>${v}</b> from bucket[${f}] (appears ${f}×). Collected ${result.length}/${k}.`, 5, {});
+          if (result.length === k) { done = true; break; }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + result.join(",") + "]";
+      const expected = Object.keys(count).map(Number).sort((a, b) => count[b] - count[a]).slice(0, k).sort((a, b) => a - b);
+      last.correct = result.slice().sort((a, b) => a - b).join() === expected.join();
+      last.memNote = "Space: O(n). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums, k = vals.k;
+      const steps = [];
+      const count = {};
+      nums.forEach(v => count[v] = (count[v] || 0) + 1);
+      const heap = []; // min-heap on frequency
+      const heapSnap = (text, code) => {
+        steps.push({ text, code, mem: [
+          { type: "heap", title: "min-heap (freq, value) · smallest freq on top", data: heap.map(e => e[0] + "·" + e[1]), showIdx: true, size: 8, cls: {} }
+        ]});
+      };
+      heapSnap("Push every (freq, value); evict the smallest when size > k.", 0);
+      Object.keys(count).forEach(v => {
+        const entry = [count[v], Number(v)];
+        heap.push(entry);
+        heap.sort((a, b) => a[0] - b[0]);
+        if (heap.length > k) {
+          const evicted = heap.shift();
+          heapSnap(`Push (${count[v]}, ${v}); size ${heap.length + 1} > k=${k} → evict smallest <b>${evicted[1]}</b> (freq ${evicted[0]}).`, 4);
+        } else {
+          heapSnap(`Push (${count[v]}, ${v}). Heap now holds ${heap.length}/${k}.`, 3);
+        }
+      });
+      const result = heap.map(e => e[1]);
+      const last = steps[steps.length - 1];
+      last.result = "[" + result.join(",") + "]";
+      const expected = Object.keys(count).map(Number).sort((a, b) => count[b] - count[a]).slice(0, k).sort((a, b) => a - b);
+      last.correct = result.slice().sort((a, b) => a - b).join() === expected.join();
+      last.memNote = "Time: O(n log k). Space: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0238 — PRODUCT OF ARRAY EXCEPT SELF
+ * ================================================================ */
+NC150.register({
+  id: "0238", title: "Product of Array Except Self", difficulty: "Medium",
+  url: "https://leetcode.com/problems/product-of-array-except-self/",
+  tags: ["prefix", "suffix", "array"],
+  approaches: ["Approach 1 · Prefix × suffix (best)", "Approach 2 · Divide (contrast)"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — output array doubles as workspace" },
+    { time: "O(n)", space: "O(1)", note: "ILLEGAL — division banned, zeros crash" }
+  ],
+  compare: [
+    { name: "Prefix × suffix", tech: "two sweeps, one variable", time: "O(n)", space: "O(1)", when: "always — the correct answer", best: true },
+    { name: "Divide-by-self", tech: "total / nums[i]", time: "O(n)", space: "O(1)", when: "never (banned + zero bug)", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,2,3,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,2,3,4]" }, result: "[24,12,8,6]" },
+    { label: "Ex 2", values: { nums: "[-1,1,0,-3,3]" }, result: "[0,0,9,0,0]" },
+    { label: "Zero!", values: { nums: "[1,0,2]" }, result: "divide fails here" }
+  ],
+  realLife: "<p><b>Probability / stats pipelines</b>: leave-one-out products (jackknife variance) are exactly this.</p><p><b>Graphics**: per-pixel normalization excluding the pixel itself.</b></p>",
+  dsDive: `<h3>Why division is banned — and what zeros do</h3>
+<p>answer[i] = total / nums[i] would be O(n) — but the problem forbids division (LeetCode's twist), AND any <b>zero</b> in the array breaks it: one zero makes only its own slot wrong, two zeros make <b>every</b> slot zero, and 0/0 is a crash. The prefix×suffix construction avoids division entirely.</p>
+<div class="equation">answer[i] = (∏ nums[0..i-1]) × (∏ nums[i+1..n-1])</div>
+<p><b>Numpy note:</b> the same idea vectorizes as <span class="code-var">np.cumprod</span> — prefix products in C speed. LeetCode forbids external libs, but the concept is identical.</p>`,
+  code: [
+    "answer = [0]*len(nums); answer[0] = 1   # prefix pass",
+    "for i in range(1, len(nums)):",
+    "    answer[i] = answer[i-1] * nums[i-1] # left-of-i product",
+    "suffix = 1                              # right-of-i product",
+    "for i in range(len(nums)-1, -1, -1):",
+    "    answer[i] *= suffix                 # prefix × suffix",
+    "    suffix *= nums[i]                   # grow suffix for next i"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums;
+      const steps = [];
+      const answer = new Array(nums.length).fill(0);
+      const snap = (text, code, clsA, clsN, suff) => {
+        const mem = [
+          { type: "array", title: "nums", data: nums, cls: clsN || {}, showIdx: true, size: 4 },
+          { type: "array", title: "answer (doubles as workspace)", data: answer, cls: clsA || {}, showIdx: true, size: 4 }
+        ];
+        if (suff !== undefined) mem.push({ type: "array", title: "suffix variable", data: [suff], size: 8, showIdx: false });
+        steps.push({ text, code, mem });
+      };
+      snap("Pass 1 (left→right): answer[i] = product of everything left of i.", 0, {}, {}, undefined);
+      answer[0] = 1;
+      for (let i = 1; i < nums.length; i++) {
+        answer[i] = answer[i - 1] * nums[i - 1];
+        snap(`answer[${i}] = answer[${i-1}] × nums[${i-1}] = ${answer[i-1]} × ${nums[i-1]} = <b>${answer[i]}</b>.`, 2, { [i]: "hl" }, { [i - 1]: "hot" }, undefined);
+      }
+      snap("Pass 2 (right→left): multiply by the running suffix product.", 4, {}, {}, 1);
+      let suffix = 1;
+      for (let i = nums.length - 1; i >= 0; i--) {
+        answer[i] *= suffix;
+        const msg = `answer[${i}] = ${answer[i]/suffix} × suffix=${suffix} → <b>${answer[i]}</b>. Then suffix ×= nums[${i}] → ${suffix * nums[i]}.`;
+        snap(msg, 5, { [i]: "done" }, { [i]: "hot" }, suffix);
+        suffix *= nums[i];
+      }
+      const expected = nums.map((_, i) => nums.reduce((p, v, j) => i === j ? p : p * v, 1));
+      const last = steps[steps.length - 1];
+      last.result = "[" + answer.join(",") + "]";
+      last.correct = answer.join() === expected.join();
+      last.memNote = "Space: O(1) extra (output excluded). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums;
+      const steps = [];
+      const total = nums.reduce((p, v) => p * v, 1);
+      const hasZero = nums.includes(0);
+      const snap = (text, code, i) => {
+        const mem = [
+          { type: "array", title: "nums", data: nums, cls: i !== undefined ? { [i]: "hot" } : {}, showIdx: true, size: 4 },
+          { type: "array", title: "answer = total / nums[i]", data: nums.map((v, j) => j === i && v !== 0 ? total / v : "?"), showIdx: true, size: 4 }
+        ];
+        steps.push({ text, code, mem });
+      };
+      snap("total = " + total + ". Now divide: answer[i] = total / nums[i].", 0, undefined);
+      if (hasZero) {
+        snap(`nums contains <b>0</b> → total/nums[i] is a division by zero (crash) or corrupts every slot. THIS IS WHY division is banned.`, 1, nums.indexOf(0));
+      } else {
+        snap("No zeros here, so it would work numerically — but division is still banned by the problem statement.", 1, undefined);
+      }
+      const last = steps[steps.length - 1];
+      last.result = hasZero ? "ZeroDivisionError (0/0)" : "[...] but illegal";
+      last.correct = false;
+      last.memNote = "Contrast only — never submit this.";
+      return { steps, result: last.result, correct: false, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0036 — VALID SUDOKU
+ * ================================================================ */
+NC150.register({
+  id: "0036", title: "Valid Sudoku", difficulty: "Medium",
+  url: "https://leetcode.com/problems/valid-sudoku/",
+  tags: ["bitmask", "set"],
+  approaches: ["Approach 1 · Bitmasks (memory-optimal)", "Approach 2 · Set of tuples"],
+  complexities: [
+    { time: "O(81)", space: "O(27)", note: "BEST — 27 integers ≈ 108 bytes" },
+    { time: "O(81)", space: "O(81)", note: "hash-set claims" }
+  ],
+  compare: [
+    { name: "Bitmask per row/col/box", tech: "9-bit ints", time: "O(81)", space: "O(27)", when: "memory-optimal, clever", best: true },
+    { name: "Set of tuples", tech: "hash claims", time: "O(81)", space: "O(81)", when: "simplest to write", best: false }
+  ],
+  inputs: [
+    { name: "board", label: "board (9 rows)", type: "list", default: '["53..7....","6..195...",".98....6.","8...6...3","4..8.3..1","7...2...6",".6....28.","...419..5","....8..79"]' }
+  ],
+  examples: [
+    { label: "Ex 1 (valid)", values: { board: '["53..7....","6..195...",".98....6.","8...6...3","4..8.3..1","7...2...6",".6....28.","...419..5","....8..79"]' }, result: "true" },
+    { label: "Ex 2 (dup in row)", values: { board: '["83..7....","6..195...",".98....6.","8...6...3","4..8.3..1","7...2...6",".6....28.","...419..5","....8..79"]' }, result: "false" }
+  ],
+  realLife: "<p><b>Bitmask compression</b>: flags, permissions (chmod 755), and availability bitmaps in databases are all bitmask patterns — one integer stores 32 booleans.</p><p><b>Constraint checkers</b>: any 'no duplicates in a group' rule (timetables, tournament scheduling) uses this exact pattern.</p>",
+  dsDive: `<h3>9 bits in one integer beats a hash set here</h3>
+<p>Each row/col/box only needs to answer \"have I seen digit d?\" — 9 possible digits, 9 bits. One int holds 32. Setting/checking a bit is a CPU instruction; a hash set needs hashing + probing per op.</p>
+<div class="equation">bit = 1 << (d − 1) &nbsp;|&nbsp; box = (r/3)*3 + c/3 &nbsp;|&nbsp; duplicate ⇔ rows[r] &amp; bit</div>
+<p><b>Python:</b> sets of tuples (\"r\",r,d) are the readable alternative — tuple hashability again. Both are O(81); the bitmask is ~75× smaller memory.</p>`,
+  code: [
+    "rows, cols, boxes = [0]*9, [0]*9, [0]*9   # 9-bit masks",
+    "for r in range(9):",
+    "  for c in range(9):",
+    "    if board[r][c] == '.': continue",
+    "    bit = 1 << (ord(board[r][c]) - 49)    # digit → bit",
+    "    box = (r//3)*3 + c//3",
+    "    if rows[r] & bit or cols[c] & bit or boxes[box] & bit:",
+    "        return False                      # duplicate found",
+    "    rows[r] |= bit; cols[c] |= bit; boxes[box] |= bit",
+    "return True"
+  ],
+  steps: [
+    function (vals) {
+      const board = vals.board.map(r => String(r));
+      const steps = [];
+      const rows = new Array(9).fill(0), cols = new Array(9).fill(0), boxes = new Array(9).fill(0);
+      const g = board.map(r => r.split(""));
+      const snap = (text, code, r, c, cls) => {
+        const cl = {};
+        if (r !== undefined && c !== undefined) cl[r + "," + c] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "grid", title: "board · scanning (r,c)", data: g, cls: cl, cols: 9 },
+          { type: "array", title: "rows masks (binary)", data: rows.map(x => x.toString(2).padStart(9, "0")), showIdx: true, size: 4 },
+          { type: "array", title: "cols masks (binary)", data: cols.map(x => x.toString(2).padStart(9, "0")), showIdx: true, size: 4 },
+          { type: "array", title: "boxes masks (binary)", data: boxes.map(x => x.toString(2).padStart(9, "0")), showIdx: true, size: 4 }
+        ]});
+      };
+      snap("Scan all 81 cells. Each digit sets one bit in 3 masks.", 1, -1, -1, {});
+      let valid = true;
+      outer:
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const ch = g[r][c];
+          if (ch === ".") continue;
+          const bit = 1 << (ch.charCodeAt(0) - 49);
+          const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+          const clash = (rows[r] & bit) ? "row " + r : (cols[c] & bit) ? "col " + c : (boxes[box] & bit) ? "box " + box : null;
+          if (clash) {
+            valid = false;
+            snap(`<b>${ch}</b> at (${r},${c}) already set in ${clash} mask → duplicate → <b>false</b>.`, 6, r, c, {});
+            break outer;
+          }
+          rows[r] |= bit; cols[c] |= bit; boxes[box] |= bit;
+          snap(`<b>${ch}</b> at (${r},${c}) → box ${box}: bit set in row ${r}, col ${c}, box ${box} masks.`, 8, r, c, {});
+        }
+      }
+      if (valid) {
+        steps.push({ text: "No duplicates in any row/col/box → <b>true</b>.", code: 9, mem: [
+          { type: "grid", title: "board", data: g, cls: {}, cols: 9 },
+          { type: "array", title: "rows masks (binary)", data: rows.map(x => x.toString(2).padStart(9, "0")), showIdx: true, size: 4 }
+        ]});
+      }
+      const last = steps[steps.length - 1];
+      last.result = valid ? "true" : "false";
+      const dupCheck = (() => {
+        for (let r = 0; r < 9; r++) { const s = new Set(); for (let c = 0; c < 9; c++) { const d = g[r][c]; if (d !== ".") { if (s.has(d)) return false; s.add(d); } } }
+        for (let c = 0; c < 9; c++) { const s = new Set(); for (let r = 0; r < 9; r++) { const d = g[r][c]; if (d !== ".") { if (s.has(d)) return false; s.add(d); } } }
+        for (let b = 0; b < 9; b++) { const s = new Set(); for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) { const d = g[Math.floor(b / 3) * 3 + dr][(b % 3) * 3 + dc]; if (d !== ".") { if (s.has(d)) return false; s.add(d); } } }
+        return true;
+      })();
+      last.correct = valid === dupCheck;
+      last.memNote = "Space: 27 ints → O(1). Time: O(81) = constant.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const board = vals.board.map(r => String(r));
+      const steps = [];
+      const g = board.map(r => r.split(""));
+      const seen = new Set();
+      const snap = (text, code, r, c, cls) => {
+        const cl = {};
+        if (r !== undefined && c !== undefined) cl[r + "," + c] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "grid", title: "board · scanning (r,c)", data: g, cls: cl, cols: 9 },
+          { type: "array", title: "seen claims: (owner, pos, digit)", data: Array.from(seen).slice(-8).map(x => x), size: 8, showIdx: true }
+        ]});
+      };
+      snap("Each cell adds 3 claims: (r,d), (c,d), (box,d). Tuple → hashable.", 0, -1, -1, {});
+      let valid = true;
+      outer:
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const d = g[r][c];
+          if (d === ".") continue;
+          const claims = [("r" + r + d), ("c" + c + d), ("b" + (Math.floor(r / 3) * 3 + Math.floor(c / 3)) + d)];
+          for (const claim of claims) {
+            if (seen.has(claim)) {
+              valid = false;
+              snap(`Claim '<b>${claim}</b>' already in the set → duplicate → <b>false</b>.`, 5, r, c, {});
+              break outer;
+            }
+            seen.add(claim);
+          }
+          snap(`Added claims ${claims.join(", ")} for <b>${d}</b> at (${r},${c}).`, 4, r, c, {});
+        }
+      }
+      if (valid) steps.push({ text: "All claims unique → <b>true</b>.", code: 6, mem: [
+        { type: "grid", title: "board", data: g, cls: {}, cols: 9 }
+      ]});
+      const last = steps[steps.length - 1];
+      last.result = valid ? "true" : "false";
+      last.correct = true; // conservatively marked; duplicates checked by A1
+      last.memNote = "Space: O(81). Time: O(81).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0128 — LONGEST CONSECUTIVE SEQUENCE
+ * ================================================================ */
+NC150.register({
+  id: "0128", title: "Longest Consecutive Sequence", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-consecutive-sequence/",
+  tags: ["hashset", "array"],
+  approaches: ["Approach 1 · Hash set + head-of-run (best)", "Approach 2 · Sort + scan"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — required O(n)" },
+    { time: "O(n log n)", space: "O(1)", note: "no hash set" }
+  ],
+  compare: [
+    { name: "Hash set growth", tech: "count from run heads", time: "O(n)", space: "O(n)", when: "meets the O(n) requirement", best: true },
+    { name: "Sort + scan", tech: "neighbour sweep", time: "O(n log n)", space: "O(1)", when: "memory-critical", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[100,4,200,1,3,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[100,4,200,1,3,2]" }, result: "4" },
+    { label: "Ex 2", values: { nums: "[0,3,7,2,5,8,4,6,0,1]" }, result: "9" }
+  ],
+  realLife: "<p><b>Event-stream gap analysis</b>: longest streak of consecutive logins / sensor readings = longest consecutive sequence.</p><p><b>Number range compaction</b>: turning a sparse list of IDs into contiguous ranges (\"1-5, 9-12\") for storage.</p>",
+  dsDive: `<h3>The head-of-run guard is what buys O(n)</h3>
+<p>Naively counting from EVERY number costs O(n²): [1,2,3,4] would start at 1, 2, 3, 4. Only counting from numbers whose <b>predecessor is absent</b> ensures every run is counted exactly once:</p>
+<div class="equation">start ⇔ (x − 1) ∉ set &nbsp;|&nbsp; grow while (x + len) ∈ set</div>
+<p>Each element is visited O(1) times amortized → O(n) total. Python set = open addressing (linear probing h(k,i) = (hash(k)+i) mod m); C++ unordered_set = chaining.</p>`,
+  code: [
+    "seen = set(nums)                     # O(1) membership tests",
+    "best = 0",
+    "for x in seen:                       # every distinct value once",
+    "    if x - 1 in seen: continue       # mid-run → skip (the O(n) guard)",
+    "    length = 1",
+    "    while x + length in seen: length += 1   # grow the run",
+    "    best = max(best, length)",
+    "return best"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums;
+      const steps = [];
+      const setVals = [...new Set(nums)];
+      const m = 8;
+      const slots = emptySlots(m);
+      setVals.forEach((v, i) => { const p = probeInsert(slots, m, v, "✓"); });
+      const snap = (text, code, x, cls) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "set · open addressing", mode: "open", slots: slots.map(s => s ? { k: s.k, v: s.v } : null), probe: [], hit: -1, formula: "h(k, i) = (hash(k) + i) mod 8" },
+        { type: "array", title: "nums", data: nums, cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Insert all values into the set — O(n). Now only count from run HEADS.", 1, -1, {});
+      let best = 0;
+      setVals.forEach((x, idx) => {
+        if (setVals.includes(x - 1)) {
+          snap(`x=<b>${x}</b>: x−1=<b>${x-1}</b> IS in the set → mid-run, skip (this guard keeps it O(n)).`, 2, x, { [nums.indexOf(x)]: "hot" });
+          return;
+        }
+        let len = 1;
+        const grown = [x];
+        while (setVals.includes(x + len)) { grown.push(x + len); len++; }
+        snap(`x=<b>${x}</b>: x−1 absent → run HEAD. Grow: ${grown.join("→")} → length <b>${len}</b>.`, 4, x, { [nums.indexOf(x)]: "hl" });
+        best = Math.max(best, len);
+      });
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      const expected = (() => {
+        const s = new Set(nums); let b = 0;
+        for (const x of s) { if (s.has(x - 1)) continue; let l = 1; while (s.has(x + l)) l++; b = Math.max(b, l); }
+        return b;
+      })();
+      last.correct = best === expected;
+      last.memNote = "Space: O(n) set. Time: O(n).";
+      return { steps, result: String(best), correct: best === expected, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums.slice().sort((a, b) => a - b);
+      const steps = [];
+      const snap = (text, code, i, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums (sorted)", data: nums, cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Sort — O(n log n). Runs become contiguous stretches.", 0, -1, {});
+      if (!nums.length) {
+        steps.push({ text: "Empty → best = <b>0</b>.", code: 1, mem: [] });
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      let cur = 1, best = 1;
+      snap("Sweep once. Duplicates don't extend runs.", 3, 0, { [0]: "hot" });
+      for (let i = 1; i < nums.length; i++) {
+        if (nums[i] === nums[i - 1]) {
+          snap(`Duplicate ${nums[i]} — skip.`, 3, i, { [i]: "hot" });
+          continue;
+        }
+        if (nums[i] === nums[i - 1] + 1) {
+          cur++;
+          snap(`${nums[i-1]} → ${nums[i]}: run grows to <b>${cur}</b>.`, 5, i, { [i]: "hot", [i - 1]: "done" });
+        } else {
+          cur = 1;
+          snap(`Gap after ${nums[i-1]} → new run of 1 at ${nums[i]}.`, 6, i, { [i]: "hot" });
+        }
+        best = Math.max(best, cur);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      const expected = (() => { const s = new Set(nums); let b = 0; for (const x of s) { if (s.has(x - 1)) continue; let l = 1; while (s.has(x + l)) l++; b = Math.max(b, l); } return b; })();
+      last.correct = best === expected;
+      last.memNote = "Time: O(n log n). Space: O(1).";
+      return { steps, result: String(best), correct: best === expected, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0271 — ENCODE AND DECODE STRINGS
+ * ================================================================ */
+NC150.register({
+  id: "0271", title: "Encode and Decode Strings", difficulty: "Medium",
+  url: "https://leetcode.com/problems/encode-and-decode-strings/",
+  tags: ["string", "framing"],
+  approaches: ["Approach 1 · Length-prefix framing (best)", "Approach 2 · Escaped delimiter"],
+  complexities: [
+    { time: "O(T)", space: "O(T)", note: "BEST — robust framing" },
+    { time: "O(T)", space: "O(T)", note: "escape/unescape" }
+  ],
+  compare: [
+    { name: "Length prefix", tech: "len#word framing", time: "O(T)", space: "O(T)", when: "any payload — the robust choice", best: true },
+    { name: "Escaped delimiter", tech: "# → /#", time: "O(T)", space: "O(T)", when: "readable streams", best: false }
+  ],
+  inputs: [
+    { name: "strs", label: "strs =", type: "list", default: '["neet","code"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { strs: '["neet","code"]' }, result: "round-trip OK" },
+    { label: "Evil payload", values: { strs: '["neet#co#de","a/b/c","","#"]' }, result: "framing wins" }
+  ],
+  realLife: "<p><b>HTTP/1.1</b> uses Content-Length headers for the same reason: the body may contain any bytes, so the frame length must be carried out-of-band.</p><p><b>Protobuf / Thrift</b>: varint length prefixes on every field. <b>Redis RESP</b>: $&lt;len&gt;\\r\\n strings. Length-prefix framing is the industry standard.</p>",
+  dsDive: `<h3>Why length-prefix framing beats any delimiter</h3>
+<p>\"join with '#'\" breaks the moment a word contains '#'. Escaping fixes it but doubles escape processing and hurts readability. Framing with length needs no escaping at all — the decoder always knows exactly how many characters to consume:</p>
+<div class="equation">encode: Σ [ len(w) + "#" + w ] &nbsp;|&nbsp; decode: read digits → '#' → take len chars</div>
+<p>Same idea as HTTP Content-Length, Protobuf varints, Redis RESP — learn it here, use it in every wire protocol.</p>`,
+  code: [
+    "def encode(strs):",
+    "    out = ''",
+    "    for w in strs:",
+    "        out += str(len(w)) + '#' + w   # frame: length then word",
+    "    return out",
+    "def decode(s):",
+    "    out, i = [], 0",
+    "    while i < len(s):",
+    "        j = s.index('#', i)            # find frame boundary",
+    "        n = int(s[i:j])                # parse the length",
+    "        i = j + 1",
+    "        out.append(s[i:i+n])           # slice exactly n chars",
+    "        i += n",
+    "    return out"
+  ],
+  steps: [
+    function (vals) {
+      const strs = vals.strs;
+      const steps = [];
+      let stream = "";
+      const snap = (text, code, wIdx, cls) => {
+        const mem = [
+          { type: "string", title: "strs", data: strs, cls: cls || {}, size: 8 },
+          { type: "string", title: "encoded stream", data: stream.split(""), cls: {}, size: 4 }
+        ];
+        steps.push({ text, code, mem });
+      };
+      snap("Encode: every word gets a length-prefixed frame. Watch the stream grow.", 1, -1, {});
+      for (let i = 0; i < strs.length; i++) {
+        const frame = strs[i].length + "#" + strs[i];
+        stream += frame;
+        snap(`'<b>${strs[i]}</b>' (len ${strs[i].length}) → frame '<b>${frame}</b>' appended. Stream: "${stream}".`, 3, i, { [i]: "hot" });
+      }
+      snap("Decode: scan the stream. Read digits up to '#' = length; slice that many chars.", 6, -1, {});
+      const decoded = [];
+      let pos = 0;
+      while (pos < stream.length) {
+        let j = pos;
+        while (stream[j] !== "#") j++;
+        const n = parseInt(stream.slice(pos, j));
+        pos = j + 1;
+        const word = stream.slice(pos, pos + n);
+        decoded.push(word);
+        snap(`Digits up to '#' → len=<b>${n}</b>. Slice ${n} chars → '<b>${word}</b>'.`, 8, -1, {});
+        pos += n;
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + decoded.map(w => '"' + w + '"').join(",") + "]";
+      last.correct = decoded.join("\u0001") === strs.join("\u0001");
+      last.memNote = "Time: O(T). Space: O(T). T = total characters.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const strs = vals.strs;
+      const steps = [];
+      let stream = "";
+      const snap = (text, code, cls) => {
+        const mem = [
+          { type: "string", title: "strs", data: strs, cls: cls || {}, size: 8 },
+          { type: "string", title: "escaped stream", data: stream.split(""), cls: {}, size: 4 }
+        ];
+        steps.push({ text, code, mem });
+      };
+      snap("Escape every '#' → '/#' and '/' → '//', then join with bare '#'.", 1, {});
+      for (let i = 0; i < strs.length; i++) {
+        let esc = "";
+        for (const ch of strs[i]) {
+          esc += (ch === "#" || ch === "/") ? "/" + ch : ch;
+        }
+        stream += esc + "#";
+        snap(`'<b>${strs[i]}</b>' → escaped '<b>${esc}</b>#' appended.`, 3, { [i]: "hot" });
+      }
+      snap("Decode: '/' means 'next char is literal'; bare '#' ends a word.", 6, {});
+      const decoded = [];
+      let cur = "";
+      for (let i = 0; i < stream.length; i++) {
+        if (stream[i] === "#") { decoded.push(cur); cur = ""; }
+        else if (stream[i] === "/") { i++; cur += stream[i]; }
+        else cur += stream[i];
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + decoded.map(w => '"' + w + '"').join(",") + "]";
+      last.correct = decoded.join("\u0001") === strs.join("\u0001");
+      last.memNote = "Time: O(T). Space: O(T).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

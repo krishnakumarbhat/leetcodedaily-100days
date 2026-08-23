@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 · Sliding Window — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "03", title: "Sliding Window" };
+const U = window.NC150.utils;
+
+/* ================================================================
+ * PROBLEM 0003 — LONGEST SUBSTRING WITHOUT REPEATING CHARACTERS
+ * ================================================================ */
+NC150.register({
+  id: "0003", title: "Longest Substring Without Repeating Characters", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+  tags: ["sliding window", "hashset", "string"],
+  approaches: ["Approach 1 · Set eviction — shrink step-by-step (best)", "Approach 2 · Last-index map — jump past duplicate"],
+  complexities: [
+    { time: "O(n)", space: "O(min(n, m))", note: "BEST — amortized O(1) per char" },
+    { time: "O(n)", space: "O(min(n, m))", note: "jumps instead of evicting" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "all substrings + set check", time: "O(n³)", space: "O(m)", when: "tiny n only", best: false },
+    { name: "Window + set", tech: "evict until distinct", time: "O(n)", space: "O(min(n,m))", when: "general case", best: true },
+    { name: "Window + index map", tech: "jump l to last+1", time: "O(n)", space: "O(min(n,m))", when: "long repeated runs", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "abcabcbb" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "abcabcbb" }, result: "3" },
+    { label: "Ex 2", values: { s: "bbbbb" }, result: "1" },
+    { label: "Ex 3", values: { s: "pwwkew" }, result: "3" },
+    { label: "Stale map!", values: { s: "tmmzuxt" }, result: "5 — shows the >= l guard" }
+  ],
+  realLife: "<p><b>Stream deduplication</b>: finding the longest run of unique bytes/events in a data stream (compression heuristics, cache-line analysis) is exactly this problem.</p><p><b>Session tracing</b>: longest window of distinct actions before a repeat forces a flush — the set/eviction pattern is O(1) per event.</p>",
+  dsDive: `<h3>Sliding-window invariants for this problem</h3>
+<p><b>Invariant:</b> window [l, r] is always valid ⇔ all chars distinct. <b>Shrink condition:</b> s[r] already in the set → advance l until the duplicate is evicted. <b>maxLen update:</b> after every insertion, maxLen = max(maxLen, r − l + 1) — the window is valid BY CONSTRUCTION, so every window we measure is a candidate.</p>
+<p><b>Set vs fixed count array vs index map:</b> Python set/dict = open addressing with linear probing — <span class="equation" style="font-size:12px">h(k, i) = (hash(k) + i) mod m</span>; C++ unordered_set = separate chaining. A <span class="code-var">bool seen[128]</span> array (ASCII) skips hashing entirely. The index map (Approach 2) is the trick: <b>l can jump</b> to lastSeen[s[r]] + 1 — and the guard <span class="code-var">lastSeen[s[r]] &gt;= l</span> is what discards STALE entries from before the current window. ASCII vs Unicode: array[128] indexes only the first byte of multi-byte UTF-8 chars — Unicode input forces a code-point map.</p>`,
+  code: [
+    "window = set()                         # chars currently inside [l, r]",
+    "l = 0; max_len = 0                     # left edge + best answer",
+    "for r, ch in enumerate(s):             # r scans right once, O(n)",
+    "    while ch in window:                # duplicate → shrink from left",
+    "        window.remove(s[l]); l += 1    #   evict one char at a time",
+    "    window.add(ch)                     # restore the all-distinct invariant",
+    "    max_len = max(max_len, r - l + 1)  # [l, r] valid → candidate",
+    "return max_len"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s).split("");
+      const steps = [];
+      const windowSet = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "string", title: "s · window [l, r]", data: s, cls: cls || {}, size: 1 },
+        { type: "array", title: "set · distinct chars in [l, r]", data: windowSet.slice(), size: 8 }
+      ]});
+      let l = 0, maxLen = 0;
+      snap("Start: window empty, set empty. r grows the window — every set op is O(1), so the whole pass is O(n).", 1, {});
+      for (let r = 0; r < s.length; r++) {
+        if (windowSet.includes(s[r])) {
+          snap(`s[r]='<b>${s[r]}</b>' is ALREADY inside the window → invariant broken. Shrink: evict s[l] until the duplicate is gone.`, 3, { [r]: "hl", [l]: "hot" });
+          while (windowSet.includes(s[r])) {
+            const ev = s[l];
+            windowSet.splice(windowSet.indexOf(ev), 1);
+            l++;
+            snap(`Evict '<b>${ev}</b>' from the set, l → ${l}. Still duplicate? <b>${windowSet.includes(s[r]) ? "yes — keep evicting" : "no — valid again"}</b>.`, 4, { [r]: "hl", [l - 1]: "done" });
+          }
+        } else {
+          snap(`s[r]='<b>${s[r]}</b>' not in the set → window stays valid.`, 2, { [r]: "hl", [l]: "hot" });
+        }
+        windowSet.push(s[r]);
+        maxLen = Math.max(maxLen, r - l + 1);
+        snap(`Insert '<b>${s[r]}</b>'. Window [${l}..${r}] length ${r - l + 1} → maxLen = <b>${maxLen}</b>.`, 6, { [r]: "hl", [l]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      const expected = (() => { let best = 0, ll = 0; const m = new Map(); for (let rr = 0; rr < s.length; rr++) { if (m.has(s[rr]) && m.get(s[rr]) >= ll) ll = m.get(s[rr]) + 1; m.set(s[rr], rr); best = Math.max(best, rr - ll + 1); } return best; })();
+      last.result = String(maxLen);
+      last.correct = maxLen === expected;
+      last.memNote = "Time: O(n) — each char enters and leaves the set once. Space: O(min(n, m)).";
+      return { steps, result: String(maxLen), correct: maxLen === expected, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s).split("");
+      const m = 8, steps = [];
+      const slots = new Array(m).fill(null);
+      const hmod = k => ((k % m) + m) % m;
+      const snap = (text, code, probe, hit, cls) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "lastSeen · char → last index", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe: probe || [], hit: hit === undefined ? -1 : hit, formula: "h(k, i) = (hash(k) + i) mod 8" },
+        { type: "string", title: "s · window [l, r]", data: s, cls: cls || {}, size: 1 }
+      ]});
+      let l = 0, maxLen = 0;
+      snap("Key idea: store each char's MOST RECENT index. On a duplicate, l jumps — no step-by-step eviction.", 1, [], -1, {});
+      for (let r = 0; r < s.length; r++) {
+        const code = s[r].charCodeAt(0);
+        const probe = [];
+        let slot = -1;
+        for (let j = 0; j < m; j++) {
+          const sl = hmod(code + j);
+          probe.push(sl);
+          if (slots[sl] && slots[sl].k === s[r]) { slot = sl; break; }
+          if (!slots[sl]) break;
+        }
+        if (slot !== -1 && slots[slot].v >= l) {
+          snap(`'<b>${s[r]}</b>' seen before at index <b>${slots[slot].v}</b> ≥ l=${l} → STALE-within-window. l jumps to ${slots[slot].v + 1}.`, 4, probe, slot, { [r]: "hl", [l]: "hot" });
+          l = slots[slot].v + 1;
+        } else if (slot !== -1) {
+          snap(`'<b>${s[r]}</b>' seen at ${slots[slot].v} but that is BEFORE l=${l} → stale, ignore (this guard kills the classic bug).`, 3, probe, slot, { [r]: "hl", [l]: "hot" });
+        }
+        if (slot === -1) {
+          const placed = hmod(code);
+          slots[placed] = { k: s[r], v: r };
+          snap(`'<b>${s[r]}</b>' never seen → insert at slot ${placed} with index ${r}.`, 5, [placed], placed, { [r]: "hl", [l]: "hot" });
+        } else {
+          snap(`Update '<b>${s[r]}</b>' → index ${r} (probe ${probe.join("→")} hit slot ${slot}).`, 5, probe, slot, { [r]: "hl", [l]: "hot" });
+        }
+        maxLen = Math.max(maxLen, r - l + 1);
+        snap(`Window [${l}..${r}] length ${r - l + 1} → maxLen = <b>${maxLen}</b>.`, 6, [], -1, { [r]: "hl", [l]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      const expected = (() => { let best = 0, ll = 0; const mm = new Map(); for (let rr = 0; rr < s.length; rr++) { if (mm.has(s[rr]) && mm.get(s[rr]) >= ll) ll = mm.get(s[rr]) + 1; mm.set(s[rr], rr); best = Math.max(best, rr - ll + 1); } return best; })();
+      last.result = String(maxLen);
+      last.correct = maxLen === expected;
+      last.memNote = "Time: O(n) single pass. Space: O(min(n, m)) map entries.";
+      return { steps, result: String(maxLen), correct: maxLen === expected, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0076 — MINIMUM WINDOW SUBSTRING
+ * ================================================================ */
+NC150.register({
+  id: "0076", title: "Minimum Window Substring", difficulty: "Hard",
+  url: "https://leetcode.com/problems/minimum-window-substring/",
+  tags: ["sliding window", "hashmap", "string"],
+  approaches: ["Approach 1 · Two hash maps + formed/required (best)", "Approach 2 · 128-slot count arrays — O(1) space"],
+  complexities: [
+    { time: "O(n + m)", space: "O(m)", note: "BEST — maps hold ≤ |t| distinct chars" },
+    { time: "O(n + m)", space: "O(1)", note: "fixed 128×2 ints, no hashing" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "all pairs + full check", time: "O(n²·m)", space: "O(m)", when: "tiny n only", best: false },
+    { name: "Window + maps", tech: "formed/required", time: "O(n + m)", space: "O(m)", when: "Unicode / big alphabets", best: true },
+    { name: "Window + count[128]", tech: "same, array slots", time: "O(n + m)", space: "O(1)", when: "ASCII input", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "ADOBECODEBANC" },
+    { name: "t", label: "t =", type: "str", default: "ABC" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "ADOBECODEBANC", t: "ABC" }, result: "BANC" },
+    { label: "Ex 2", values: { s: "a", t: "a" }, result: "a" },
+    { label: "Impossible", values: { s: "a", t: "aa" }, result: "" },
+    { label: "Duplicates", values: { s: "aa", t: "aa" }, result: "aa" }
+  ],
+  realLife: "<p><b>Document snippets</b>: shortest span of text containing every keyword of a search query — search engines generate exactly this.</p><p><b>Protocol analysis</b>: shortest byte range containing all required markers in a network stream uses the identical formed/required pattern.</p>",
+  dsDive: `<h3>Sliding-window invariants for this problem</h3>
+<p><b>Validity:</b> window ⊇ t ⇔ every char's count in the window ≥ its required count. <b>Shrink condition:</b> formed == required (all quotas met) → shrink l greedily, because a shorter valid window can only come from shrinking a valid one. <b>Update:</b> record r − l + 1 whenever formed == required and it beats the best.</p>
+<p><b>count[128] vs unordered_map:</b> a 128-slot array indexed by ASCII code is O(1) worst case, zero hashing, one contiguous cache line. An <span class="code-cpp">unordered_map&lt;char,int&gt;</span> (C++ chaining) / dict (Python open addressing, linear probing <span class="equation" style="font-size:12px">h(k,i) = (hash(k)+i) mod m</span>) pays hash + resize for the same job — only wins for huge/unknown alphabets (Unicode).</p>
+<p><b>The formed/required trick</b> is the real lesson: it turns a per-step full "does window ⊇ t?" scan (O(σ)) into O(1) bookkeeping — each char entering/leaving flips at most one char's satisfied-status.</p>`,
+  code: [
+    "need = Counter(t); required = len(need)     # t's quotas, #distinct chars",
+    "window = {}; formed = 0; l = 0              # window counts, satisfied count",
+    "ans = (inf, 0, 0)                           # (best length, left, right)",
+    "for r, ch in enumerate(s):                  # expand right",
+    "    window[ch] = window.get(ch, 0) + 1",
+    "    if ch in need and window[ch] == need[ch]:",
+    "        formed += 1                         # this char met its quota",
+    "    while formed == required:               # window is valid → shrink",
+    "        if r - l + 1 < ans[0]: ans = (r-l+1, l, r)",
+    "        window[s[l]] -= 1                   # evict left char",
+    "        if s[l] in need and window[s[l]] < need[s[l]]:",
+    "            formed -= 1                     # quota broken → invalid",
+    "        l += 1",
+    "return '' if ans[0] == inf else s[ans[1]:ans[2]+1]"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s).split(""), t = String(vals.t).split("");
+      const steps = [];
+      const need = {}; t.forEach(c => need[c] = (need[c] || 0) + 1);
+      const required = Object.keys(need).length;
+      const window = {};
+      const slotsOf = obj => Object.keys(obj).map(k => ({ k, v: obj[k] })).concat(new Array(Math.max(0, 4 - Object.keys(obj).length)).fill(null)).slice(0, 8);
+      const snap = (text, code, cls, wcls) => steps.push({ text, code, mem: [
+        { type: "string", title: "s · window [l, r]", data: s, cls: cls || {}, size: 1 },
+        { type: "string", title: "t (required)", data: t, cls: wcls || {}, size: 1 },
+        { type: "hashmap", title: "need · quotas from t", mode: "open", slots: slotsOf(need), probe: [], hit: -1, formula: "required = " + required + " distinct chars" },
+        { type: "hashmap", title: "window · counts in [l, r]", mode: "open", slots: slotsOf(window), probe: [], hit: -1, formula: "" }
+      ]});
+      let l = 0, formed = 0, ansLen = Infinity, ansL = 0;
+      snap("Count t's quotas. required = " + required + " distinct chars. formed counts how many quotas the window satisfies.", 0, {}, {});
+      for (let r = 0; r < s.length; r++) {
+        window[s[r]] = (window[s[r]] || 0) + 1;
+        if (need[s[r]] && window[s[r]] === need[s[r]]) formed++;
+        snap(`Expand: '<b>${s[r]}</b>' → window count ${window[s[r]]}. ${need[s[r]] ? (window[s[r]] === need[s[r]] ? "Quota met → formed = " + formed : "not at quota yet") : "not needed by t"}.`, 5, { [r]: "hl", [l]: "hot" }, {});
+        while (formed === required) {
+          if (r - l + 1 < ansLen) { ansLen = r - l + 1; ansL = l; }
+          snap(`VALID window [${l}..${r}] len ${r - l + 1}${ansLen === r - l + 1 ? " — NEW best!" : " (not better)"}. Now shrink.`, 7, { [r]: "hl", [l]: "hot" }, {});
+          window[s[l]]--;
+          if (need[s[l]] && window[s[l]] < need[s[l]]) {
+            formed--;
+            snap(`Evict '<b>${s[l]}</b>' → count ${window[s[l]]} DROPS below quota → formed = ${formed}, window invalid, stop shrinking.`, 8, { [r]: "hl", [l]: "done" }, {});
+          } else {
+            snap(`Evict '<b>${s[l]}</b>' (count ${window[s[l]]}) — still satisfies t → keep shrinking.`, 8, { [r]: "hl", [l]: "done" }, {});
+          }
+          l++;
+        }
+      }
+      const best = ansLen === Infinity ? "" : s.slice(ansL, ansL + ansLen).join("");
+      const last = steps[steps.length - 1];
+      const brute = (() => {
+        const nd = {}; t.forEach(c => nd[c] = (nd[c] || 0) + 1);
+        let b = "";
+        for (let i = 0; i < s.length; i++) {
+          const w = {};
+          for (let j = i; j < s.length; j++) {
+            w[s[j]] = (w[s[j]] || 0) + 1;
+            if (Object.keys(nd).every(c => (w[c] || 0) >= nd[c])) {
+              if (!b || j - i + 1 < b.length) b = s.slice(i, j + 1).join("");
+              break;
+            }
+          }
+        }
+        return b;
+      })();
+      last.text = best ? `Best window: '<b>${best}</b>' (len ${best.length}).` : "No window of s contains all of t → return <b>''</b>.";
+      last.result = best;
+      last.correct = best === brute;
+      last.memNote = "Time: O(n + m). Space: O(m) for the two maps.";
+      return { steps, result: best, correct: best === brute, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s).split(""), t = String(vals.t).split("");
+      const steps = [];
+      const needArr = new Array(128).fill(0);
+      t.forEach(c => needArr[c.charCodeAt(0)]++);
+      const required = needArr.filter(x => x > 0).length;
+      const windowArr = new Array(128).fill(0);
+      const active = () => {
+        const out = [];
+        for (let i = 65; i < 123; i++) {
+          if (needArr[i] > 0 || windowArr[i] > 0) out.push({ i, s: String.fromCharCode(i) + ":" + windowArr[i] });
+        }
+        return out;
+      };
+      const snap = (text, code, cls, clsw) => steps.push({ text, code, mem: [
+        { type: "string", title: "s · window [l, r]", data: s, cls: cls || {}, size: 1 },
+        { type: "string", title: "t (required)", data: t, cls: clsw || {}, size: 1 },
+        { type: "array", title: "windowCounts[128] · active slots (slot = ASCII code)", data: active().map(x => x.s), size: 8 }
+      ]});
+      let l = 0, matched = 0, ansLen = Infinity, ansL = 0;
+      snap("Same algorithm, different container: counts live in int windowCounts[128], slot = ord(char). No hashing — O(1) worst case.", 1, {}, {});
+      for (let r = 0; r < s.length; r++) {
+        const c = s[r].charCodeAt(0);
+        windowArr[c]++;
+        if (needArr[c] > 0 && windowArr[c] === needArr[c]) matched++;
+        snap(`Expand: '<b>${s[r]}'</b> → count[${c}] = ${windowArr[c]}. ${needArr[c] > 0 ? (windowArr[c] === needArr[c] ? "quota met → matched = " + matched : "not at quota yet") : "not needed"}.`, 6, { [r]: "hl", [l]: "hot" }, {});
+        while (matched === required) {
+          if (r - l + 1 < ansLen) { ansLen = r - l + 1; ansL = l; }
+          snap(`VALID [${l}..${r}] len ${r - l + 1}${ansLen === r - l + 1 ? " — NEW best!" : ""} → shrink.`, 8, { [r]: "hl", [l]: "hot" }, {});
+          const out = s[l].charCodeAt(0);
+          windowArr[out]--;
+          if (needArr[out] > 0 && windowArr[out] < needArr[out]) {
+            matched--;
+            snap(`Evict '<b>${s[l]}</b>' → below quota → matched = ${matched}, invalid, stop.`, 9, { [r]: "hl", [l]: "done" }, {});
+          } else {
+            snap(`Evict '<b>${s[l]}</b>' — still valid → keep shrinking.`, 9, { [r]: "hl", [l]: "done" }, {});
+          }
+          l++;
+        }
+      }
+      const best = ansLen === Infinity ? "" : s.slice(ansL, ansL + ansLen).join("");
+      const last = steps[steps.length - 1];
+      const brute = (() => {
+        const nd = {}; t.forEach(c => nd[c] = (nd[c] || 0) + 1);
+        let b = "";
+        for (let i = 0; i < s.length; i++) {
+          const w = {};
+          for (let j = i; j < s.length; j++) {
+            w[s[j]] = (w[s[j]] || 0) + 1;
+            if (Object.keys(nd).every(c => (w[c] || 0) >= nd[c])) {
+              if (!b || j - i + 1 < b.length) b = s.slice(i, j + 1).join("");
+              break;
+            }
+          }
+        }
+        return b;
+      })();
+      last.text = best ? `Best window: '<b>${best}</b>' (len ${best.length}).` : "No valid window → return <b>''</b>.";
+      last.result = best;
+      last.correct = best === brute;
+      last.memNote = "Time: O(n + m). Space: O(1) — two fixed 128-slot arrays.";
+      return { steps, result: best, correct: best === brute, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0121 — BEST TIME TO BUY AND SELL STOCK
+ * ================================================================ */
+NC150.register({
+  id: "0121", title: "Best Time to Buy and Sell Stock", difficulty: "Easy",
+  url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+  tags: ["sliding window", "array"],
+  approaches: ["Approach 1 · Brute force — all (buy, sell) pairs", "Approach 2 · One pass — track min price (best)"],
+  complexities: [
+    { time: "O(n²)", space: "O(1)", note: "n(n−1)/2 pairs" },
+    { time: "O(n)", space: "O(1)", note: "BEST — two variables only" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "every pair i < j", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "One pass + min", tech: "min-so-far, profit today", time: "O(n)", space: "O(1)", when: "always — the answer", best: true }
+  ],
+  inputs: [
+    { name: "prices", label: "prices =", type: "list", default: "[7,1,5,3,6,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { prices: "[7,1,5,3,6,4]" }, result: "5" },
+    { label: "Ex 2", values: { prices: "[7,6,4,3,1]" }, result: "0" },
+    { label: "Ex 3", values: { prices: "[2,4,1]" }, result: "2" }
+  ],
+  realLife: "<p><b>Every trading dashboard</b>: max drawdown/profit over a price series is computed with this exact O(n) pass per symbol, per tick — O(1) memory per symbol.</p><p><b>Inventory pricing</b>: cheapest restock day vs best sale day for a single product is this degenerate sliding window.</p>",
+  dsDive: `<h3>Why this is a sliding window with O(1) state</h3>
+<p><b>Invariant:</b> the window's only summary is the minimum price over [0 .. r−1] — the optimal buy for any future sell. <b>Shrink condition:</b> none — the min is monotone non-increasing, so the window never needs to shrink: <span class="equation" style="font-size:12px">min([0..r]) = min(min([0..r−1]), prices[r])</span></p>
+<p><b>Update:</b> best = max(best, prices[r] − minPrice) after each step. This is Kadane's "running best" trick: one variable absorbs every new element in O(1). No hash map, no container — two integers. The order constraint (buy &lt; sell) is enforced automatically because minPrice only ever comes from EARLIER days.</p>`,
+  code: [
+    "best = 0",
+    "for i in range(len(prices)):            # buy day i",
+    "    for j in range(i + 1, len(prices)): # sell day must be LATER",
+    "        best = max(best, prices[j] - prices[i])",
+    "return best"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.prices;
+      const steps = [];
+      const snap = (text, code, i, j, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "prices · buy i (yellow) / sell j (blue)", data: nums, cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Every pair (i, j) with i < j is a legal trade. Count them all — n(n−1)/2.", 1, -1, -1, {});
+      let best = 0;
+      for (let i = 0; i < nums.length; i++) {
+        snap(`Buy day ${i} = <b>${nums[i]}</b>.`, 2, i, -1, { [i]: "hot" });
+        for (let j = i + 1; j < nums.length; j++) {
+          const p = nums[j] - nums[i];
+          best = Math.max(best, p);
+          snap(`Sell day ${j} = <b>${nums[j]}</b> → profit ${nums[j]} − ${nums[i]} = <b>${p}</b> → best = <b>${best}</b>.`, 3, i, j, { [i]: "hot", [j]: "hl" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      const expected = (() => { let mn = Infinity, b = 0; for (const p of nums) { mn = Math.min(mn, p); b = Math.max(b, p - mn); } return b; })();
+      last.result = String(best);
+      last.correct = best === expected;
+      last.memNote = "Time: O(n²). Space: O(1).";
+      return { steps, result: String(best), correct: best === expected, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.prices;
+      const steps = [];
+      const snap = (text, code, cur, minIdx, cls) => {
+        const mem = [
+          { type: "array", title: "prices · current day (blue), min so far (green)", data: nums, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "array", title: "minPrice · cheapest buy so far", data: [minIdx === -1 ? "∞" : nums[minIdx]], size: 8 }
+        ];
+        steps.push({ text, code, mem });
+      };
+      let minIdx = -1, best = 0;
+      snap("Walk once. Keep ONE variable: the cheapest price seen so far (the best possible buy day).", 1, 0, -1, { [0]: "hl" });
+      for (let i = 0; i < nums.length; i++) {
+        if (minIdx === -1 || nums[i] < nums[minIdx]) {
+          const old = minIdx;
+          minIdx = i;
+          snap(`<b>${nums[i]}</b> < ${nums[old === -1 ? 0 : old] === undefined ? "∞" : nums[old === -1 ? i : old]}? ${old === -1 ? "first day → becomes the min" : "YES → new cheapest buy day " + i}.`, 2, i, minIdx, { [i]: "hl", [minIdx]: "done" });
+        } else {
+          snap(`<b>${nums[i]}</b> is NOT cheaper than min ${nums[minIdx]} (day ${minIdx}) → keep the old buy day.`, 2, i, minIdx, { [i]: "hl", [minIdx]: "done" });
+        }
+        const p = nums[i] - nums[minIdx];
+        best = Math.max(best, p);
+        snap(`Sell today at <b>${nums[i]}</b> vs buy ${nums[minIdx]} → profit <b>${p}</b> → best = <b>${best}</b>.`, 3, i, minIdx, { [i]: "hl", [minIdx]: "done" });
+      }
+      const last = steps[steps.length - 1];
+      const expected = (() => { let mn = Infinity, b = 0; for (const p of nums) { mn = Math.min(mn, p); b = Math.max(b, p - mn); } return b; })();
+      last.result = String(best);
+      last.correct = best === expected;
+      last.memNote = "Time: O(n). Space: O(1) — two integers.";
+      return { steps, result: String(best), correct: best === expected, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0239 — SLIDING WINDOW MAXIMUM
+ * ================================================================ */
+NC150.register({
+  id: "0239", title: "Sliding Window Maximum", difficulty: "Hard",
+  url: "https://leetcode.com/problems/sliding-window-maximum/",
+  tags: ["sliding window", "deque", "heap"],
+  approaches: ["Approach 1 · Monotonic deque of indices (best)", "Approach 2 · Max-heap with lazy deletion"],
+  complexities: [
+    { time: "O(n)", space: "O(k)", note: "BEST — each index in/out once" },
+    { time: "O(n log n)", space: "O(n)", note: "heap + lazy cleanup" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "max() per window", time: "O(n·k)", space: "O(n)", when: "small k only", best: false },
+    { name: "Monotonic deque", tech: "decreasing values", time: "O(n)", space: "O(k)", when: "always — the answer", best: true },
+    { name: "Max-heap + lazy", tech: "stale root eviction", time: "O(n log n)", space: "O(n)", when: "when k ≈ n, simpler", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,3,-1,-3,5,3,6,7]" },
+    { name: "k", label: "k =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,3,-1,-3,5,3,6,7]", k: "3" }, result: "[3,3,5,5,6,7]" },
+    { label: "Ex 2", values: { nums: "[1]", k: "1" }, result: "[1]" },
+    { label: "Falling", values: { nums: "[9,8,7,6]", k: "2" }, result: "[9,8,7]" }
+  ],
+  realLife: "<p><b>Network monitoring</b>: max latency over every trailing 60 s window, without a per-window rescan — monotonic deque, O(1) per packet.</p><p><b>Streaming telemetry</b>: rolling maxima of CPU / disk-queue readings are computed exactly this way in real time.</p>",
+  dsDive: `<h3>The monotonic-deque invariant</h3>
+<p>A monotonic queue keeps INDICES with two rules: <b>indices increasing</b> front→back, <b>values strictly decreasing</b>. The front is always the window maximum. When a newcomer arrives: (1) pop front if it slid out of the window; (2) pop back while its value ≤ the newcomer — dominated entries can never become the max again, so they are discarded FOREVER. Each index is pushed and popped exactly once → O(n) total.</p>
+<p><b>Deque vs heap:</b> <span class="code-cpp">std::deque</span> / <span class="code-var">collections.deque</span> offer O(1) push/pop on BOTH ends — exactly what monotonicity needs. A heap's root is the global max but it cannot remove arbitrary stale entries cheaply, hence <b>lazy deletion</b>: evict stale roots only when they reach the top. That deferred cleanup is why the heap version pays O(log n) per op.</p>`,
+  code: [
+    "dq = deque()                             # indices: increasing idx, decreasing value",
+    "for i, num in enumerate(nums):",
+    "    while dq and dq[0] < i - k + 1:      # slid out of the window → pop front",
+    "        dq.popleft()",
+    "    while dq and nums[dq[-1]] <= num:     # dominated by num → pop back forever",
+    "        dq.pop()",
+    "    dq.append(i)                          # num enters as new potential max",
+    "    if i >= k - 1: result.append(nums[dq[0]])  # window full → front is max",
+    "return result"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums, k = vals.k;
+      const steps = [];
+      const dq = [];
+      const result = [];
+      const snap = (text, code, cls) => {
+        const mem = [
+          { type: "array", title: "nums · r (blue), deque front = window max (yellow)", data: nums, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "queue", title: "monotonic deque · values (idx) · front → max", data: dq.map(i => nums[i] + "·" + i), front: dq.length ? 0 : undefined, rear: dq.length ? dq.length - 1 : undefined, size: 8 }
+        ];
+        steps.push({ text, code, mem });
+      };
+      snap("The deque stores INDICES. Values along it strictly decrease; front = current window max. Watch the two pop rules.", 0, {});
+      for (let i = 0; i < nums.length; i++) {
+        while (dq.length && dq[0] < i - k + 1) {
+          const out = dq.shift();
+          snap(`Window is [${i - k + 1}..${i}] → index <b>${out}</b> slid out → pop front.`, 2, { [i]: "hl", [out]: "done" });
+        }
+        while (dq.length && nums[dq[dq.length - 1]] <= nums[i]) {
+          const out = dq.pop();
+          snap(`nums[${dq.length ? dq[dq.length - 1] : "-"}] = ${dq.length ? nums[dq[dq.length - 1]] : "?"} ≤ <b>${nums[i]}</b> → back index <b>${out}</b> is dominated (older AND smaller) → pop forever.`, 4, { [i]: "hl", [out]: "done" });
+        }
+        dq.push(i);
+        snap(`Push index <b>${i}</b> (value ${nums[i]}). Deque now: ${dq.map(x => nums[x] + "·" + x).join("  ")}.`, 5, { [i]: "hl" });
+        if (i >= k - 1) {
+          result.push(nums[dq[0]]);
+          snap(`Window [${i - k + 1}..${i}] complete → front value <b>${nums[dq[0]]}</b> is the max → result [${result}].`, 6, { [i]: "hl", [dq[0]]: "hot" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      const expected = (() => { const r = []; for (let i = 0; i + k <= nums.length; i++) r.push(Math.max(...nums.slice(i, i + k))); return r; })();
+      const resStr = "[" + result.join(",") + "]";
+      const expStr = "[" + expected.join(",") + "]";
+      last.result = resStr;
+      last.correct = resStr === expStr;
+      last.memNote = "Time: O(n) — each index pushed/popped once. Space: O(k).";
+      return { steps, result: resStr, correct: resStr === expStr, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums, k = vals.k;
+      const steps = [];
+      const heap = [];
+      const result = [];
+      const snap = (text, code, cls) => {
+        const mem = [
+          { type: "array", title: "nums · r (blue)", data: nums, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "heap", title: "max-heap · (−value · index) · root = max", data: heap.map(e => (-e[0]) + "·" + e[1]), showIdx: true, size: 8, cls: {} }
+        ];
+        steps.push({ text, code, mem });
+      };
+      snap("Push (−value, index) so heapq (a MIN-heap) behaves like a max-heap. Stale roots are evicted lazily — only when they block the answer.", 0, {});
+      for (let i = 0; i < nums.length; i++) {
+        heap.push([-nums[i], i]);
+        heap.sort((a, b) => a[0] - b[0]);
+        snap(`Push (−${nums[i]}, ${i}). Root: (−${-heap[0][0]}, ${heap[0][1]}).`, 2, { [i]: "hl" });
+        if (i >= k - 1) {
+          const popped = [];
+          while (heap.length && heap[0][1] <= i - k) {
+            popped.push(heap.shift()[1]);
+          }
+          if (popped.length) snap(`Lazy delete: root index ${popped.join(", ")} ≤ ${i - k} (out of window) → evict. Root now ${heap[0][1]}.`, 3, { [i]: "hl", [popped[0]]: "done" });
+          result.push(-heap[0][0]);
+          snap(`Root value <b>${-heap[0][0]}</b> (index ${heap[0][1]}) is the window max → result [${result}].`, 4, { [i]: "hl", [heap[0][1]]: "hot" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      const expected = (() => { const r = []; for (let i = 0; i + k <= nums.length; i++) r.push(Math.max(...nums.slice(i, i + k))); return r; })();
+      const resStr = "[" + result.join(",") + "]";
+      const expStr = "[" + expected.join(",") + "]";
+      last.result = resStr;
+      last.correct = resStr === expStr;
+      last.memNote = "Time: O(n log n). Space: O(n) — stale entries accumulate.";
+      return { steps, result: resStr, correct: resStr === expStr, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0424 — LONGEST REPEATING CHARACTER REPLACEMENT
+ * ================================================================ */
+NC150.register({
+  id: "0424", title: "Longest Repeating Character Replacement", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-repeating-character-replacement/",
+  tags: ["sliding window", "countarray", "string"],
+  approaches: ["Approach 1 · Window + running maxFreq (best)", "Approach 2 · Brute force — expand from every start"],
+  complexities: [
+    { time: "O(n)", space: "O(26)", note: "BEST — fixed count array" },
+    { time: "O(n²)", space: "O(26)", note: "fresh counters per start" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "every start, expand", time: "O(n²)", space: "O(26)", when: "tiny n only", best: false },
+    { name: "Window + maxFreq", tech: "len − maxFreq ≤ k", time: "O(n)", space: "O(26)", when: "always — the answer", best: true }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "AABABBA" },
+    { name: "k", label: "k =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "ABAB", k: "2" }, result: "4" },
+    { label: "Ex 2", values: { s: "AABABBA", k: "1" }, result: "4" },
+    { label: "No edits", values: { s: "AAAB", k: "0" }, result: "3" }
+  ],
+  realLife: "<p><b>Data cleaning</b>: longest run of similar records after tolerating k corrupt values — the exact len − maxFreq ≤ k invariant.</p><p><b>Compression pre-scan</b>: find the largest chunk that can be normalized to a single symbol with ≤ k edits before building a dictionary.</p>",
+  dsDive: `<h3>Sliding-window invariants for this problem</h3>
+<p><b>Validity:</b> window can become uniform in ≤ k changes ⇔ <span class="equation" style="font-size:12px">(r − l + 1) − maxFreq ≤ k</span> — mismatched chars = length minus the count of the letter we KEEP. <b>Shrink condition:</b> len − maxFreq &gt; k → advance l. <b>maxLen update:</b> after every valid (re-validated) window, maxLen = max(maxLen, r − l + 1).</p>
+<p><b>The maxFreq trick:</b> it only ever grows. That is SAFE — a stale-high maxFreq makes the validity check strictly harder to pass, so we shrink earlier but never overstate the answer. Recomputing the true max per step would cost O(26) each time for nothing.</p>
+<p><b>count[26] vs dict:</b> 26 uppercase letters → list of 26 ints indexed by <span class="code-var">ord(c) − 65</span>: no hashing, contiguous memory. Python dict (linear probing, h(k,i) = (hash(k)+i) mod m) / C++ unordered_map (chaining) work but pay hash costs for a fixed 26-key universe.</p>`,
+  code: [
+    "count = [0] * 26                        # letter frequencies in window",
+    "l = max_freq = res = 0",
+    "for r, ch in enumerate(s):",
+    "    idx = ord(ch) - 65; count[idx] += 1",
+    "    max_freq = max(max_freq, count[idx])  # never decreases (safe)",
+    "    while (r - l + 1) - max_freq > k:     # too many mismatches",
+    "        count[ord(s[l]) - 65] -= 1; l += 1  # shrink",
+    "    res = max(res, r - l + 1)              # window is valid → candidate",
+    "return res"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s).split(""), k = vals.k;
+      const steps = [];
+      const count = {};
+      const snap = (text, code, cls) => {
+        const active = Object.keys(count).sort().map(c => c + ":" + count[c]);
+        steps.push({ text, code, mem: [
+          { type: "string", title: "s · window [l, r]", data: s, cls: cls || {}, size: 1 },
+          { type: "array", title: "count[26] · active letters in window", data: active, size: 8 }
+        ]});
+      };
+      let l = 0, maxFreq = 0, res = 0;
+      snap("Validity: len − maxFreq ≤ k. maxFreq = count of the letter we KEEP; the rest are chars to rewrite.", 1, {});
+      for (let r = 0; r < s.length; r++) {
+        count[s[r]] = (count[s[r]] || 0) + 1;
+        maxFreq = Math.max(maxFreq, count[s[r]]);
+        snap(`Add '<b>${s[r]}</b>' → count[${s[r]}] = ${count[s[r]]}, maxFreq = <b>${maxFreq}</b>.`, 4, { [r]: "hl", [l]: "hot" });
+        while ((r - l + 1) - maxFreq > k) {
+          count[s[l]]--;
+          snap(`len ${r - l + 1} − maxFreq ${maxFreq} = ${r - l + 1 - maxFreq} > k=${k} → INVALID → evict '<b>${s[l]}</b>', l → ${l + 1}.`, 6, { [r]: "hl", [l]: "done" });
+          l++;
+        }
+        res = Math.max(res, r - l + 1);
+        snap(`Window [${l}..${r}] len ${r - l + 1}, mismatches ${r - l + 1 - maxFreq} ≤ k → valid → res = <b>${res}</b>.`, 7, { [r]: "hl", [l]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      const brute = (() => {
+        let best = 0;
+        for (let i = 0; i < s.length; i++) {
+          const cnt = {}; let mf = 0;
+          for (let j = i; j < s.length; j++) {
+            cnt[s[j]] = (cnt[s[j]] || 0) + 1;
+            mf = Math.max(mf, cnt[s[j]]);
+            if (j - i + 1 - mf > k) break;
+            best = Math.max(best, j - i + 1);
+          }
+        }
+        return best;
+      })();
+      last.result = String(res);
+      last.correct = res === brute;
+      last.memNote = "Time: O(n). Space: O(26) fixed.";
+      return { steps, result: String(res), correct: res === brute, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s).split(""), k = vals.k;
+      const steps = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "string", title: "s · start i (yellow) → expand j (blue)", data: s, cls: cls || {}, size: 1 }
+      ]});
+      let res = 0;
+      snap("For every start i, expand j while the ≤ k invariant holds — fresh counters per start. Correct but O(n²).", 1, {});
+      for (let i = 0; i < s.length; i++) {
+        const count = {}; let maxFreq = 0;
+        snap(`Start i=${i}, fresh counters.`, 2, { [i]: "hot" });
+        for (let j = i; j < s.length; j++) {
+          count[s[j]] = (count[s[j]] || 0) + 1;
+          maxFreq = Math.max(maxFreq, count[s[j]]);
+          if ((j - i + 1) - maxFreq <= k) {
+            res = Math.max(res, j - i + 1);
+            snap(`[${i}..${j}] len ${j - i + 1}, mismatches ${j - i + 1 - maxFreq} ≤ k → res = <b>${res}</b>.`, 5, { [i]: "hot", [j]: "hl" });
+          } else {
+            snap(`[${i}..${j}] len ${j - i + 1} − maxFreq ${maxFreq} > k → stop expanding this start.`, 4, { [i]: "hot", [j]: "done" });
+            break;
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      const brute = (() => {
+        let best = 0;
+        for (let i = 0; i < s.length; i++) {
+          const cnt = {}; let mf = 0;
+          for (let j = i; j < s.length; j++) {
+            cnt[s[j]] = (cnt[s[j]] || 0) + 1;
+            mf = Math.max(mf, cnt[s[j]]);
+            if (j - i + 1 - mf > k) break;
+            best = Math.max(best, j - i + 1);
+          }
+        }
+        return best;
+      })();
+      last.result = String(res);
+      last.correct = res === brute;
+      last.memNote = "Time: O(n²). Space: O(26).";
+      return { steps, result: String(res), correct: res === brute, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0567 — PERMUTATION IN STRING
+ * ================================================================ */
+NC150.register({
+  id: "0567", title: "Permutation in String", difficulty: "Medium",
+  url: "https://leetcode.com/problems/permutation-in-string/",
+  tags: ["sliding window", "countarray", "string"],
+  approaches: ["Approach 1 · 26 arrays + matches counter (best)", "Approach 2 · Counter comparison — simpler, O(n·σ)"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — matches flips one slot per slide" },
+    { time: "O(n·σ)", space: "O(σ)", note: "full map compare per slide" }
+  ],
+  compare: [
+    { name: "Sort windows", tech: "sorted(window) == sorted(s1)", time: "O(n·k log k)", space: "O(k)", when: "readable, tiny k", best: false },
+    { name: "Matches counter", tech: "26 arrays + matches", time: "O(n)", space: "O(1)", when: "always — the answer", best: true },
+    { name: "Counter compare", tech: "dict equality per slide", time: "O(n·σ)", space: "O(σ)", when: "Unicode alphabets", best: false }
+  ],
+  inputs: [
+    { name: "s1", label: "s1 =", type: "str", default: "ab" },
+    { name: "s2", label: "s2 =", type: "str", default: "eidbaooo" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s1: "ab", s2: "eidbaooo" }, result: "true" },
+    { label: "Ex 2", values: { s1: "ab", s2: "eidboaoo" }, result: "false" },
+    { label: "Ex 3", values: { s1: "adc", s2: "dcda" }, result: "true" }
+  ],
+  realLife: "<p><b>k-mer searching</b>: does a genome/database string contain a fixed-length chunk with the same letter histogram as a query — the sliding-multiset pattern used in bioinformatics and plagiarism tools.</p><p><b>Anagram detection</b>: word games and search indexers check fixed-length windows of text for query-word letter multisets.</p>",
+  dsDive: `<h3>Sliding-window invariants for this problem</h3>
+<p>A permutation is a re-ORDERING → ignore order, compare MULTISETS. <b>Fixed window</b> of exactly |s1| slides over s2: each slide adds one char and removes one. <b>Validity:</b> window multiset == s1 multiset ⇔ all 26 slots have equal counts. <b>Shrink condition:</b> none — the window size is CONSTANT; the only update is the O(1) matches bookkeeping.</p>
+<p><b>count[26] vs dict:</b> the lowercase alphabet is exactly 26 letters → two int[26] arrays indexed by <span class="code-var">ord(c) − 97</span> beat any hash structure (C++ unordered_map = chaining; Python dict = open addressing, linear probing h(k,i) = (hash(k)+i) mod m). The <b>matches counter</b> is the real insight: adding/removing a char changes the equality status of AT MOST ONE slot, so matches updates in O(1) instead of a full 26-slot comparison per slide.</p>`,
+  code: [
+    "c1 = [0]*26; c2 = [0]*26                   # target + window counters",
+    "for i in range(len(s1)):",
+    "    c1[ord(s1[i])-97] += 1; c2[ord(s2[i])-97] += 1",
+    "matches = sum(1 for i in range(26) if c1[i] == c2[i])",
+    "for i in range(len(s1), len(s2)):",
+    "    if matches == 26: return True           # short-circuit before slide",
+    "    add = ord(s2[i])-97; c2[add] += 1       # incoming char",
+    "    if c2[add] == c1[add]: matches += 1",
+    "    elif c2[add] == c1[add]+1: matches -= 1",
+    "    rem = ord(s2[i-len(s1)])-97; c2[rem] -= 1  # outgoing char",
+    "    if c2[rem] == c1[rem]: matches += 1",
+    "    elif c2[rem] == c1[rem]-1: matches -= 1",
+    "return matches == 26"
+  ],
+  steps: [
+    function (vals) {
+      const s1 = String(vals.s1).split(""), s2 = String(vals.s2).split("");
+      const steps = [];
+      const c1 = new Array(26).fill(0), c2 = new Array(26).fill(0);
+      const activeLetters = () => {
+        const set = new Set();
+        s1.forEach(c => set.add(c));
+        s2.forEach(c => set.add(c));
+        return Array.from(set).sort();
+      };
+      const c1View = () => activeLetters().filter(c => c1[c.charCodeAt(0) - 97] > 0).map(c => c + ":" + c1[c.charCodeAt(0) - 97]);
+      const c2View = () => activeLetters().filter(c => c2[c.charCodeAt(0) - 97] > 0).map(c => c + ":" + c2[c.charCodeAt(0) - 97]);
+      const snap = (text, code, cls, clsw) => steps.push({ text, code, mem: [
+        { type: "string", title: "s1 · target multiset", data: s1, cls: clsw || {}, size: 1 },
+        { type: "string", title: "s2 · fixed window [i−|s1|+1 .. i]", data: s2, cls: cls || {}, size: 1 },
+        { type: "array", title: "c1 · target counts", data: c1View(), size: 8 },
+        { type: "array", title: "c2 · window counts", data: c2View(), size: 8 }
+      ]});
+      if (s1.length > s2.length) {
+        steps.push({ text: "|s1| > |s2| → no window can fit → <b>false</b>.", code: 0, mem: [
+          { type: "string", title: "s1", data: s1, size: 1 }, { type: "string", title: "s2", data: s2, size: 1 }
+        ], result: "false", correct: true, memNote: "O(1) time." });
+        return { steps, result: "false", correct: true, memNote: "O(1) time." };
+      }
+      for (let i = 0; i < s1.length; i++) {
+        c1[s1[i].charCodeAt(0) - 97]++;
+        c2[s2[i].charCodeAt(0) - 97]++;
+      }
+      let matches = 0;
+      for (let i = 0; i < 26; i++) if (c1[i] === c2[i]) matches++;
+      snap(`Seed: first |s1|=${s1.length} chars of s2 counted into c2. matches = <b>${matches}</b>/26 slots equal.`, 3, { [s1.length - 1]: "hl" }, {});
+      for (let i = s1.length; i < s2.length; i++) {
+        if (matches === 26) {
+          snap(`matches == 26 BEFORE the slide → window [${i - s1.length}..${i - 1}] is a permutation → <b>true</b>.`, 5, { [i - 1]: "done" }, {});
+          const last = steps[steps.length - 1];
+          last.result = "true";
+          last.correct = true;
+          last.memNote = "Time: O(n). Space: O(1).";
+          return { steps, result: "true", correct: true, memNote: last.memNote };
+        }
+        const add = s2[i].charCodeAt(0) - 97;
+        c2[add]++;
+        const addMsg = c2[add] === c1[add] ? "matches → " + (matches + 1) : (c2[add] === c1[add] + 1 ? "overshot → " + (matches - 1) : "unchanged");
+        if (c2[add] === c1[add]) matches++;
+        else if (c2[add] === c1[add] + 1) matches--;
+        const rem = s2[i - s1.length].charCodeAt(0) - 97;
+        c2[rem]--;
+        const remMsg = c2[rem] === c1[rem] ? "matches → " + (matches + 1) : (c2[rem] === c1[rem] - 1 ? "dropped → " + (matches - 1) : "unchanged");
+        if (c2[rem] === c1[rem]) matches++;
+        else if (c2[rem] === c1[rem] - 1) matches--;
+        snap(`Slide to [${i - s1.length + 1}..${i}]: add '<b>${s2[i]}</b>' (${addMsg}), remove '<b>${s2[i - s1.length]}</b>' (${remMsg}) → matches = <b>${matches}</b>.`, 6, { [i]: "hl", [i - s1.length]: "done" }, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = matches === 26 ? "true" : "false";
+      const brute = (() => {
+        const target = {}; s1.forEach(c => target[c] = (target[c] || 0) + 1);
+        for (let i = 0; i + s1.length <= s2.length; i++) {
+          const w = {};
+          for (let j = i; j < i + s1.length; j++) w[s2[j]] = (w[s2[j]] || 0) + 1;
+          if (Object.keys(target).every(c => w[c] === target[c])) return true;
+        }
+        return false;
+      })();
+      last.correct = (matches === 26) === brute;
+      last.text = last.result === "true" ? `Final window is a permutation → <b>true</b>.` : `No window's multiset equals s1's → <b>false</b>.`;
+      last.memNote = "Time: O(n). Space: O(1) — two 26-slot arrays.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s1 = String(vals.s1).split(""), s2 = String(vals.s2).split("");
+      const steps = [];
+      const target = {}; s1.forEach(c => target[c] = (target[c] || 0) + 1);
+      const window = {};
+      const slotsOf = obj => Object.keys(obj).map(k => ({ k, v: obj[k] })).concat(new Array(Math.max(0, 4 - Object.keys(obj).length)).fill(null)).slice(0, 8);
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "string", title: "s1 · target multiset", data: s1, size: 1 },
+        { type: "string", title: "s2 · fixed window", data: s2, cls: cls || {}, size: 1 },
+        { type: "hashmap", title: "target · Counter(s1)", mode: "open", slots: slotsOf(target), probe: [], hit: -1, formula: "" },
+        { type: "hashmap", title: "window · Counter(window)", mode: "open", slots: slotsOf(window), probe: [], hit: -1, formula: "" }
+      ]});
+      if (s1.length > s2.length) {
+        steps.push({ text: "|s1| > |s2| → <b>false</b>.", code: 0, mem: [
+          { type: "string", title: "s1", data: s1, size: 1 }, { type: "string", title: "s2", data: s2, size: 1 }
+        ], result: "false", correct: true, memNote: "O(1) time." });
+        return { steps, result: "false", correct: true, memNote: "O(1) time." };
+      }
+      for (let i = 0; i < s1.length; i++) window[s2[i]] = (window[s2[i]] || 0) + 1;
+      const eq = () => Object.keys(target).every(c => window[c] === target[c]) && Object.keys(window).every(c => window[c] === (target[c] || 0));
+      if (eq()) {
+        steps.push({ text: "First window already matches → <b>true</b>.", code: 3, mem: [
+          { type: "string", title: "s1", data: s1, size: 1 }, { type: "string", title: "s2", data: s2, cls: { [s1.length - 1]: "done" }, size: 1 }
+        ], result: "true", correct: true, memNote: "Time: O(k). Space: O(σ)." });
+        return { steps, result: "true", correct: true, memNote: "Time: O(k). Space: O(σ)." };
+      }
+      snap(`Seed the first ${s1.length} chars. Comparing counters now — full comparison per slide, O(σ) each.`, 2, { [s1.length - 1]: "hl" });
+      for (let i = s1.length; i < s2.length; i++) {
+        window[s2[i]] = (window[s2[i]] || 0) + 1;
+        const left = s2[i - s1.length];
+        window[left]--;
+        if (window[left] === 0) delete window[left];
+        const ok = eq();
+        snap(`Slide to [${i - s1.length + 1}..${i}]: add '<b>${s2[i]}</b>', remove '<b>${left}</b>'. Compare → ${ok ? "EQUAL → <b>true</b>!" : "not equal → keep sliding"}.`, 4, { [i]: "hl", [i - s1.length]: "done" });
+        if (ok) {
+          const last = steps[steps.length - 1];
+          last.result = "true";
+          last.correct = true;
+          last.memNote = "Time: O(n·σ). Space: O(σ).";
+          return { steps, result: "true", correct: true, memNote: last.memNote };
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "false";
+      last.text = "No window's Counter equals the target → <b>false</b>.";
+      const brute = (() => {
+        const t = {}; s1.forEach(c => t[c] = (t[c] || 0) + 1);
+        for (let i = 0; i + s1.length <= s2.length; i++) {
+          const w = {};
+          for (let j = i; j < i + s1.length; j++) w[s2[j]] = (w[s2[j]] || 0) + 1;
+          if (Object.keys(t).every(c => w[c] === t[c])) return true;
+        }
+        return false;
+      })();
+      last.correct = !brute;
+      last.memNote = "Time: O(n·σ). Space: O(σ).";
+      return { steps, result: "false", correct: !brute, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

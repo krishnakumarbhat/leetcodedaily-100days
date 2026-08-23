@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 · Binary Search — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "05", title: "Binary Search" };
+const U = window.NC150.utils;
+
+/* shared helpers: parse "[1,2,3]" rows and "1,3,5,7" row strings */
+function rowsToMatrix(rows) {
+  return rows.map(r => (Array.isArray(r) ? r : String(r).split(",")).map(x => Number(x)));
+}
+function ceilDiv(a, b) { return Math.floor((a + b - 1) / b); }
+
+/* ================================================================
+ * PROBLEM 0004 — MEDIAN OF TWO SORTED ARRAYS
+ * ================================================================ */
+NC150.register({
+  id: "0004", title: "Median of Two Sorted Arrays", difficulty: "Hard",
+  url: "https://leetcode.com/problems/median-of-two-sorted-arrays/",
+  tags: ["binary search", "partition"],
+  approaches: ["Approach 1 · Merge + pick middle", "Approach 2 · Binary-search the partition (best)"],
+  complexities: [
+    { time: "O(m + n)", space: "O(m + n)", note: "simple baseline, fails the O(log) bar" },
+    { time: "O(log min(m,n))", space: "O(1)", note: "BEST — required by the problem" }
+  ],
+  compare: [
+    { name: "Merge + middle", tech: "two-pointer merge", time: "O(m+n)", space: "O(m+n)", when: "small inputs, used as referee", best: false },
+    { name: "Partition binary search", tech: "cut on the smaller array", time: "O(log min(m,n))", space: "O(1)", when: "large arrays — the requirement", best: true }
+  ],
+  inputs: [
+    { name: "nums1", label: "nums1 =", type: "list", default: "[1,3]" },
+    { name: "nums2", label: "nums2 =", type: "list", default: "[2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums1: "[1,3]", nums2: "[2]" }, result: "2.0" },
+    { label: "Ex 2", values: { nums1: "[1,2]", nums2: "[3,4]" }, result: "2.5" },
+    { label: "Ex 3", values: { nums1: "[1,3,5,7]", nums2: "[2,4,6,8,10]" }, result: "5.0" }
+  ],
+  realLife: "<p><b>Analytics pipelines</b> compute percentiles/medians over two merged datasets (e.g. latency of two server pools) — the partition trick answers 'what is the P50 of everything?' without materializing the combined log.</p><p><b>Databases</b> answer median queries over partitioned tables with the same cut-balancing idea; quantile sketches (t-digest, HDR) build on it.</p>",
+  dsDive: `<h3>The partition invariant: i + j = (m+n+1)/2</h3>
+<p>The median cuts the combined data into a left half and a right half with equal counts. If the cut places <b>i</b> elements of A and <b>j</b> elements of B on the left, then:</p>
+<div class="equation">i + j = (m + n + 1) / 2 &nbsp;&nbsp;⇒&nbsp;&nbsp; j = (m+n+1)/2 − i</div>
+<p>The <b>+1</b> is the ceiling ⌈(m+n)/2⌉ in integer arithmetic: for ODD totals it pushes the extra middle element onto the left, so the median is simply <span class="code-var">max(A[i−1], B[j−1])</span>; for even totals you average that max with <span class="code-var">min(A[i], B[j])</span>. The cut is VALID when every left element ≤ every right element:</p>
+<div class="equation">A[i−1] ≤ B[j] &nbsp;AND&nbsp; B[j−1] ≤ A[i]</div>
+<p>If <span class="code-var">A[i−1] &gt; B[j]</span> the cut is too far right in A → search left; else too far left → search right. Edge cuts (i = 0 or i = len(A)) use ∓∞ sentinels so the inequalities stay well-defined. Binary-searching on the SMALLER array keeps the probe count log(min(m,n)) — that is the entire performance trick.</p>`,
+  code: [
+    [
+      "i = j = 0; merged = []",
+      "while i < m and j < n:                 # two-pointer merge",
+      "    take the smaller head into merged  # O(m+n) walk",
+      "merged += nums1[i:] + nums2[j:]        # drain leftovers",
+      "n = len(merged)",
+      "return merged[n//2] if n % 2",
+      "       else (merged[n//2-1] + merged[n//2]) / 2"
+    ],
+    [
+      "A, B = (nums1, nums2) if len(nums1) <= len(nums2) else (nums2, nums1)",
+      "left_count = (len(A) + len(B) + 1) // 2     # the +1 invariant",
+      "lo, hi = 0, len(A)",
+      "while lo <= hi:",
+      "    i = lo + (hi - lo) // 2                  # probe cut in A",
+      "    j = left_count - i                       # forced by invariant",
+      "    if A[i-1] <= B[j] and B[j-1] <= A[i]:    # balanced?",
+      "        return max(A[i-1], B[j-1])           # odd → max of left",
+      "    if A[i-1] > B[j]:  hi = i - 1            # cut too far right",
+      "    else:               lo = i + 1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const a = U.parseList(vals.nums1), b = U.parseList(vals.nums2);
+      const steps = [];
+      const merged = [];
+      const snap = (text, code, i, j, clsM) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums1", data: a, cls: i >= 0 && i < a.length ? { [i]: "hot" } : {}, showIdx: true, size: 4 },
+        { type: "array", title: "nums2", data: b, cls: j >= 0 && j < b.length ? { [j]: "hot" } : {}, showIdx: true, size: 4 },
+        { type: "array", title: "merged (sorted, built up)", data: merged, cls: clsM || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Merge with two pointers: always append the smaller head — the merge step of merge sort.", 0, 0, 0, {});
+      let i = 0, j = 0;
+      while (i < a.length && j < b.length) {
+        if (a[i] <= b[j]) {
+          merged.push(a[i]);
+          snap(`nums1[${i}]=<b>${a[i]}</b> ≤ nums2[${j}]=${b[j]} → take <b>${a[i]}</b> into merged.`, 2, i, j, { [merged.length - 1]: "hot" });
+          i++;
+        } else {
+          merged.push(b[j]);
+          snap(`nums2[${j}]=<b>${b[j]}</b> < nums1[${i}]=${a[i]} → take <b>${b[j]}</b> into merged.`, 2, i, j, { [merged.length - 1]: "hot" });
+          j++;
+        }
+      }
+      while (i < a.length) { merged.push(a[i]); snap(`Drain nums1: append <b>${a[i]}</b>.`, 3, i, j, { [merged.length - 1]: "hot" }); i++; }
+      while (j < b.length) { merged.push(b[j]); snap(`Drain nums2: append <b>${b[j]}</b>.`, 3, i, j, { [merged.length - 1]: "hot" }); j++; }
+      const n = merged.length;
+      let med;
+      if (n % 2 === 1) { med = merged[Math.floor(n / 2)]; }
+      else { med = (merged[n / 2 - 1] + merged[n / 2]) / 2; }
+      const mIdx = n % 2 === 1 ? [Math.floor(n / 2)] : [n / 2 - 1, n / 2];
+      const clsM = {}; mIdx.forEach(k => clsM[k] = "done");
+      snap(`Merged length ${n}: ${n % 2 ? "odd → middle element" : "even → average of the two middles"}: <b>${med}</b>.`, 5, -1, -1, clsM);
+      const last = steps[steps.length - 1];
+      const expect = (() => { const all = a.concat(b).sort((x, y) => x - y); const k = Math.floor(all.length / 2); return all.length % 2 ? all[k] : (all[k - 1] + all[k]) / 2; })();
+      last.result = String(med);
+      last.correct = med === expect;
+      last.memNote = "Time: O(m+n) merge. Space: O(m+n) merged copy.";
+      return { steps, result: String(med), correct: med === expect, memNote: last.memNote };
+    },
+    function (vals) {
+      const a = U.parseList(vals.nums1), b = U.parseList(vals.nums2);
+      const A = a.length <= b.length ? a : b, B = a.length <= b.length ? b : a;
+      const total = A.length + B.length;
+      const leftCount = Math.floor((total + 1) / 2);
+      const steps = [];
+      const snap = (text, code, i, j, clsA, clsB, sent) => steps.push({ text, code, mem: [
+        { type: "array", title: "A (smaller) · cut after i elements", data: A, cls: clsA || {}, showIdx: true, size: 4 },
+        { type: "array", title: "B (larger)  · cut after j elements", data: B, cls: clsB || {}, showIdx: true, size: 4 }
+      ].concat(sent || [])});
+      snap("A = smaller array. Probe the cut i in A; j = (m+n+1)/2 − i is FORCED by the half-count invariant.", 0, 0, 0, {}, {}, []);
+      let lo = 0, hi = A.length, ans = null;
+      while (lo <= hi) {
+        const i = Math.floor(lo + (hi - lo) / 2);
+        const j = leftCount - i;
+        const aLeft = i >= 1 ? A[i - 1] : -Infinity, aRight = i < A.length ? A[i] : Infinity;
+        const bLeft = j >= 1 ? B[j - 1] : -Infinity, bRight = j < B.length ? B[j] : Infinity;
+        const clsA = {};
+        if (i >= 1) clsA[i - 1] = "hl";
+        clsA[Math.min(i, A.length - 1)] = "hot";
+        const clsB = {};
+        if (j >= 1) clsB[Math.min(j - 1, B.length - 1)] = "hl";
+        if (j < B.length) clsB[j] = "hot";
+        const sent = [{ type: "array", title: "boundaries  [A[i-1], A[i], B[j-1], B[j]]", data: [isFinite(aLeft) ? aLeft : "-∞", isFinite(aRight) ? aRight : "+∞", isFinite(bLeft) ? bLeft : "-∞", isFinite(bRight) ? bRight : "+∞"], showIdx: false, size: 8 }];
+        snap(`Probe i=<b>${i}</b>, j=<b>${j}</b> (i+j=${i + j} = ⌈${total}/2⌉).`, 3, i, j, clsA, clsB, sent);
+        if (aLeft <= bRight && bLeft <= aRight) {
+          const lmax = Math.max(aLeft, bLeft), rmin = Math.min(aRight, bRight);
+          ans = total % 2 ? lmax : (lmax + rmin) / 2;
+          const clsM = {}; if (i >= 1) clsM[i - 1] = "done"; clsM[Math.min(i, A.length - 1)] = "done";
+          snap(`Balanced! A[i-1]=${isFinite(aLeft) ? aLeft : "-∞"} ≤ B[j]=${isFinite(bRight) ? bRight : "+∞"} and B[j-1] ≤ A[i]. Median = ${ans}.`, 6, i, j, clsM, {}, sent);
+          break;
+        }
+        if (aLeft > bRight) {
+          snap(`A[i-1]=${isFinite(aLeft) ? aLeft : "-∞"} > B[j] → cut too far RIGHT in A → search left (hi = i-1).`, 8, i, j, clsA, clsB, sent);
+          hi = i - 1;
+        } else {
+          snap(`A[i] is too small vs B[j-1] → cut too far LEFT → search right (lo = i+1).`, 9, i, j, clsA, clsB, sent);
+          lo = i + 1;
+        }
+      }
+      const last = steps[steps.length - 1];
+      const expect = (() => { const all = a.concat(b).sort((x, y) => x - y); const k = Math.floor(all.length / 2); return all.length % 2 ? all[k] : (all[k - 1] + all[k]) / 2; })();
+      last.result = String(ans);
+      last.correct = ans === expect;
+      last.memNote = "Time: O(log min(m,n)) probes. Space: O(1).";
+      return { steps, result: String(ans), correct: ans === expect, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0033 — SEARCH IN ROTATED SORTED ARRAY
+ * ================================================================ */
+NC150.register({
+  id: "0033", title: "Search in Rotated Sorted Array", difficulty: "Medium",
+  url: "https://leetcode.com/problems/search-in-rotated-sorted-array/",
+  tags: ["binary search", "rotated array"],
+  approaches: ["Approach 1 · Sorted-half discard (best)", "Approach 2 · Find pivot, then plain BS"],
+  complexities: [
+    { time: "O(log n)", space: "O(1)", note: "BEST — one halving loop" },
+    { time: "O(log n)", space: "O(1)", note: "pivot + segment, two loops" }
+  ],
+  compare: [
+    { name: "Sorted-half discard", tech: "test the sorted side of mid", time: "O(log n)", space: "O(1)", when: "general case", best: true },
+    { name: "Pivot + segment BS", tech: "find min, restore order", time: "O(log n)", space: "O(1)", when: "clearer two-phase reasoning", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[4,5,6,7,0,1,2]" },
+    { name: "target", label: "target =", type: "int", default: "0" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[4,5,6,7,0,1,2]", target: "0" }, result: "4" },
+    { label: "Ex 2", values: { nums: "[4,5,6,7,0,1,2]", target: "3" }, result: "-1" },
+    { label: "Ex 3", values: { nums: "[1]", target: "0" }, result: "-1" }
+  ],
+  realLife: "<p><b>Ring buffers / circular logs</b>: a rotating log file is a sorted array that wraps around; finding an entry means searching a rotated range.</p><p><b>Content delivery</b>: sorted IDs with wrap-around (time-series partitioned by hour) are queried with exactly this 'which half is intact' check.</p>",
+  dsDive: `<h3>Rotation breaks monotonicity — the invariant is repaired per half</h3>
+<p>Plain BS works because the predicate <span class="code-var">x &lt; target</span> is monotone over the array. One rotation introduces a single break at the pivot:</p>
+<div class="equation">[4,5,6,7,0,1,2] &nbsp;=&nbsp; left run (sorted) + right run (sorted)</div>
+<p>In ANY window [lo, hi], at least one side of mid is a <b>fully sorted run</b> — check <span class="code-var">nums[lo] ≤ nums[mid]</span> to learn which. On that sorted side the old monotone predicate works again, so you can either take it or discard it, and the other half stays a smaller instance of the same rotated problem. The <span class="code-var">≤</span> in that check is the off-by-one: with a 2-element window mid == lo, and the 1-element left half IS sorted.</p>
+<p>Approach 2 instead restores the whole domain: the pivot (the minimum) is the single false→true transition of <span class="code-var">nums[i] &gt; nums[n−1]</span>, found by the 0153 loop; split the array there and both halves are normally sorted.</p>`,
+  code: [
+    [
+      "lo, hi = 0, len(nums) - 1",
+      "while lo <= hi:",
+      "    mid = lo + (hi - lo) // 2",
+      "    if nums[mid] == target: return mid",
+      "    if nums[lo] <= nums[mid]:              # LEFT half sorted",
+      "        if nums[lo] <= target < nums[mid]:",
+      "            hi = mid - 1                   # target in sorted left",
+      "        else: lo = mid + 1",
+      "    else:                                  # RIGHT half sorted",
+      "        if nums[mid] < target <= nums[hi]:",
+      "            lo = mid + 1",
+      "        else: hi = mid - 1",
+      "return -1"
+    ],
+    [
+      "lo, hi = 0, len(nums) - 1              # phase 1: find pivot",
+      "while lo < hi:",
+      "    mid = lo + (hi - lo) // 2",
+      "    if nums[mid] > nums[hi]: lo = mid + 1",
+      "    else: hi = mid",
+      "pivot = lo                              # index of the minimum",
+      "lo = 0 if target >= nums[0] else pivot # phase 2: pick segment",
+      "hi = pivot - 1 if target >= nums[0] else len(nums) - 1",
+      "while lo <= hi:                         # plain 704 binary search",
+      "    mid = lo + (hi - lo) // 2",
+      "    if nums[mid] == target: return mid",
+      "    if nums[mid] < target: lo = mid + 1",
+      "    else: hi = mid - 1",
+      "return -1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums, target = vals.target;
+      const steps = [];
+      const snap = (text, code, lo, hi, mid, cls) => {
+        const c = Object.assign({}, cls || {});
+        if (lo >= 0 && lo < nums.length) c[lo] = c[lo] || "hl";
+        if (hi >= 0 && hi < nums.length) c[hi] = c[hi] || "hl";
+        if (mid >= 0 && mid < nums.length) c[mid] = c[mid] || "hot";
+        steps.push({ text, code, mem: [{ type: "array", title: "nums · lo=hl hi=hl mid=hot", data: nums, cls: c, showIdx: true, size: 4 }] });
+      };
+      snap("Start: target, if present, lives in [lo, hi]. Each probe: which side of mid is a full sorted run?", 0, 0, nums.length - 1, -1, {});
+      let lo = 0, hi = nums.length - 1, found = -1;
+      while (lo <= hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        const v = nums[mid];
+        snap(`Probe mid=<b>${mid}</b> → nums[mid]=<b>${v}</b>.`, 2, lo, hi, mid, {});
+        if (v === target) {
+          found = mid;
+          snap(`<b>${v} == ${target}</b> → hit at index ${mid}!`, 3, lo, hi, mid, { [mid]: "done" });
+          break;
+        }
+        if (nums[lo] <= nums[mid]) {
+          snap(`nums[lo]=${nums[lo]} ≤ nums[mid]=${v} → LEFT half [${lo}..${mid}] is sorted.`, 4, lo, hi, mid, {});
+          if (nums[lo] <= target && target < v) {
+            snap(`target ${target} fits in sorted left [${nums[lo]}..${v}) → hi = ${mid - 1}.`, 5, lo, hi, mid, {});
+            hi = mid - 1;
+          } else {
+            snap(`target ${target} NOT in sorted left → lo = ${mid + 1}.`, 6, lo, hi, mid, {});
+            lo = mid + 1;
+          }
+        } else {
+          snap(`nums[lo]=${nums[lo]} > nums[mid]=${v} → RIGHT half [${mid}..${hi}] is sorted.`, 7, lo, hi, mid, {});
+          if (v < target && target <= nums[hi]) {
+            snap(`target ${target} fits in sorted right (${v}..${nums[hi]}] → lo = ${mid + 1}.`, 8, lo, hi, mid, {});
+            lo = mid + 1;
+          } else {
+            snap(`target ${target} NOT in sorted right → hi = ${mid - 1}.`, 9, lo, hi, mid, {});
+            hi = mid - 1;
+          }
+        }
+        if (lo > hi) snap(`Window inverted → every candidate eliminated → <b>-1</b>.`, 10, lo, hi, -1, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = found === -1 ? "-1" : String(found);
+      last.correct = found === nums.indexOf(target);
+      last.memNote = "Time: O(log n). Space: O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums, target = vals.target;
+      const steps = [];
+      const snap = (text, code, lo, hi, mid, cls) => {
+        const c = Object.assign({}, cls || {});
+        if (lo >= 0 && lo < nums.length) c[lo] = c[lo] || "hl";
+        if (hi >= 0 && hi < nums.length) c[hi] = c[hi] || "hl";
+        if (mid >= 0 && mid < nums.length) c[mid] = c[mid] || "hot";
+        steps.push({ text, code, mem: [{ type: "array", title: "nums · phase marker in text", data: nums, cls: c, showIdx: true, size: 4 }] });
+      };
+      snap("Phase 1 — find the PIVOT (minimum) with the 0153 loop: shrink while nums[mid] > nums[hi].", 0, 0, nums.length - 1, -1, {});
+      let lo = 0, hi = nums.length - 1;
+      while (lo < hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        snap(`Probe mid=<b>${mid}</b>: nums[mid]=${nums[mid]} vs nums[hi]=${nums[hi]}.`, 2, lo, hi, mid, {});
+        if (nums[mid] > nums[hi]) {
+          snap(`${nums[mid]} > ${nums[hi]} → pivot to the RIGHT → lo = ${mid + 1}.`, 3, lo, hi, mid, {});
+          lo = mid + 1;
+        } else {
+          snap(`${nums[mid]} ≤ ${nums[hi]} → mid may BE the pivot → hi = ${mid}.`, 4, lo, hi, mid, {});
+          hi = mid;
+        }
+      }
+      const pivot = lo;
+      snap(`Pivot = index <b>${pivot}</b> (value ${nums[pivot]}). The array is two sorted segments.`, 5, lo, hi, -1, { [pivot]: "done" });
+      snap(`Phase 2 — target=${target} vs nums[0]=${nums[0]} → pick the segment and run plain binary search.`, 6, -1, -1, -1, { [pivot]: "done" });
+      lo = target >= nums[0] ? 0 : pivot;
+      hi = target >= nums[0] ? pivot - 1 : nums.length - 1;
+      let found = -1;
+      while (lo <= hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        snap(`Segment [${lo}..${hi}]: probe mid=<b>${mid}</b> → nums[mid]=${nums[mid]}.`, 9, lo, hi, mid, { [pivot]: "done" });
+        if (nums[mid] === target) {
+          found = mid;
+          snap(`<b>${nums[mid]} == ${target}</b> → hit at ${mid}!`, 10, lo, hi, mid, { [mid]: "done", [pivot]: "done" });
+          break;
+        }
+        if (nums[mid] < target) {
+          snap(`${nums[mid]} < ${target} → lo = ${mid + 1}.`, 11, lo, hi, mid, { [pivot]: "done" });
+          lo = mid + 1;
+        } else {
+          snap(`${nums[mid]} > ${target} → hi = ${mid - 1}.`, 12, lo, hi, mid, { [pivot]: "done" });
+          hi = mid - 1;
+        }
+      }
+      if (found === -1) snap("Segment exhausted without a hit → <b>-1</b>.", 13, lo, hi, -1, { [pivot]: "done" });
+      const last = steps[steps.length - 1];
+      last.result = found === -1 ? "-1" : String(found);
+      last.correct = found === nums.indexOf(target);
+      last.memNote = "Time: O(log n) pivot + O(log n) search. Space: O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0074 — SEARCH A 2D MATRIX
+ * ================================================================ */
+NC150.register({
+  id: "0074", title: "Search a 2D Matrix", difficulty: "Medium",
+  url: "https://leetcode.com/problems/search-a-2d-matrix/",
+  tags: ["binary search", "2d matrix"],
+  approaches: ["Approach 1 · Flattened-index BS (best)", "Approach 2 · Two-level BS (row, then column)"],
+  complexities: [
+    { time: "O(log(m·n))", space: "O(1)", note: "BEST — one virtual array" },
+    { time: "O(log m + log n)", space: "O(1)", note: "row BS + column BS" }
+  ],
+  compare: [
+    { name: "Flattened-index BS", tech: "mid → (mid/n, mid%n)", time: "O(log(m·n))", space: "O(1)", when: "general case — fewest probes", best: true },
+    { name: "Two-level BS", tech: "row in col 0, then in-row", time: "O(log m + log n)", space: "O(1)", when: "conceptually clearer", best: false },
+    { name: "Staircase walk", tech: "top-right, down/left", time: "O(m+n)", space: "O(1)", when: "no chained rows needed", best: false }
+  ],
+  inputs: [
+    { name: "matrix", label: "matrix rows =", type: "list", default: '["1,3,5,7","10,11,16,20","23,30,34,60"]' },
+    { name: "target", label: "target =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { matrix: '["1,3,5,7","10,11,16,20","23,30,34,60"]', target: "3" }, result: "true" },
+    { label: "Ex 2", values: { matrix: '["1,3,5,7","10,11,16,20","23,30,34,60"]', target: "13" }, result: "false" },
+    { label: "Ex 3", values: { matrix: '["1","3"]', target: "3" }, result: "true" }
+  ],
+  realLife: "<p><b>Relational databases</b>: a B-tree index over a composite key is a sorted 2D structure; 'which page, then which slot' is literally a two-level binary search.</p><p><b>Image / geodata grids</b>: coordinates stored row-major are looked up by flattening — the exact mid → (row, col) mapping used here.</p>",
+  dsDive: `<h3>The flat-index invariant: virtual[k] = matrix[k/n][k%n]</h3>
+<p>Chained rows mean row-major order is fully sorted, so the 0704 invariant transfers verbatim — the ONLY change is the probe:</p>
+<div class="equation">virtual[k] = matrix[k ÷ n][k mod n]</div>
+<p>Every mid probe performs two integer operations instead of one array read. This 'pretend the structure is flat' trick is how segment trees, sparse tables, and SQL row stores index their data.</p>
+<p>Approach 2 reuses the false→true predicate down column 0: <span class="code-var">matrix[r][0] ≤ target</span> is false then true, and the LAST true row is the only candidate — then a normal 1D BS finishes inside it.</p>`,
+  code: [
+    [
+      "lo, hi = 0, m * n - 1               # one virtual array",
+      "while lo <= hi:",
+      "    mid = lo + (hi - lo) // 2",
+      "    r, c = divmod(mid, n)           # flat → 2D coordinates",
+      "    v = matrix[r][c]                # virtual[mid]",
+      "    if v == target: return True",
+      "    if v < target: lo = mid + 1",
+      "    else:          hi = mid - 1",
+      "return False"
+    ],
+    [
+      "lo, hi = 0, m - 1                   # phase 1: row search in col 0",
+      "row = 0",
+      "while lo <= hi:",
+      "    mid = lo + (hi - lo) // 2",
+      "    if matrix[mid][0] <= target:",
+      "        row = mid; lo = mid + 1     # last feasible row",
+      "    else: hi = mid - 1",
+      "lo, hi = 0, n - 1                    # phase 2: plain BS in row",
+      "while lo <= hi:",
+      "    mid = lo + (hi - lo) // 2",
+      "    if matrix[row][mid] == target: return True",
+      "    if matrix[row][mid] < target: lo = mid + 1",
+      "    else: hi = mid - 1",
+      "return False"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const g = rowsToMatrix(vals.matrix);
+      const target = vals.target;
+      const m = g.length, n = g[0] ? g[0].length : 0;
+      const flat = [].concat.apply([], g);
+      const steps = [];
+      const snap = (text, code, lo, hi, mid, gridCls, flatCls) => {
+        const gc = Object.assign({}, gridCls || {});
+        const fc = Object.assign({}, flatCls || {});
+        if (lo >= 0 && lo < flat.length) fc[lo] = fc[lo] || "hl";
+        if (hi >= 0 && hi < flat.length) fc[hi] = fc[hi] || "hl";
+        if (mid >= 0 && mid < flat.length) { fc[mid] = fc[mid] || "hot"; gc[Math.floor(mid / n) + "," + (mid % n)] = gc[Math.floor(mid / n) + "," + (mid % n)] || "hot"; }
+        steps.push({ text, code, mem: [
+          { type: "grid", title: "matrix · row-major, rows chained", data: g, cls: gc, cols: n },
+          { type: "array", title: "virtual flat array (index k → matrix[k/n][k%n])", data: flat, cls: fc, showIdx: true, size: 4 }
+        ]});
+      };
+      snap("Rows are chained (row[i][0] > row[i-1][n-1]) → flattening yields ONE sorted array of m·n elements.", 0, 0, flat.length - 1, -1, {}, {});
+      let lo = 0, hi = flat.length - 1, found = false;
+      while (lo <= hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        const r = Math.floor(mid / n), c = mid % n;
+        const v = g[r][c];
+        snap(`Probe mid=<b>${mid}</b> → (${r}, ${c}) → value <b>${v}</b>.`, 2, lo, hi, mid, { [r + "," + c]: "hot" }, { [mid]: "hot" });
+        if (v === target) {
+          found = true;
+          snap(`<b>${v} == ${target}</b> → found at (${r}, ${c}) → <b>true</b>.`, 5, lo, hi, mid, { [r + "," + c]: "done" }, { [mid]: "done" });
+          break;
+        }
+        if (v < target) {
+          snap(`${v} < ${target} → discard left half → lo = ${mid + 1}.`, 6, lo, hi, mid, {}, {});
+          lo = mid + 1;
+        } else {
+          snap(`${v} > ${target} → discard right half → hi = ${mid - 1}.`, 7, lo, hi, mid, {}, {});
+          hi = mid - 1;
+        }
+      }
+      if (!found) snap("Window inverted → target absent → <b>false</b>.", 8, lo, hi, -1, {}, {});
+      const last = steps[steps.length - 1];
+      last.result = found ? "true" : "false";
+      last.correct = found === (flat.indexOf(target) !== -1);
+      last.memNote = "Time: O(log(m·n)). Space: O(1) — no copy made.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const g = rowsToMatrix(vals.matrix);
+      const target = vals.target;
+      const m = g.length, n = g[0] ? g[0].length : 0;
+      const steps = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "grid", title: "matrix · phase 1 hunts down column 0", data: g, cls: cls || {}, cols: n }
+      ]});
+      snap("Phase 1 — binary search COLUMN 0: find the last row whose first value ≤ target.", 0, {});
+      let lo = 0, hi = m - 1, row = 0;
+      while (lo <= hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        const cls = {}; cls[mid + ",0"] = "hot"; cls[row + ",0"] = "hl";
+        snap(`Probe mid=<b>${mid}</b>: matrix[${mid}][0]=${g[mid][0]} vs target=${target}.`, 2, cls);
+        if (g[mid][0] <= target) {
+          row = mid;
+          snap(`${g[mid][0]} ≤ ${target} → row ${mid} feasible → keep going down (lo = ${mid + 1}).`, 3, { [mid + ",0"]: "hot" });
+          lo = mid + 1;
+        } else {
+          snap(`${g[mid][0]} > ${target} → row ${mid} too big → hi = ${mid - 1}.`, 4, { [mid + ",0"]: "hot" });
+          hi = mid - 1;
+        }
+      }
+      snap(`Candidate row = <b>${row}</b>. Phase 2 — plain binary search inside that row.`, 5, { [row + ",0"]: "done" });
+      let lo2 = 0, hi2 = n - 1, found = false;
+      while (lo2 <= hi2) {
+        const mid = Math.floor(lo2 + (hi2 - lo2) / 2);
+        const cls = { [row + ",0"]: "done" };
+        cls[row + "," + mid] = "hot";
+        cls[row + "," + lo2] = "hl"; cls[row + "," + hi2] = "hl";
+        snap(`In-row probe mid=<b>${mid}</b>: matrix[${row}][${mid}]=${g[row][mid]}.`, 7, cls);
+        if (g[row][mid] === target) {
+          found = true;
+          snap(`<b>${g[row][mid]} == ${target}</b> → found at (${row}, ${mid}) → <b>true</b>.`, 8, { [row + "," + mid]: "done", [row + ",0"]: "done" });
+          break;
+        }
+        if (g[row][mid] < target) {
+          snap(`${g[row][mid]} < ${target} → lo = ${mid + 1}.`, 9, { [row + ",0"]: "done" });
+          lo2 = mid + 1;
+        } else {
+          snap(`${g[row][mid]} > ${target} → hi = ${mid - 1}.`, 10, { [row + ",0"]: "done" });
+          hi2 = mid - 1;
+        }
+      }
+      if (!found) snap("Row exhausted without a hit → <b>false</b>.", 11, { [row + ",0"]: "done" });
+      const last = steps[steps.length - 1];
+      const flat = [].concat.apply([], g);
+      last.result = found ? "true" : "false";
+      last.correct = found === (flat.indexOf(target) !== -1);
+      last.memNote = "Time: O(log m) + O(log n). Space: O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0153 — FIND MINIMUM IN ROTATED SORTED ARRAY
+ * ================================================================ */
+NC150.register({
+  id: "0153", title: "Find Minimum in Rotated Sorted Array", difficulty: "Medium",
+  url: "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/",
+  tags: ["binary search", "predicate"],
+  approaches: ["Approach 1 · Mid vs right edge (best)", "Approach 2 · Sort, take first (contrast)"],
+  complexities: [
+    { time: "O(log n)", space: "O(1)", note: "BEST — 20 probes at n = 1e6" },
+    { time: "O(n log n)", space: "O(n)", note: "contrast only — why BS matters" }
+  ],
+  compare: [
+    { name: "Mid vs right edge", tech: "shrink toward the drop", time: "O(log n)", space: "O(1)", when: "the real answer", best: true },
+    { name: "Sort + first", tech: "cheating", time: "O(n log n)", space: "O(n)", when: "never — demonstrates the cost", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[3,4,5,1,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[3,4,5,1,2]" }, result: "1" },
+    { label: "Ex 2", values: { nums: "[4,5,6,7,0,1,2]" }, result: "0" },
+    { label: "Ex 3", values: { nums: "[11,13,15,17]" }, result: "11" }
+  ],
+  realLife: "<p><b>Circular structures</b>: ring buffers (audio loops, log rotation, TCP sequence wrap) wrap around exactly like a rotated array — 'where is the smallest/oldest entry?' is this problem.</p><p><b>Watchdog ranges</b>: finding the wrap point in a day-partitioned counter (midnight rollover) uses the same mid-vs-edge comparison.</p>",
+  dsDive: `<h3>The false→true predicate that IS the minimum</h3>
+<p>Define <span class="code-var">P(k) = "nums[k] ≤ nums[n−1]"</span>. On the left run every value is bigger than the last element → P is FALSE; on the right run every value is ≤ nums[n−1] → P is TRUE:</p>
+<div class="equation">[4,5,6,7,0,1,2] → P = [F,F,F,F,T,T,T] &nbsp; first T at index 4 = the minimum</div>
+<p>P is monotone, so the 0704 lower-bound loop applies verbatim: <span class="code-var">hi = mid</span> keeps a candidate, <span class="code-var">lo = mid+1</span> discards a non-candidate. This is the same invariant std::lower_bound uses — and the SAME predicate powers 0033's pivot phase and 0875's feasible-speed check.</p>`,
+  code: [
+    [
+      "lo, hi = 0, len(nums) - 1",
+      "while lo < hi:                      # window never empties",
+      "    mid = lo + (hi - lo) // 2",
+      "    if nums[mid] > nums[hi]:",
+      "        lo = mid + 1                # drop is to the right",
+      "    else:",
+      "        hi = mid                    # mid may be the minimum",
+      "return nums[lo]                     # lo == hi == pivot"
+    ],
+    [
+      "copy = sorted(nums)                 # destroys rotation info",
+      "return copy[0]                      # min of sorted = first"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums;
+      const steps = [];
+      const snap = (text, code, lo, hi, mid, cls) => {
+        const c = Object.assign({}, cls || {});
+        if (lo >= 0 && lo < nums.length) c[lo] = c[lo] || "hl";
+        if (hi >= 0 && hi < nums.length) c[hi] = c[hi] || "hl";
+        if (mid >= 0 && mid < nums.length) c[mid] = c[mid] || "hot";
+        steps.push({ text, code, mem: [{ type: "array", title: "nums · lo=hl hi=hl mid=hot", data: nums, cls: c, showIdx: true, size: 4 }] });
+      };
+      snap("Predicate P(k) = 'nums[k] ≤ nums[n-1]' is false on the left run, true on the right — find the first TRUE index.", 0, 0, nums.length - 1, -1, {});
+      let lo = 0, hi = nums.length - 1;
+      while (lo < hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        snap(`Probe mid=<b>${mid}</b>: nums[mid]=${nums[mid]} vs nums[hi]=${nums[hi]}.`, 2, lo, hi, mid, {});
+        if (nums[mid] > nums[hi]) {
+          snap(`${nums[mid]} > ${nums[hi]} → mid is on the LEFT run → drop (min) is strictly right → lo = ${mid + 1}.`, 3, lo, hi, mid, {});
+          lo = mid + 1;
+        } else {
+          snap(`${nums[mid]} ≤ ${nums[hi]} → mid is on the RIGHT run → min is mid or left → hi = ${mid}.`, 4, lo, hi, mid, {});
+          hi = mid;
+        }
+      }
+      snap(`Window collapsed: lo == hi == <b>${lo}</b> → minimum = nums[${lo}] = <b>${nums[lo]}</b>.`, 5, lo, hi, -1, { [lo]: "done" });
+      const last = steps[steps.length - 1];
+      last.result = String(nums[lo]);
+      last.correct = nums[lo] === Math.min.apply(null, nums);
+      last.memNote = "Time: O(log n). Space: O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums;
+      const steps = [];
+      const sorted = nums.slice().sort((a, b) => a - b);
+      steps.push({ text: "Sort a copy — O(n log n). The rotation is destroyed; the minimum becomes the first element.", code: 0, mem: [
+        { type: "array", title: "nums (original)", data: nums, showIdx: true, size: 4 },
+        { type: "array", title: "copy after sort", data: sorted, cls: { [0]: "done" }, showIdx: true, size: 4 }
+      ]});
+      steps.push({ text: `Return copy[0] = <b>${sorted[0]}</b>. Correct — but at n = 1e6 this sorts millions of elements while the BS does ~20 probes.`, code: 1, mem: [
+        { type: "array", title: "copy after sort", data: sorted, cls: { [0]: "done" }, showIdx: true, size: 4 }
+      ]});
+      const last = steps[steps.length - 1];
+      last.result = String(sorted[0]);
+      last.correct = sorted[0] === Math.min.apply(null, nums);
+      last.memNote = "Time: O(n log n). Space: O(n) copy — contrast only.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0875 — KOKO EATING BANANAS
+ * ================================================================ */
+NC150.register({
+  id: "0875", title: "Koko Eating Bananas", difficulty: "Medium",
+  url: "https://leetcode.com/problems/koko-eating-bananas/",
+  tags: ["binary search", "answer space", "predicate"],
+  approaches: ["Approach 1 · BS on speed (best)", "Approach 2 · Linear speed sweep (contrast)"],
+  complexities: [
+    { time: "O(n log M)", space: "O(1)", note: "BEST — M = max pile, log M probes × O(n) oracle" },
+    { time: "O(n·M)", space: "O(1)", note: "try every speed — too slow at scale" }
+  ],
+  compare: [
+    { name: "BS on speed", tech: "predicate canFinish(k)", time: "O(n log M)", space: "O(1)", when: "large piles — the requirement", best: true },
+    { name: "Linear speed sweep", tech: "k = 1..max", time: "O(n·M)", space: "O(1)", when: "tiny max pile only", best: false }
+  ],
+  inputs: [
+    { name: "piles", label: "piles =", type: "list", default: "[3,6,7,11]" },
+    { name: "h", label: "h =", type: "int", default: "8" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { piles: "[3,6,7,11]", h: "8" }, result: "4" },
+    { label: "Ex 2", values: { piles: "[30,11,23,4,20]", h: "5" }, result: "30" },
+    { label: "Ex 3", values: { piles: "[30,11,23,4,20]", h: "6" }, result: "23" }
+  ],
+  realLife: "<p><b>Maximizing throughput</b>: 'fastest rate that still meets the deadline' is the same predicate — CDN cache refresh rates, video transcoding batch sizes, and database checkpointing all binary-search the rate instead of sweeping it.</p><p><b>Rate limiting / QoS</b>: find the maximum requests-per-second that keeps p99 latency under budget — exactly canFinish(k) with latency as the deadline.</p>",
+  dsDive: `<h3>Binary search on the ANSWER space</h3>
+<p>Nothing here is searched directly — the DATA (piles) is fixed and the SEARCH lives over possible speeds. You need only two ingredients:</p>
+<div class="equation">1. a monotone predicate over a bounded range &nbsp;|&nbsp; 2. an O(f(n)) feasibility oracle</div>
+<p><span class="code-var">canFinish(k) = Σ ceil(pile/k) ≤ h</span> is monotone (faster never takes more hours), and <span class="code-var">k ∈ [1, max(piles)]</span> is the bounded range. The false→true boundary of canFinish IS the answer — the exact lower-bound loop from 0704, with an O(n) probe instead of an O(1) one. Note the integer trick <span class="code-var">ceil(a/b) = (a+b−1)//b</span>, which avoids floating point entirely.</p>`,
+  code: [
+    [
+      "lo, hi = 1, max(piles)             # answer lives in the speed space",
+      "while lo < hi:",
+      "    mid = lo + (hi - lo) // 2      # probe a speed",
+      "    hours = sum(ceil(p/mid) for p in piles)   # O(n) oracle",
+      "    if hours <= h: hi = mid        # feasible → try slower",
+      "    else:          lo = mid + 1    # too slow → speed up",
+      "return lo                          # smallest feasible speed"
+    ],
+    [
+      "for k in range(1, max(piles) + 1):  # try EVERY speed",
+      "    hours = sum(ceil(p/k) for p in piles)",
+      "    if hours <= h: return k         # first feasible wins"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const piles = vals.piles, h = vals.h;
+      const steps = [];
+      const snap = (text, code, k, cls, perPile, verdict) => {
+        const mem = [
+          { type: "array", title: "piles", data: piles, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "array", title: "speed probe k", data: [k], cls: { [0]: "hot" }, showIdx: true, size: 8 },
+          { type: "array", title: "hours per pile ⌈pile/k⌉", data: perPile || [], showIdx: true, size: 4 }
+        ];
+        if (verdict !== undefined) {
+          mem.push({ type: "array", title: "total hours", data: [verdict], cls: verdict <= h ? { [0]: "done" } : { [0]: "hot" }, showIdx: true, size: 8 });
+        }
+        steps.push({ text, code, mem });
+      };
+      snap("Predicate canFinish(k) = Σ⌈pile/k⌉ ≤ h is monotone: false for slow speeds, true from some k onward. BS finds the FIRST true k.", 0, 1, {}, [], undefined);
+      let lo = 1, hi = Math.max.apply(null, piles);
+      while (lo < hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        const perPile = piles.map(p => ceilDiv(p, mid));
+        const hours = perPile.reduce((s, x) => s + x, 0);
+        snap(`Probe speed k=<b>${mid}</b>. Per-pile hours: ${perPile.join(", ")} → total <b>${hours}</b> vs h=${h}.`, 2, mid, {}, perPile, hours);
+        if (hours <= h) {
+          snap(`${hours} ≤ ${h} → k=${mid} FEASIBLE → optimum is mid or slower → hi = ${mid}.`, 4, mid, {}, perPile, hours);
+          hi = mid;
+        } else {
+          snap(`${hours} > ${h} → k=${mid} too slow → lo = ${mid + 1}.`, 5, mid, {}, perPile, hours);
+          lo = mid + 1;
+        }
+      }
+      snap(`Collapsed onto the first feasible speed: k = <b>${lo}</b>.`, 6, lo, { [piles.indexOf(Math.max.apply(null, piles))]: "hl" }, piles.map(p => ceilDiv(p, lo)), piles.reduce((s, p) => s + ceilDiv(p, lo), 0));
+      const last = steps[steps.length - 1];
+      const brute = (() => { for (let k = 1; k <= Math.max.apply(null, piles); k++) { const t = piles.reduce((s, p) => s + ceilDiv(p, k), 0); if (t <= h) return k; } return Math.max.apply(null, piles); })();
+      last.result = String(lo);
+      last.correct = lo === brute;
+      last.memNote = "Time: O(n log M) — log M probes × O(n) oracle. Space: O(1).";
+      return { steps, result: String(lo), correct: lo === brute, memNote: last.memNote };
+    },
+    function (vals) {
+      const piles = vals.piles, h = vals.h;
+      const steps = [];
+      const snap = (text, code, k, perPile, hours) => steps.push({ text, code, mem: [
+        { type: "array", title: "piles", data: piles, showIdx: true, size: 4 },
+        { type: "array", title: "speed under test k", data: [k], cls: { [0]: "hot" }, showIdx: true, size: 8 },
+        { type: "array", title: "hours per pile ⌈pile/k⌉", data: perPile, showIdx: true, size: 4 },
+        { type: "array", title: "total hours", data: [hours], cls: hours <= h ? { [0]: "done" } : { [0]: "hot" }, showIdx: true, size: 8 }
+      ]});
+      snap("Try k = 1, 2, 3, … and return the first feasible one — identical result, but M sweeps instead of log M.", 0, 1, [], 0);
+      const maxP = Math.max.apply(null, piles);
+      let ans = maxP;
+      for (let k = 1; k <= maxP; k++) {
+        const perPile = piles.map(p => ceilDiv(p, k));
+        const hours = perPile.reduce((s, x) => s + x, 0);
+        if (hours <= h) {
+          ans = k;
+          snap(`k=<b>${k}</b>: total ${hours} ≤ h=${h} → FEASIBLE → return <b>${k}</b>.`, 2, k, perPile, hours);
+          break;
+        }
+        snap(`k=${k}: total ${hours} > h=${h} → too slow, try next.`, 1, k, perPile, hours);
+      }
+      const last = steps[steps.length - 1];
+      const brute = (() => { for (let k = 1; k <= maxP; k++) { const t = piles.reduce((s, p) => s + ceilDiv(p, k), 0); if (t <= h) return k; } return maxP; })();
+      last.result = String(ans);
+      last.correct = ans === brute;
+      last.memNote = "Time: O(n·M) — contrast only. Space: O(1).";
+      return { steps, result: String(ans), correct: ans === brute, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0981 — TIME BASED KEY-VALUE STORE
+ * ================================================================ */
+NC150.register({
+  id: "0981", title: "Time Based Key-Value Store", difficulty: "Medium",
+  url: "https://leetcode.com/problems/time-based-key-value-store/",
+  tags: ["binary search", "map of vectors", "upper bound"],
+  approaches: ["Approach 1 · map + vector + upper-bound BS (best)", "Approach 2 · Linear scan from newest (contrast)"],
+  complexities: [
+    { time: "set O(1) · get O(log n)", space: "O(records)", note: "BEST — n = records per key" },
+    { time: "set O(1) · get O(n)", space: "O(records)", note: "hot keys become expensive" }
+  ],
+  compare: [
+    { name: "map + vector + bisect_right", tech: "predecessor of upper bound", time: "get O(log n)", space: "O(records)", when: "many reads — the requirement", best: true },
+    { name: "Linear scan", tech: "walk newest → oldest", time: "get O(n)", space: "O(records)", when: "tiny record counts", best: false }
+  ],
+  inputs: [
+    { name: "key", label: "key =", type: "str", default: "foo" },
+    { name: "timestamp", label: "timestamp =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { key: "foo", timestamp: "1" }, result: "bar" },
+    { label: "Ex 2", values: { key: "foo", timestamp: "3" }, result: "bar" },
+    { label: "Ex 3", values: { key: "foo", timestamp: "5" }, result: "bar2" },
+    { label: "Edge: too early", values: { key: "love", timestamp: "5" }, result: '""' }
+  ],
+  realLife: "<p><b>Versioned configuration</b>: 'what did the config look like at deploy time T?' is a timestamp query on an immutable append log.</p><p><b>Time-series databases</b> (InfluxDB, Prometheus) answer 'most recent value at or before T' with exactly the upper-bound + predecessor trick; event replay and audit trails use the same pattern.</p>",
+  dsDive: `<h3>lower_bound vs upper_bound — and why 0981 needs the latter</h3>
+<p>Both are O(log n) on a sorted vector; they differ only in the boundary:</p>
+<div class="equation">lower_bound(q) → first element ≥ q &nbsp;|&nbsp; upper_bound(q) → first element &gt; q</div>
+<p>get(key, q) wants the LAST record with <span class="code-var">ts ≤ q</span> — that is the <b>predecessor of upper_bound(q)</b>. The query usually falls BETWEEN timestamps (q=3 with records at 1 and 4), and only the 'strictly greater' boundary of upper_bound points at the first record that overshoots; take the element before it. If the boundary lands at index 0, every record is too new → return \"\".</p>
+<p>C++ <span class="code-cpp">std::map&lt;string, vector&lt;pair&lt;int,string&gt;&gt;&gt;</span> is a red-black tree over keys + a contiguous vector per key; Python is <span class="code-var">dict[str, list[(int,str)]]</span> with <span class="code-var">bisect_right</span>. Same data shape, same boundary — the 'map of sorted vectors' is the canonical structure for versioned data.</p>`,
+  code: [
+    [
+      "store[key].append((timestamp, value))   # set: O(1) append,",
+      "                                        # ts arrive ascending",
+      "i = bisect_right(timestamps, q)         # first index with ts > q",
+      "return vals[i-1][1] if i > 0 else \"\"   # predecessor of the",
+      "                                        # upper bound, or empty"
+    ],
+    [
+      "store[key].append((timestamp, value))",
+      "for t, v in reversed(vals):             # walk newest → oldest",
+      "    if t <= q: return v                 # first hit wins",
+      "return \"\""
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const key = String(vals.key), q = vals.timestamp;
+      /* fixed write script: set("foo","bar",1), set("foo","bar2",4),
+         set("love","high",10), set("love","low",20) */
+      const records = { foo: [[1, "bar"], [4, "bar2"]], love: [[10, "high"], [20, "low"]] };
+      const steps = [];
+      const hmod = k => { let s = 0; for (let i = 0; i < k.length; i++) s += k.charCodeAt(i); return s % 4; };
+      const slots = new Array(4).fill(null);
+      Object.keys(records).forEach(k => {
+        let j = 0, s = hmod(k);
+        while (slots[(s + j) % 4]) j++;
+        slots[(s + j) % 4] = { k: k, v: records[k].length + " records" };
+      });
+      const snap = (text, code, recs, cls, probe, hit) => {
+        const mem = [
+          { type: "hashmap", title: "map · string key → record list", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe: probe || [], hit: hit === undefined ? -1 : hit, formula: "h(k) = Σ charCodes mod 4 · linear probing" }
+        ];
+        if (recs) {
+          const rcls = {};
+          Object.keys(cls || {}).forEach(i => { rcls[Number(i)] = cls[i]; });
+          mem.push({ type: "array", title: "records for '" + key + "' · (ts·value) sorted by ts", data: recs.map(r => r[0] + "·" + r[1]), cls: rcls, showIdx: true, size: 4 });
+        }
+        steps.push({ text, code, mem });
+      };
+      snap("Every set() appends (timestamp, value) to the key's list — timestamps arrive ascending, so each list stays sorted.", 0, records[key], {}, [], -1);
+      const recs = records[key] || [];
+      if (!recs.length) {
+        steps.push({ text: `No records for key '<b>${key}</b>' → return <b>""</b>.`, code: 3, mem: [] });
+        const last = steps[steps.length - 1];
+        last.result = '""';
+        last.correct = true;
+        last.memNote = "O(1) — key absent.";
+        return { steps, result: '""', correct: true, memNote: last.memNote };
+      }
+      snap(`get("${key}", ${q}): binary search the timestamps with upper-bound semantics — first index whose ts > ${q}.`, 1, recs, {}, [], -1);
+      const ts = recs.map(r => r[0]);
+      let lo = 0, hi = ts.length, boundary = -1;
+      while (lo < hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        const cls = {}; cls[lo] = "hl"; cls[Math.max(0, hi - 1)] = "hl"; cls[mid] = "hot";
+        snap(`Probe mid=<b>${mid}</b>: ts=${ts[mid]} vs q=${q}.`, 1, recs, cls, [], -1);
+        if (ts[mid] <= q) {
+          snap(`${ts[mid]} ≤ ${q} → keep looking right → lo = ${mid + 1}.`, 1, recs, {}, [], -1);
+          lo = mid + 1;
+        } else {
+          snap(`${ts[mid]} > ${q} → this is the upper bound → hi = ${mid}.`, 1, recs, {}, [], -1);
+          hi = mid;
+        }
+      }
+      boundary = lo;
+      if (boundary === 0) {
+        steps.push({ text: `Upper bound at index 0 → EVERY record is newer than ${q} → return <b>""</b>.`, code: 3, mem: [] });
+        const last = steps[steps.length - 1];
+        last.result = '""';
+        last.correct = true;
+        last.memNote = "get O(log n). Space: O(records).";
+        return { steps, result: '""', correct: true, memNote: last.memNote };
+      }
+      const ans = recs[boundary - 1][1];
+      const cls = {}; cls[boundary - 1] = "done";
+      snap(`Upper bound = index <b>${boundary}</b> (ts ${ts[boundary]} first > ${q}) → predecessor index <b>${boundary - 1}</b> holds ts=${recs[boundary - 1][0]} → value '<b>${ans}</b>'.`, 2, recs, cls, [], boundary - 1);
+      const last = steps[steps.length - 1];
+      const brute = (() => { let best = null; for (const r of recs) if (r[0] <= q) best = r; return best ? best[1] : ""; })();
+      last.result = ans;
+      last.correct = ans === brute;
+      last.memNote = "set O(1), get O(log n). Space: O(records) across keys.";
+      return { steps, result: ans, correct: ans === brute, memNote: last.memNote };
+    },
+    function (vals) {
+      const key = String(vals.key), q = vals.timestamp;
+      const records = { foo: [[1, "bar"], [4, "bar2"]], love: [[10, "high"], [20, "low"]] };
+      const steps = [];
+      const recs = records[key] || [];
+      if (!recs.length) {
+        steps.push({ text: `No records for key '<b>${key}</b>' → <b>""</b>.`, code: 0, mem: [] });
+        const last = steps[steps.length - 1];
+        last.result = '""'; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: '""', correct: true, memNote: last.memNote };
+      }
+      const snap = (text, code, i, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "records for '" + key + "' · (ts·value)", data: recs.map(r => r[0] + "·" + r[1]), cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap(`Linear scan: walk '<b>${key}</b>' records from NEWEST to OLDEST; first ts ≤ ${q} wins.`, 0, recs.length - 1, { [recs.length - 1]: "hot" });
+      let ans = "";
+      for (let i = recs.length - 1; i >= 0; i--) {
+        if (recs[i][0] <= q) {
+          ans = recs[i][1];
+          snap(`Index ${i}: ts=${recs[i][0]} ≤ ${q} → return '<b>${ans}</b>'.`, 2, i, { [i]: "done" });
+          break;
+        }
+        snap(`Index ${i}: ts=${recs[i][0]} > ${q} → skip, keep walking left.`, 1, i, { [i]: "hot" });
+      }
+      if (ans === "") snap("Every record is newer than the query → <b>\"\"</b>.", 3, -1, {});
+      const last = steps[steps.length - 1];
+      const brute = (() => { let best = null; for (const r of recs) if (r[0] <= q) best = r; return best ? best[1] : ""; })();
+      last.result = ans;
+      last.correct = ans === brute;
+      last.memNote = "set O(1), get O(n) — contrast only. Space: O(records).";
+      return { steps, result: ans, correct: ans === brute, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0704 — BINARY SEARCH
+ * ================================================================ */
+NC150.register({
+  id: "0704", title: "Binary Search", difficulty: "Easy",
+  url: "https://leetcode.com/problems/binary-search/",
+  tags: ["binary search", "invariant"],
+  approaches: ["Approach 1 · Classic lo ≤ hi (any hit)", "Approach 2 · lo < hi lower bound + verify"],
+  complexities: [
+    { time: "O(log n)", space: "O(1)", note: "BEST — inclusive window" },
+    { time: "O(log n)", space: "O(1)", note: "half-open window, first ≥ target" }
+  ],
+  compare: [
+    { name: "Classic lo ≤ hi", tech: "return on hit, discard half", time: "O(log n)", space: "O(1)", when: "find ANY occurrence", best: true },
+    { name: "Lower-bound lo < hi", tech: "shrink to first ≥ target", time: "O(log n)", space: "O(1)", when: "generalizes to 0033/0153/0875/0981", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[-1,0,3,5,9,12]" },
+    { name: "target", label: "target =", type: "int", default: "9" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[-1,0,3,5,9,12]", target: "9" }, result: "4" },
+    { label: "Ex 2", values: { nums: "[-1,0,3,5,9,12]", target: "2" }, result: "-1" },
+    { label: "Ex 3", values: { nums: "[5]", target: "5" }, result: "0" }
+  ],
+  realLife: "<p><b>git bisect</b> literally binary-searches commit history to find the first 'bad' commit — the lower-bound predicate in action.</p><p><b>Dictionary/version lookups</b>: finding a word in a sorted dictionary, an IP in a routing table, or a version in a changelog are all O(log n) halving searches.</p>",
+  dsDive: `<h3>The invariant: keep the false→true boundary inside [lo, hi]</h3>
+<p>For sorted data the predicate <span class="code-var">P(x) = "x ≥ target"</span> is monotone — false, false, …, TRUE, TRUE. Binary search maintains ONE invariant: <b>the first TRUE index stays inside the window</b>. The loop condition difference is purely about how the window shrinks:</p>
+<div class="equation">lo ≤ hi : inclusive window, mid removed each step → can reach size 0, so the last size-1 probe must be allowed.</div>
+<div class="equation">lo &lt; hi : half-open [lo, hi), hi = mid never skips mid → stops at lo == hi, verify after.</div>
+<p><span class="code-cpp">std::lower_bound</span> returns the first element ≥ key (first TRUE); <span class="code-cpp">std::upper_bound</span> the first element &gt; key — both are this exact loop. Get comfortable with the lower-bound variant: every other problem in this section (0033, 0153, 0875, 0981) is the same loop with a different predicate.</p>`,
+  code: [
+    [
+      "lo, hi = 0, len(nums) - 1        # inclusive window",
+      "while lo <= hi:",
+      "    mid = lo + (hi - lo) // 2    # overflow-safe midpoint",
+      "    if nums[mid] == target: return mid",
+      "    if nums[mid] < target: lo = mid + 1",
+      "    else:                 hi = mid - 1",
+      "return -1                        # window inverted → absent"
+    ],
+    [
+      "lo, hi = 0, len(nums)            # half-open [lo, hi)",
+      "while lo < hi:",
+      "    mid = lo + (hi - lo) // 2",
+      "    if nums[mid] >= target: hi = mid     # first ≥ target",
+      "    else:                   lo = mid + 1",
+      "return lo if lo < len(nums) and nums[lo] == target else -1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums, target = vals.target;
+      const steps = [];
+      const snap = (text, code, lo, hi, mid, cls) => {
+        const c = Object.assign({}, cls || {});
+        if (lo >= 0 && lo < nums.length) c[lo] = c[lo] || "hl";
+        if (hi >= 0 && hi < nums.length) c[hi] = c[hi] || "hl";
+        if (mid >= 0 && mid < nums.length) c[mid] = c[mid] || "hot";
+        steps.push({ text, code, mem: [{ type: "array", title: "nums · lo=hl hi=hl mid=hot", data: nums, cls: c, showIdx: true, size: 4 }] });
+      };
+      snap("Invariant: target, if present, lives in the inclusive window [lo, hi]. Each probe halves the window.", 0, 0, nums.length - 1, -1, {});
+      let lo = 0, hi = nums.length - 1, found = -1;
+      while (lo <= hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        snap(`Probe mid=<b>${mid}</b> → nums[mid]=<b>${nums[mid]}</b>.`, 2, lo, hi, mid, {});
+        if (nums[mid] === target) {
+          found = mid;
+          snap(`<b>${nums[mid]} == ${target}</b> → hit at index ${mid}!`, 3, lo, hi, mid, { [mid]: "done" });
+          break;
+        }
+        if (nums[mid] < target) {
+          snap(`${nums[mid]} < ${target} → left half can never hold target → lo = ${mid + 1}.`, 4, lo, hi, mid, {});
+          lo = mid + 1;
+        } else {
+          snap(`${nums[mid]} > ${target} → right half can never hold target → hi = ${mid - 1}.`, 5, lo, hi, mid, {});
+          hi = mid - 1;
+        }
+      }
+      if (found === -1) snap("Window inverted (lo > hi) → every candidate eliminated → <b>-1</b>.", 6, lo, hi, -1, {});
+      const last = steps[steps.length - 1];
+      last.result = found === -1 ? "-1" : String(found);
+      last.correct = found === nums.indexOf(target);
+      last.memNote = "Time: O(log n). Space: O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums, target = vals.target;
+      const steps = [];
+      const snap = (text, code, lo, hi, mid, cls) => {
+        const c = Object.assign({}, cls || {});
+        if (lo >= 0 && lo < nums.length) c[lo] = c[lo] || "hl";
+        if (hi > 0 && hi <= nums.length) c[hi - 1] = c[hi - 1] || "hl";
+        if (mid >= 0 && mid < nums.length) c[mid] = c[mid] || "hot";
+        steps.push({ text, code, mem: [{ type: "array", title: "nums · half-open [lo, hi) · lo=hl hi-1=hl mid=hot", data: nums, cls: c, showIdx: true, size: 4 }] });
+      };
+      snap("Half-open window [lo, hi). Predicate P(x) = 'x ≥ target' is false→true; we shrink onto the FIRST true index.", 0, 0, nums.length, -1, {});
+      let lo = 0, hi = nums.length;
+      while (lo < hi) {
+        const mid = Math.floor(lo + (hi - lo) / 2);
+        snap(`Probe mid=<b>${mid}</b> → nums[mid]=${nums[mid]}.`, 2, lo, hi, mid, {});
+        if (nums[mid] >= target) {
+          snap(`${nums[mid]} ≥ ${target} → mid qualifies as 'first ≥ target' → keep it in scope → hi = ${mid}.`, 3, lo, hi, mid, {});
+          hi = mid;
+        } else {
+          snap(`${nums[mid]} < ${target} → mid is strictly too small → lo = ${mid + 1}.`, 4, lo, hi, mid, {});
+          lo = mid + 1;
+        }
+      }
+      const found = (lo < nums.length && nums[lo] === target) ? lo : -1;
+      snap(`Loop ends with lo == hi == <b>${lo}</b> — first index with nums[lo] ≥ ${target}. Final check: nums[${lo}]=${lo < nums.length ? nums[lo] : "—"}.`, 5, lo, hi, -1, found !== -1 ? { [lo]: "done" } : {});
+      if (found === -1) snap("The first value ≥ target is not EQUAL to target → absent → <b>-1</b>.", 5, lo, hi, -1, {});
+      const last = steps[steps.length - 1];
+      last.result = found === -1 ? "-1" : String(found);
+      last.correct = found === nums.indexOf(target);
+      last.memNote = "Time: O(log n). Space: O(1). This loop shape generalizes to every other BS problem.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

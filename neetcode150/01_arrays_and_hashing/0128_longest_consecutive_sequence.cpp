@@ -1,117 +1,164 @@
 /*
- * LeetCode 128: Longest Consecutive Sequence
- * Link: https://leetcode.com/problems/longest-consecutive-sequence/
- * Difficulty: Medium
+ * =====================================================================
+ * LeetCode 128 : Longest Consecutive Sequence                    (Medium)
+ * https://leetcode.com/problems/longest-consecutive-sequence/
+ * Category   : Arrays & Hashing
+ * ---------------------------------------------------------------------
+ * PROBLEM
+ *   Given an unsorted array, return the length of the longest run of
+ *   consecutive integers (e.g. [100,4,200,1,3,2] → 4 for 1,2,3,4).
+ *   MUST run in O(n) time.
+ * ---------------------------------------------------------------------
+ * INTUITION
+ *   A run like 1,2,3,4 can be grown from its FIRST element only:
+ *   count up while (x+1) exists. Checking "does x+1 exist" is an
+ *   O(1) hash-set lookup. To avoid restarting from the middle of an
+ *   existing run, only start counting at numbers whose predecessor
+ *   (x-1) is NOT in the set — every number is then touched O(1)
+ *   times amortized → overall O(n).
+ * ---------------------------------------------------------------------
+ * APPROACH 1 — Hash set + head-of-run growth (BEST)
+ *   Time  Complexity : O(n)   Space Complexity : O(n).
+ *   WHY the "x-1 in set?" guard matters: without it, [1,2,3,4] would
+ *   trigger counting from 1,2,3,4 → O(n²). With it, only 1 counts.
+ * ---------------------------------------------------------------------
+ * APPROACH 2 — Sort + linear scan
+ *   Time  Complexity : O(n log n)   Space Complexity : O(1).
+ *   Wins when memory is tight; loses the O(n) requirement.
+ * =====================================================================
  */
-#include <bits/stdc++.h>
-#include <chrono>
+
+#include <vector>          // std::vector — input container
+#include <unordered_set>   // std::unordered_set — O(1) membership tests
+#include <algorithm>       // std::sort — approach 2
+#include <chrono>          // timing for the benchmark
+#include <iostream>        // std::cout — benchmark output
+#include <sys/resource.h>  // getrusage — peak RAM measurement
+
 using namespace std;
 
-// ============= Variation 1: Sorting =============
-// Algorithm: Sort the array. Iterate and track the consecutive streak length.
-// If numbers are the same, skip. If difference > 1, reset streak.
-// Time: O(n log n)  Space: O(1)
-class Solution_v1 {
+/* =====================================================================
+ * APPROACH 1 : Hash set + head-of-run growth — O(n)
+ * ===================================================================== */
+class Solution_HashSet {
 public:
-    int longestConsecutive(vector<int>& nums) {
-        if (nums.empty()) return 0;
-        sort(nums.begin(), nums.end());
-        int longest = 1, current = 1;
-        for (int i = 1; i < nums.size(); i++) {
-            if (nums[i] == nums[i-1]) continue;
-            if (nums[i] == nums[i-1] + 1) current++;
-            else current = 1;
-            longest = max(longest, current);
-        }
-        return longest;
-    }
-};
+    /*
+     * Purpose : Return the longest run of consecutive integers.
+     * Inputs  : nums — unsorted array of integers.
+     * Output  : length of the longest consecutive sequence.
+     */
+    int longestConsecutive(const vector<int>& nums) {
 
-// ============= Variation 2: Hash Set =============
-// Algorithm: Convert array to unordered_set. Loop through the set. Only start
-// counting sequence length if `num - 1` doesn't exist (i.e. it is a sequence start).
-// Time: O(n)  Space: O(n)
-class Solution_v2 {
-public:
-    int longestConsecutive(vector<int>& nums) {
-        unordered_set<int> s(nums.begin(), nums.end());
-        int longest = 0;
-        for (int num : s) {
-            if (!s.count(num - 1)) {
-                int curr = num, streak = 1;
-                while (s.count(curr + 1)) { curr++; streak++; }
-                longest = max(longest, streak);
+        // Throw everything into a set: O(1) "does x exist?" later.
+        unordered_set<int> seen(nums.begin(), nums.end());
+
+        // best : longest run discovered so far.
+        int best = 0;
+
+        // Inspect every distinct number exactly once.
+        for (int x : seen) {
+
+            // Only start a run at its HEAD: x-1 must be absent.
+            // This single guard keeps the whole algorithm O(n).
+            if (seen.count(x - 1)) {
+                continue;  // x is mid-run → some smaller head owns it
             }
+
+            // Grow the run upward while consecutive numbers exist.
+            int length = 1;
+            while (seen.count(x + length)) {
+                ++length;  // extend the run by one
+            }
+
+            // Keep the global maximum.
+            best = max(best, length);
         }
-        return longest;
+        return best;
     }
 };
 
-// ============= Variation 3: Union Find =============
-// Algorithm: Map numbers to themselves in a parent array. Union a number with its
-// `num-1` and `num+1` counterparts. Track group sizes. Largest group is the answer.
-// Time: O(n α(n))  Space: O(n)
-class Solution_v3 {
+/* =====================================================================
+ * APPROACH 2 : Sort + linear scan — O(n log n)
+ * ===================================================================== */
+class Solution_SortScan {
 public:
-    unordered_map<int, int> parent, sz;
-
-    int find(int x) {
-        if (parent[x] != x) parent[x] = find(parent[x]);
-        return parent[x];
-    }
-
-    void unite(int x, int y) {
-        int px = find(x), py = find(y);
-        if (px == py) return;
-        if (sz[px] < sz[py]) swap(px, py);
-        parent[py] = px;
-        sz[px] += sz[py];
-    }
-
+    /*
+     * Purpose : Return the longest run of consecutive integers.
+     * Inputs  : nums — unsorted array of integers.
+     * Output  : length of the longest consecutive sequence.
+     */
     int longestConsecutive(vector<int>& nums) {
-        parent.clear(); sz.clear();
-        for (int num : nums) {
-            if (parent.count(num)) continue;
-            parent[num] = num; sz[num] = 1;
-            if (parent.count(num - 1)) unite(num, num - 1);
-            if (parent.count(num + 1)) unite(num, num + 1);
+
+        // Sorting groups each run into a contiguous stretch — O(n log n).
+        sort(nums.begin(), nums.end());
+
+        // Edge case: empty input has no run at all.
+        if (nums.empty()) {
+            return 0;
         }
-        int longest = 0;
-        for (auto& p : sz) longest = max(longest, p.second);
-        return longest;
+
+        // cur/best : run length ending here / global maximum.
+        int cur = 1;
+        int best = 1;
+
+        // Sweep the sorted array once.
+        for (int i = 1; i < static_cast<int>(nums.size()); ++i) {
+
+            // Duplicates do not extend a run — skip them silently.
+            if (nums[i] == nums[i - 1]) {
+                continue;
+            }
+
+            // Consecutive value → the current run grows by one.
+            if (nums[i] == nums[i - 1] + 1) {
+                ++cur;
+            } else {
+                // Gap → the run broke; start a fresh run of length 1.
+                cur = 1;
+            }
+
+            // Track the global maximum after every element.
+            best = max(best, cur);
+        }
+        return best;
     }
 };
 
+/* =====================================================================
+ * BENCHMARK — time + peak RAM for both approaches
+ * ===================================================================== */
 int main() {
-    vector<int> nums = {100, 4, 200, 1, 3, 2, 5, 6, 7, 8};
+    // Official example (1,2,3,4 → 4).
+    vector<int> nums = {100, 4, 200, 1, 3, 2};
 
-    {
-        vector<int> data = nums;
-        auto start = chrono::high_resolution_clock::now();
-        int res = Solution_v1().longestConsecutive(data);
-        auto end = chrono::high_resolution_clock::now();
-        double us = chrono::duration_cast<chrono::nanoseconds>(end - start).count() / 1000.0;
-        cout << "var1 (Sorting): result=" << res << ", time = " << us << " µs" << endl;
-    }
-    {
-        vector<int> data = nums;
-        auto start = chrono::high_resolution_clock::now();
-        int res = Solution_v2().longestConsecutive(data);
-        auto end = chrono::high_resolution_clock::now();
-        double us = chrono::duration_cast<chrono::nanoseconds>(end - start).count() / 1000.0;
-        cout << "var2 (Hash Set): result=" << res << ", time = " << us << " µs" << endl;
-    }
-    {
-        vector<int> data = nums;
-        auto start = chrono::high_resolution_clock::now();
-        int res = Solution_v3().longestConsecutive(data);
-        auto end = chrono::high_resolution_clock::now();
-        double us = chrono::duration_cast<chrono::nanoseconds>(end - start).count() / 1000.0;
-        cout << "var3 (Union Find): result=" << res << ", time = " << us << " µs" << endl;
-    }
+    // --- Approach 1 ---
+    struct rusage b1, a1;
+    getrusage(RUSAGE_SELF, &b1);
+    auto s1 = chrono::high_resolution_clock::now();
+    int r1 = Solution_HashSet().longestConsecutive(nums);
+    auto e1 = chrono::high_resolution_clock::now();
+    getrusage(RUSAGE_SELF, &a1);
+    double us1 = chrono::duration_cast<chrono::nanoseconds>(e1 - s1).count() / 1000.0;
+    long mem1 = (a1.ru_maxrss - b1.ru_maxrss) / 1024;
+
+    // --- Approach 2 (sorts its own copy) ---
+    vector<int> copy = nums;
+    struct rusage b2, a2;
+    getrusage(RUSAGE_SELF, &b2);
+    auto s2 = chrono::high_resolution_clock::now();
+    int r2 = Solution_SortScan().longestConsecutive(copy);
+    auto e2 = chrono::high_resolution_clock::now();
+    getrusage(RUSAGE_SELF, &a2);
+    double us2 = chrono::duration_cast<chrono::nanoseconds>(e2 - s2).count() / 1000.0;
+    long mem2 = (a2.ru_maxrss - b2.ru_maxrss) / 1024;
+
+    cout << "Approach 1 (hash set, head-of-run) : " << r1
+         << "  time = " << us1 << " µs  peak-ram-delta = " << mem1 << " MB\n";
+    cout << "Approach 2 (sort + scan)           : " << r2
+         << "  time = " << us2 << " µs  peak-ram-delta = " << mem2 << " MB\n";
+
+    cout << ((r1 == r2) ? "PASS : both approaches agree."
+                        : "FAIL : approaches disagree.")
+         << "\n";
     return 0;
 }
-
-// var1 mem = N/A and time = 0.81 µs
-// var2 mem = N/A and time = 10.519 µs
-// var3 mem = N/A and time = 4.88 µs

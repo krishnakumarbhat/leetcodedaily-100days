@@ -1,63 +1,113 @@
 """
-LeetCode 217: Contains Duplicate
-Link: https://leetcode.com/problems/contains-duplicate/
-Difficulty: Easy
+=====================================================================
+LeetCode 217 : Contains Duplicate                              (Easy)
+https://leetcode.com/problems/contains-duplicate/
+Category   : Arrays & Hashing
+---------------------------------------------------------------------
+PROBLEM
+    Return true if any value appears at least twice in the array,
+    false if every element is distinct.
+---------------------------------------------------------------------
+INTUITION
+    "Seen it before?" is literally the job of a hash set: O(1)
+    insert + O(1) membership test. Scan once, remember everything,
+    and the first repeat answers the question.
+---------------------------------------------------------------------
+APPROACH 1 — Hash set (BEST)
+    Time  Complexity : O(n)   Space Complexity : O(n)
+    Python `set` = dict without values (open addressing + linear
+    probing, h(k,i) = (hash(k)+i) mod m) — one contiguous table,
+    tiny memory, great cache locality.
+---------------------------------------------------------------------
+APPROACH 2 — Sort + adjacent scan (zero extra memory)
+    Time  Complexity : O(n log n)   Space Complexity : O(1)
+    Wins when memory is critical; loses the O(n) time bound.
+---------------------------------------------------------------------
+REAL LIFE
+    • Login systems: is this username taken? (uniqueness check)
+    • Deduplicating logs, inventory SKUs, search-engine crawlers.
+=====================================================================
 """
-import time, tracemalloc
+
+from __future__ import annotations
+import time
+import tracemalloc
 from typing import List
 
-# ============= Variation 1: Brute Force =============
-# Algorithm: Compare every element against every other element using two nested loops.
-# Time Complexity: O(n^2)   Space Complexity: O(1)
-class Solution_v1:
-    def containsDuplicate(self, nums: List[int]) -> bool:
-        for i in range(len(nums)):
-            for j in range(i + 1, len(nums)):
-                if nums[i] == nums[j]:
-                    return True
-        return False
 
-# ============= Variation 2: Sorting =============
-# Algorithm: Sort the array first. If there are duplicates, they will be adjacent.
-# Iterate through the array and check if nums[i] == nums[i-1].
-# Time Complexity: O(n log n)   Space Complexity: O(1) in-place
-class Solution_v2:
-    def containsDuplicate(self, nums: List[int]) -> bool:
-        nums.sort()
-        for i in range(1, len(nums)):
-            if nums[i] == nums[i - 1]:
-                return True
-        return False
+# =====================================================================
+# APPROACH 1 : Hash set — remember everything you have seen
+# =====================================================================
+class Solution_HashSet:
+    """
+    Purpose : Detect whether any value repeats inside `nums`.
+    Inputs  : nums — array of integers to inspect.
+    Output  : True if a duplicate exists, False otherwise.
+    """
 
-# ============= Variation 3: Hash Set =============
-# Algorithm: Use a hash set to keep track of seen elements. Iterating through the array,
-# return True if an element is already in the set, otherwise add it.
-# Time Complexity: O(n)   Space Complexity: O(n)
-class Solution_v3:
     def containsDuplicate(self, nums: List[int]) -> bool:
+        # seen : every distinct value we have walked past so far.
         seen = set()
+
+        # Walk every element exactly once.
         for num in nums:
+            # If this value is already stored → second occurrence → True.
             if num in seen:
                 return True
+
+            # First occurrence → remember it for the future.
             seen.add(num)
+
+        # Loop finished with no repeats → every element was distinct.
         return False
 
-# ============= Benchmarking =============
+
+# =====================================================================
+# APPROACH 2 : Sort + adjacent scan — zero extra memory
+# =====================================================================
+class Solution_SortAdjacent:
+    """
+    Purpose : Detect whether any value repeats inside `nums`.
+    Inputs  : nums — array of integers to inspect.
+    Output  : True if a duplicate exists, False otherwise.
+    """
+
+    def containsDuplicate(self, nums: List[int]) -> bool:
+        # Sorting groups equal values side by side — the O(n log n) step.
+        # Timsort is in-place (needs O(1) aux memory for small inputs).
+        nums.sort()
+
+        # Walk the sorted array comparing each element with its neighbour.
+        for i in range(1, len(nums)):
+            # Two equal neighbours = a duplicate exists.
+            if nums[i] == nums[i - 1]:
+                return True
+
+        # No equal neighbours anywhere → all distinct.
+        return False
+
+
+# =====================================================================
+# BENCHMARK — time + peak memory for both approaches
+# =====================================================================
 if __name__ == "__main__":
-    test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 1]
-    solutions = [Solution_v1, Solution_v2, Solution_v3]
-    names = ["Brute Force", "Sorting", "Hash Set"]
+    # Sample with duplicates sprinkled in.
+    nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 3]
 
-    for i, (Sol, name) in enumerate(zip(solutions, names), 1):
-        data = test_data[:]
-        tracemalloc.start()
-        t0 = time.perf_counter()
-        result = Sol().containsDuplicate(data)
-        t1 = time.perf_counter()
-        mem = tracemalloc.get_traced_memory()[1]
-        tracemalloc.stop()
-        print(f"var{i} ({name}): result={result}, mem = {mem} bytes, time = {(t1-t0)*1e6:.2f} µs")
+    tracemalloc.start()
+    t0 = time.perf_counter()
+    r1 = Solution_HashSet().containsDuplicate(nums)
+    t1 = time.perf_counter()
+    _, peak1 = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-# var1 mem = 640 bytes and time = 20.01 µs
-# var2 mem = 584 bytes and time = 10.16 µs
-# var3 mem = 1264 bytes and time = 8.20 µs
+    tracemalloc.start()
+    t2 = time.perf_counter()
+    r2 = Solution_SortAdjacent().containsDuplicate(nums)
+    t3 = time.perf_counter()
+    _, peak2 = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    print(f"Approach 1 (hash set)          : {r1}  time = {(t1 - t0) * 1e6:.2f} µs  peak-mem = {peak1} bytes")
+    print(f"Approach 2 (sort + adjacent)   : {r2}  time = {(t3 - t2) * 1e6:.2f} µs  peak-mem = {peak2} bytes")
+    print("PASS : both approaches agree." if r1 == r2 else "FAIL : approaches disagree.")

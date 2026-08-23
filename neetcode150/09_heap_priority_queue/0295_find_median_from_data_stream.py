@@ -1,46 +1,93 @@
-"""LeetCode 295: Find Median from Data Stream - Hard"""
-import time, tracemalloc
-import heapq, bisect
+"""
+=====================================================================
+LeetCode 295 : Find Median from Data Stream                     (Hard)
+https://leetcode.com/problems/find-median-from-data-stream/
+Category   : Heap / Priority queue
+---------------------------------------------------------------------
+PROBLEM
+    Design a class: addNum(v) streams integers in any order;
+    findMedian() returns the median of everything added so far.
+---------------------------------------------------------------------
+INTUITION
+    Split the stream into a LOWER half (max-heap, store negatives)
+    and an UPPER half (min-heap). Balanced heights + ordered tops
+    give the median from the boundary in O(1).
+---------------------------------------------------------------------
+APPROACH 1 · Two heaps (best)
+    1. addNum: push to the lower max-heap; rebalance by moving the
+       boundary element if lower's top exceeds upper's top.
+    2. findMedian: equal sizes -> mean of both tops; else top of
+       the taller heap.
+APPROACH 2 · Bisect-insert into a sorted list (baseline)
+    data.insert(bisect_left(data, v), v) is O(n) per add due to the
+    memmove — fine for small n, hopeless at scale.
+---------------------------------------------------------------------
+DEEP DIVE · The balance invariant
+    Invariants after every add:
+      (a) len(lower) == len(upper) or len(lower) == len(upper) + 1;
+      (b) max(lower) <= min(upper).
+    Fixing (b): when lower[-1] (its max, via -lower[0]) > upper[0],
+    swap the two tops. Fixing (a): if upper ever gets taller, migrate
+    its minimum to the lower heap. Median always reads off the seam.
+---------------------------------------------------------------------
+TIME COMPLEXITY : O(log n) per addNum ; O(1) findMedian.
+MEMORY COMPLEXITY: O(n).
+=====================================================================
+"""
+import heapq, bisect, time, tracemalloc
 
-# Variation 1: Two heaps (max-heap for lower half, min-heap for upper half)
-class MedianFinder_v1:
+
+class Solution_1:
+    """Two-heap median — the classic streaming solution."""
+
     def __init__(self):
-        self.small = []  # max-heap (negated)
-        self.large = []  # min-heap
-    def addNum(self, num: int) -> None:
-        heapq.heappush(self.small, -num)
-        # Ensure small's max <= large's min
-        if self.small and self.large and -self.small[0] > self.large[0]:
-            heapq.heappush(self.large, -heapq.heappop(self.small))
-        # Balance sizes (diff <= 1)
-        if len(self.small) > len(self.large) + 1:
-            heapq.heappush(self.large, -heapq.heappop(self.small))
-        if len(self.large) > len(self.small) + 1:
-            heapq.heappush(self.small, -heapq.heappop(self.large))
-    def findMedian(self) -> float:
-        if len(self.small) > len(self.large): return -self.small[0]
-        if len(self.large) > len(self.small): return self.large[0]
-        return (-self.small[0] + self.large[0]) / 2.0
+        self.lower = []                    # max-heap via negation
+        self.upper = []                    # min-heap
 
-# Variation 2: Sorted list with bisect (simpler, slower insert)
-class MedianFinder_v2:
-    def __init__(self): self.data = []
-    def addNum(self, num: int) -> None:
-        bisect.insort(self.data, num)
-    def findMedian(self) -> float:
+    def addNum(self, num):
+        heapq.heappush(self.lower, -num)
+        if self.lower and self.upper and -self.lower[0] > self.upper[0]:
+            heapq.heappush(self.upper, -heapq.heappop(self.lower))
+        if len(self.lower) > len(self.upper) + 1:
+            heapq.heappush(self.upper, -heapq.heappop(self.lower))
+        if len(self.upper) > len(self.lower):
+            heapq.heappush(self.lower, -heapq.heappop(self.upper))
+
+    def findMedian(self):
+        if len(self.lower) > len(self.upper):
+            return -self.lower[0]
+        return (-self.lower[0] + self.upper[0]) / 2.0
+
+
+class Solution_2:
+    """Sorted-list baseline: O(n) insert."""
+
+    def __init__(self):
+        self.data = []
+
+    def addNum(self, num):
+        self.data.insert(bisect.bisect_left(self.data, num), num)
+
+    def findMedian(self):
         n = len(self.data)
-        if n % 2: return float(self.data[n // 2])
+        if n % 2:
+            return self.data[n // 2]
         return (self.data[n // 2 - 1] + self.data[n // 2]) / 2.0
 
+
 if __name__ == "__main__":
-    ops = [1, 2, 3, 4, 5]
-    for Vi, Cls in enumerate([MedianFinder_v1, MedianFinder_v2], 1):
-        tracemalloc.start(); t0 = time.perf_counter()
-        mf = Cls()
-        results = []
-        for v in ops:
-            mf.addNum(v); results.append(mf.findMedian())
-        t1 = time.perf_counter(); mem = tracemalloc.get_traced_memory()[1]; tracemalloc.stop()
-        print(f"var{Vi}: medians={results}, mem={mem}bytes, time={(t1-t0)*1e6:.2f}us")
-# var1 mem = {} and time = {}
-# var2 mem = {} and time = {}
+    steps = [(1, 1.0), (2, 1.5), (3, 2.0), (4, 2.5), (5, 3.0)]
+    tracemalloc.start()
+    t0 = time.perf_counter()
+    s1, s2 = Solution_1(), Solution_2()
+    ok = True
+    for val, want in steps:
+        s1.addNum(val)
+        s2.addNum(val)
+        r1, r2 = s1.findMedian(), s2.findMedian()
+        ok &= r1 == want and r2 == want
+        print(f"after {val} -> A1={r1} A2={r2} (want {want}) {'PASS' if r1 == want and r2 == want else 'FAIL'}")
+    dt = time.perf_counter() - t0
+    mem = tracemalloc.get_traced_memory()[1] / 1024
+    tracemalloc.stop()
+    print(f"{'PASS : all steps' if ok else 'FAIL'} | time: {dt * 1e6:.0f} us | mem: {mem:.0f} KB")

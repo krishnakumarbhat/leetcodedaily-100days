@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 · Two Pointers — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "02", title: "Two Pointers" };
+const U = window.NC150.utils;
+
+/* shared helpers (same as section 01): open-addressing visuals */
+function emptySlots(m) { return new Array(m).fill(null); }
+function hmod(k, m) { return ((k % m) + m) % m; }
+/* simulate linear-probing lookup; returns {hit:slot|null, probe:[...]} */
+function probeFind(slots, m, key) {
+  const probe = [];
+  for (let j = 0; j < m; j++) {
+    const s = hmod(key + j, m);
+    probe.push(s);
+    if (slots[s] && slots[s].k === key) return { hit: s, probe };
+    if (!slots[s]) return { hit: null, probe };
+  }
+  return { hit: null, probe };
+}
+/* simulate linear-probing insert; returns placed slot */
+function probeInsert(slots, m, key, val) {
+  for (let j = 0; j < m; j++) {
+    const s = hmod(key + j, m);
+    if (!slots[s]) { slots[s] = { k: key, v: val }; return s; }
+  }
+  return -1;
+}
+/* alphanumeric test for the palindrome problems */
+function isAlnum(c) { return /[a-zA-Z0-9]/.test(c); }
+/* independent reference: brute-force max area (used as the verdict) */
+function bruteMaxArea(h) {
+  let b = 0;
+  for (let i = 0; i < h.length; i++)
+    for (let j = i + 1; j < h.length; j++)
+      b = Math.max(b, Math.min(h[i], h[j]) * (j - i));
+  return b;
+}
+/* independent reference: prefix/suffix trapped water (used as verdict) */
+function refTrap(h) {
+  if (!h.length) return 0;
+  const n = h.length, lm = [h[0]], rm = new Array(n);
+  rm[n - 1] = h[n - 1];
+  let t = 0;
+  for (let i = 1; i < n; i++) lm[i] = Math.max(lm[i - 1], h[i]);
+  for (let i = n - 2; i >= 0; i--) rm[i] = Math.max(rm[i + 1], h[i]);
+  for (let i = 0; i < n; i++) t += Math.max(0, Math.min(lm[i], rm[i]) - h[i]);
+  return t;
+}
+/* independent reference: sorted-set of unique zero-sum triplets */
+function refTriplets(nums) {
+  const s = new Set();
+  for (let i = 0; i < nums.length; i++)
+    for (let j = i + 1; j < nums.length; j++)
+      for (let k = j + 1; k < nums.length; k++)
+        if (nums[i] + nums[j] + nums[k] === 0)
+          s.add([nums[i], nums[j], nums[k]].sort((a, b) => a - b).join(","));
+  return [...s].sort();
+}
+/* independent reference: normalized palindrome verdict */
+function refPalindrome(s) {
+  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return clean === clean.split("").reverse().join("");
+}
+
+/* ================================================================
+ * PROBLEM 0011 — CONTAINER WITH MOST WATER
+ * ================================================================ */
+NC150.register({
+  id: "0011", title: "Container With Most Water", difficulty: "Medium",
+  url: "https://leetcode.com/problems/container-with-most-water/",
+  tags: ["two pointers", "array"],
+  approaches: ["Approach 1 · Brute force (O(n²))", "Approach 2 · Two pointers (best)"],
+  complexities: [
+    { time: "O(n²)", space: "O(1)", note: "baseline — every pair" },
+    { time: "O(n)", space: "O(1)", note: "BEST — shrink from the ends" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "nested loops", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "Two pointers", tech: "move the shorter wall", time: "O(n)", space: "O(1)", when: "always — the answer", best: true }
+  ],
+  inputs: [
+    { name: "heights", label: "heights =", type: "list", default: "[1,8,6,2,5,4,8,3,7]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { heights: "[1,8,6,2,5,4,8,3,7]" }, result: "49" },
+    { label: "Ex 2", values: { heights: "[1,1]" }, result: "1" },
+    { label: "Plateau", values: { heights: "[4,3,1,1,1,3,4]" }, result: "24" }
+  ],
+  realLife: "<p><b>Water reservoirs / dam siting</b>: engineers pick two banks that maximize impounded water — same max-rectangle problem.</p><p><b>Stock & chart analysis</b>: the 'biggest rectangle under a chart' idea (volume profiles, heat-map selection) is this exact geometry.</p>",
+  dsDive: `<h3>The two-pointer math that makes O(n) provable</h3>
+<div class="equation">area(l, r) = min(height[l], height[r]) · (r − l)</div>
+<p>Width and height both matter, but at any moment ONE wall is the bottleneck. Fix l and r with height[l] ≤ height[r]: every container still using wall l has height ≤ height[l] and width ≤ (r − l), so it can never beat the current area. Wall l is provably useless → discard it by moving l inward. Same argument mirrors at r. Each move permanently removes one candidate wall, so exactly n−1 areas are measured.</p>
+<p><b>Key contrast with binary search:</b> here we do NOT need sorted data — the 'monotonic' property is not about values but about the area formula: the discarded wall can never participate in a better answer, no matter what values lie ahead.</p>`,
+  code: [
+    "best = 0",
+    "for l in range(n):                    # every left wall",
+    "    for r in range(l + 1, n):         # every right wall",
+    "        area = min(h[l], h[r]) * (r - l)",
+    "        best = max(best, area)",
+    "return best"
+  ],
+  steps: [
+    function (vals) {
+      const heights = vals.heights, n = heights.length;
+      const steps = [];
+      let best = 0;
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "heights (walls)", data: heights, cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "best area so far", data: [best], size: 8 }
+      ]});
+      if (n < 2) {
+        const last = { text: "Fewer than 2 walls → no container exists → <b>0</b>.", code: 1, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      snap("Baseline: try EVERY pair (l, r) and measure the rectangle — O(n²).", 0, {});
+      for (let l = 0; l < n; l++) {
+        for (let r = l + 1; r < n; r++) {
+          const area = Math.min(heights[l], heights[r]) * (r - l);
+          const cls = {}; cls[l] = "hot"; cls[r] = "hot";
+          if (area > best) {
+            const old = best; best = area;
+            snap(`Pair (${l},${r}): min(${heights[l]},${heights[r]}) × width ${r - l} = <b>${area}</b> &gt; best ${old} → best = <b>${best}</b>.`, 4, cls);
+          } else {
+            snap(`Pair (${l},${r}): area <b>${area}</b> ≤ best ${best} → keep <b>${best}</b>.`, 4, cls);
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = best === bruteMaxArea(heights);
+      last.memNote = "Space: O(1). Time: O(n²) — n(n−1)/2 pairs.";
+      return { steps, result: String(best), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const heights = vals.heights, n = heights.length;
+      const steps = [];
+      const snap = (text, code, cls, scalars) => steps.push({ text, code, mem: [
+        { type: "array", title: "heights (walls)", data: heights, cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "h[l] · h[r] · best", data: scalars || [], size: 8 }
+      ]});
+      if (n < 2) {
+        const last = { text: "Fewer than 2 walls → <b>0</b>.", code: 1, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      let l = 0, r = n - 1, best = 0;
+      snap("Start with MAXIMAL width: l at index 0, r at the last index.", 2, { [l]: "hot", [r]: "hot" }, [heights[l], heights[r], best]);
+      while (l < r) {
+        const area = Math.min(heights[l], heights[r]) * (r - l);
+        const cls = { [l]: "hot", [r]: "hot" };
+        if (area > best) {
+          best = area;
+          snap(`Measure (${l},${r}): min(${heights[l]},${heights[r]}) × width ${r - l} = <b>${area}</b> → NEW best <b>${best}</b>.`, 4, cls, [heights[l], heights[r], best]);
+        } else {
+          snap(`Measure (${l},${r}): area <b>${area}</b> ≤ best ${best} → best stays <b>${best}</b>.`, 4, cls, [heights[l], heights[r], best]);
+        }
+        if (heights[l] < heights[r]) {
+          snap(`h[l]=<b>${heights[l]}</b> &lt; h[r]=<b>${heights[r]}</b> → the LEFT wall caps the water. Any partner of wall ${l} fits ≤ ${heights[l]}×(r−l) — wall ${l} can never win → discard it: <b>l++</b>.`, 8, cls, [heights[l], heights[r], best]);
+          l++;
+        } else {
+          snap(`h[r]=<b>${heights[r]}</b> ≤ h[l]=<b>${heights[l]}</b> → the RIGHT wall caps (or ties). Discard wall ${r}: <b>r--</b>.`, 10, cls, [heights[l], heights[r], best]);
+          r--;
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = best === bruteMaxArea(heights);
+      last.memNote = "Space: O(1). Time: O(n) — one measurement per discarded wall.";
+      return { steps, result: String(best), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0015 — 3SUM
+ * ================================================================ */
+NC150.register({
+  id: "0015", title: "3Sum", difficulty: "Medium",
+  url: "https://leetcode.com/problems/3sum/",
+  tags: ["two pointers", "hashmap"],
+  approaches: ["Approach 1 · Sort + two pointers (best)", "Approach 2 · Pivot + hash map"],
+  complexities: [
+    { time: "O(n²)", space: "O(1)", note: "BEST — sort once, walk per pivot" },
+    { time: "O(n²)", space: "O(n)", note: "hash-set 2-sum + dedupe set" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "3 nested loops", time: "O(n³)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "Sort + two pointers", tech: "sorted 2-sum per pivot", time: "O(n²)", space: "O(1)", when: "general case", best: true },
+    { name: "Pivot + hash map", tech: "set lookups + dedupe", time: "O(n²)", space: "O(n)", when: "no sort allowed", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[-1,0,1,2,-1,-4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[-1,0,1,2,-1,-4]" }, result: "[[-1,-1,2],[-1,0,1]]" },
+    { label: "Ex 2 (zeros)", values: { nums: "[0,0,0,0]" }, result: "[[0,0,0]]" },
+    { label: "Ex 3 (none)", values: { nums: "[1,2,3]" }, result: "[]" }
+  ],
+  realLife: "<p><b>Chemistry / recipe balancing</b>: finding trios of amounts that cancel out (pH buffers, alloy compositions) is literally a+b+c=0 search.</p><p><b>Payment reconciliation</b>: 'which three invoices net to zero?' — deduplication against mirrored groups is the same sorted-set problem.</p>",
+  dsDive: `<h3>Dedupe on sorted triplets — and the hash tables underneath</h3>
+<p>With a sorted array every triplet is emitted in sorted order (a ≤ b ≤ c), and the <b>skip-duplicates</b> rule jumps past repeated values — so the exact same value-triple can never be recorded twice. No set needed at all in Approach 1.</p>
+<div class="equation">a = nums[i] &nbsp;|&nbsp; need b + c = −a &nbsp;|&nbsp; sorted 2-sum: move l up / r down</div>
+<p>Approach 2 achieves uniqueness by hashing the canonical sorted tuple instead. Under the hood, the dedupe set is a hash table: <b>Python</b> = open addressing with linear probing <span class="code-var">h(k, i) = (hash(k) + i) mod m</span>; <b>C++</b> <span class="code-cpp">std::unordered_set</span> = separate chaining (bucket lists). Both give O(1) average per op — the O(n²) time bound is dominated by the pivot loop, not the hash ops.</p>`,
+  code: [
+    [
+      "nums.sort()                          # O(n log n) — enables everything",
+      "for i in range(n - 2):",
+      "    if i > 0 and nums[i] == nums[i-1]: continue   # skip dup pivot",
+      "    if nums[i] > 0: break            # positives can't sum to 0",
+      "    target = -nums[i]; l, r = i + 1, n - 1",
+      "    while l < r:                     # sorted 2-sum, O(n)",
+      "        s = nums[l] + nums[r]",
+      "        if s < target: l += 1",
+      "        elif s > target: r -= 1",
+      "        else:",
+      "            record [nums[i], nums[l], nums[r]]",
+      "            while l < r and nums[l] == nums[l+1]: l += 1  # skip dup b",
+      "            while l < r and nums[r] == nums[r-1]: r -= 1  # skip dup c",
+      "            l += 1; r -= 1"
+    ],
+    [
+      "nums.sort()                          # only for canonical keys",
+      "seen = set()                         # dedupe: open addressing",
+      "for i in range(n - 2):",
+      "    if nums[i] > 0: break",
+      "    partners = set()                 # inner 2-sum hash set",
+      "    for j in range(i + 1, n):",
+      "        need = -(nums[i] + nums[j])",
+      "        if need in partners:         # O(1) probe lookup",
+      "            trip = (nums[i], need, nums[j])",
+      "            if trip not in seen: seen.add(trip); record trip",
+      "        partners.add(nums[j])"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums.slice().sort((a, b) => a - b);
+      const n = nums.length;
+      const steps = [];
+      const found = [];
+      const snap = (text, code, cls) => {
+        const mem = [{ type: "array", title: "nums (sorted)", data: nums, cls: cls || {}, showIdx: true, size: 4 }];
+        if (found.length) mem.push({ type: "array", title: "triplets found", data: found.map(t => "[" + t.join(",") + "]"), size: 8 });
+        steps.push({ text, code, mem });
+      };
+      if (n < 3) {
+        const last = { text: "Fewer than 3 numbers → no triplets → <b>[]</b>.", code: 0, mem: [{ type: "array", title: "nums (sorted)", data: nums, showIdx: true, size: 4 }], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap("Step 1: <b>sort</b> — O(n log n). Equal values become neighbours (that is what makes dedupe free).", 0, {});
+      for (let i = 0; i < n - 2; i++) {
+        if (nums[i] > 0) {
+          snap(`Pivot <b>${nums[i]}</b> &gt; 0 → all later values are positive, a+b+c can never be 0 → stop.`, 3, { [i]: "done" });
+          break;
+        }
+        if (i > 0 && nums[i] === nums[i - 1]) {
+          snap(`Pivot <b>${nums[i]}</b> equals the previous pivot → same 'a' ⇒ same triplets → <b>skip</b>.`, 2, { [i]: "hot" });
+          continue;
+        }
+        const target = -nums[i];
+        let l = i + 1, r = n - 1;
+        snap(`Pivot i=${i} → <b>a = ${nums[i]}</b>. Need b + c = <b>${target}</b> on the slice (${l}..${r}).`, 4, { [i]: "hl", [l]: "hot", [r]: "hot" });
+        while (l < r) {
+          const sum = nums[l] + nums[r];
+          const cls = { [i]: "hl", [l]: "hot", [r]: "hot" };
+          if (sum < target) {
+            snap(`b + c = ${sum} &lt; ${target} → pair too small → <b>l++</b> (need a bigger b).`, 7, cls);
+            l++;
+          } else if (sum > target) {
+            snap(`b + c = ${sum} &gt; ${target} → pair too big → <b>r--</b> (need a smaller c).`, 8, cls);
+            r--;
+          } else {
+            found.push([nums[i], nums[l], nums[r]]);
+            snap(`b + c = ${sum} = ${target} → record triplet <b>[${nums[i]}, ${nums[l]}, ${nums[r]}]</b>.`, 9, cls);
+            while (l < r && nums[l] === nums[l + 1]) {
+              l++;
+              snap(`Skip duplicate b = <b>${nums[l]}</b> — same value triple would repeat.`, 11, { [i]: "hl", [l]: "hot", [r]: "hot" });
+            }
+            while (l < r && nums[r] === nums[r - 1]) {
+              r--;
+              snap(`Skip duplicate c = <b>${nums[r]}</b> — same value triple would repeat.`, 12, { [i]: "hl", [l]: "hot", [r]: "hot" });
+            }
+            l++; r--;
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(found);
+      last.correct = JSON.stringify(found.map(t => t.join(",")).sort()) === JSON.stringify(refTriplets(vals.nums));
+      last.memNote = "Space: O(1) extra. Time: sort O(n log n) + n pivots × O(n) walk = O(n²).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums.slice().sort((a, b) => a - b);
+      const n = nums.length;
+      const steps = [];
+      const found = [];
+      const m = 8;
+      const slots = emptySlots(m);
+      const snap = (text, code, probe, hit, cls) => {
+        const mem = [
+          { type: "array", title: "nums (sorted)", data: nums, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "hashmap", title: "partners set · open addressing", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe: probe || [], hit: hit !== undefined ? hit : -1, formula: "h(k, i) = (hash(k) + i) mod 8" }
+        ];
+        if (found.length) mem.push({ type: "array", title: "triplets found", data: found.map(t => "[" + t.join(",") + "]"), size: 8 });
+        steps.push({ text, code, mem });
+      };
+      if (n < 3) {
+        const last = { text: "Fewer than 3 numbers → <b>[]</b>.", code: 0, mem: [{ type: "array", title: "nums (sorted)", data: nums, showIdx: true, size: 4 }], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap("Sort only to get CANONICAL triplet keys (a ≤ b ≤ c) for dedupe.", 0, [], -1, {});
+      for (let i = 0; i < n - 2; i++) {
+        slots.fill(null);
+        if (nums[i] > 0) {
+          snap(`Pivot <b>${nums[i]}</b> &gt; 0 → stop: only positive values remain.`, 3, [], -1, { [i]: "done" });
+          break;
+        }
+        snap(`Pivot i=${i} → <b>a = ${nums[i]}</b>. Empty the partner set — the inner 2-sum starts fresh.`, 1, [], -1, { [i]: "hl" });
+        for (let j = i + 1; j < n; j++) {
+          const need = -(nums[i] + nums[j]);
+          const cls = { [i]: "hl", [j]: "hot" };
+          const r = probeFind(slots, m, need);
+          if (r.hit !== null) {
+            const trip = [nums[i], need, nums[j]].sort((a, b) => a - b);
+            const dup = found.some(t => t.join() === trip.join());
+            if (!dup) found.push(trip);
+            snap(`j=${j}: b=<b>${nums[j]}</b>. Complement <b>${need}</b> found in the set (probe ${r.probe.join("→")}) → triplet <b>[${trip}]</b> ${dup ? "already known — dedupe skips it" : "recorded!"}.`, 6, r.probe, r.hit, cls);
+          } else {
+            const placed = probeInsert(slots, m, nums[j], "✓");
+            snap(`j=${j}: complement <b>${need}</b> absent (probe ${r.probe.join("→")}) → remember b=<b>${nums[j]}</b> at slot ${placed}.`, 8, r.probe, placed, cls);
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(found);
+      last.correct = JSON.stringify(found.map(t => t.join(",")).sort()) === JSON.stringify(refTriplets(vals.nums));
+      last.memNote = "Space: O(n) — partner set + dedupe set. Time: O(n²) hash ops.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0042 — TRAPPING RAIN WATER
+ * ================================================================ */
+NC150.register({
+  id: "0042", title: "Trapping Rain Water", difficulty: "Hard",
+  url: "https://leetcode.com/problems/trapping-rain-water/",
+  tags: ["two pointers", "prefix max"],
+  approaches: ["Approach 1 · Prefix/suffix max arrays", "Approach 2 · Two pointers (best)"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "3 passes, 2 max arrays" },
+    { time: "O(n)", space: "O(1)", note: "BEST — running maxima" }
+  ],
+  compare: [
+    { name: "Prefix/suffix max", tech: "two max arrays", time: "O(n)", space: "O(n)", when: "easiest to reason about", best: false },
+    { name: "Two pointers", tech: "running lMax/rMax", time: "O(n)", space: "O(1)", when: "always — the answer", best: true }
+  ],
+  inputs: [
+    { name: "heights", label: "height =", type: "list", default: "[0,1,0,2,1,0,1,3,2,1,2,1]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { heights: "[0,1,0,2,1,0,1,3,2,1,2,1]" }, result: "6" },
+    { label: "Ex 2", values: { heights: "[4,2,0,3,2,5]" }, result: "9" },
+    { label: "No basin", values: { heights: "[1,2,3,4,3,2,1]" }, result: "0" }
+  ],
+  realLife: "<p><b>Urban flooding models</b>: rainwater retention on terrain grids is computed exactly this way, cell by cell.</p><p><b>Terrain & hydrology</b>: reservoir capacity planning, dam risk analysis, and histogram-based image segmentation all sum 'trapped volume' per column.</p>",
+  dsDive: `<h3>The one formula behind every solution</h3>
+<div class="equation">water[i] = max(0, min(maxLeft[i], maxRight[i]) − height[i])</div>
+<p>maxLeft[i] = tallest bar in [0..i−1], maxRight[i] = tallest bar in [i+1..n−1]. Water cannot rise above the LOWER of its two walls. Approach 1 precomputes both arrays; Approach 2 notices that when the running lMax ≤ rMax, bar l's cap equals lMax <b>right now</b> — the right array becomes unnecessary:</p>
+<div class="equation">lMax ≤ rMax ⇒ min(maxLeft[l], maxRight[l]) = lMax</div>
+<p>That single invariant replaces O(n) memory with two integers. It is the same 'one side is provably decided' idea as Container With Most Water — two-pointer problems reward finding WHICH side's answer is already final.</p>`,
+  code: [
+    [
+      "leftMax = [h[0]]; for i in 1..n: leftMax[i] = max(leftMax[i-1], h[i])",
+      "rightMax = [h[n-1]]; for i in n-2..0: rightMax[i] = max(rightMax[i+1], h[i])",
+      "total = 0",
+      "for i in range(n):",
+      "    total += max(0, min(leftMax[i], rightMax[i]) - h[i])",
+      "return total"
+    ],
+    [
+      "l, r = 0, n - 1; lMax = rMax = total = 0",
+      "while l < r:",
+      "    if h[l] < h[r]:                # left side is binding",
+      "        if h[l] >= lMax: lMax = h[l]      # new wall → no water",
+      "        else: total += lMax - h[l]        # water pools here",
+      "        l += 1",
+      "    else:                          # right side is binding",
+      "        if h[r] >= rMax: rMax = h[r]",
+      "        else: total += rMax - h[r]",
+      "        r -= 1",
+      "return total"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const heights = vals.heights, n = heights.length;
+      const steps = [];
+      const leftMax = new Array(n).fill(0);
+      const rightMax = new Array(n).fill(0);
+      const water = new Array(n).fill(0);
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "height", data: heights, cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "leftMax — tallest bar at-or-left of i", data: leftMax, cls: {}, showIdx: true, size: 4 },
+        { type: "array", title: "rightMax — tallest bar at-or-right of i", data: rightMax, cls: {}, showIdx: true, size: 4 },
+        { type: "array", title: "water[i]", data: water, cls: {}, showIdx: true, size: 4 }
+      ]});
+      if (n === 0) {
+        const last = { text: "Empty map → <b>0</b>.", code: 0, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      snap("Pass 1 (left→right): leftMax[i] = tallest bar at or left of i — the LEFT wall of each cell.", 0, {});
+      leftMax[0] = heights[0];
+      for (let i = 1; i < n; i++) {
+        leftMax[i] = Math.max(leftMax[i - 1], heights[i]);
+        snap(`leftMax[${i}] = max(leftMax[${i - 1}]=${leftMax[i - 1]}, h[${i}]=${heights[i]}) = <b>${leftMax[i]}</b>.`, 0, { [i]: "hot" });
+      }
+      snap("Pass 2 (right→left): rightMax[i] = tallest bar at or right of i — the RIGHT wall of each cell.", 1, {});
+      rightMax[n - 1] = heights[n - 1];
+      for (let i = n - 2; i >= 0; i--) {
+        rightMax[i] = Math.max(rightMax[i + 1], heights[i]);
+        snap(`rightMax[${i}] = max(rightMax[${i + 1}]=${rightMax[i + 1]}, h[${i}]=${heights[i]}) = <b>${rightMax[i]}</b>.`, 1, { [i]: "hot" });
+      }
+      let total = 0;
+      snap("Pass 3: water[i] = min(leftMax, rightMax) − h[i] (never below 0). Sum it up.", 3, {});
+      for (let i = 0; i < n; i++) {
+        const cap = Math.min(leftMax[i], rightMax[i]);
+        const w = Math.max(0, cap - heights[i]);
+        water[i] = w;
+        total += w;
+        snap(`i=${i}: min(${leftMax[i]},${rightMax[i]}) = <b>${cap}</b> − h=${heights[i]} → water <b>${w}</b>. Running total = <b>${total}</b>.`, 4, { [i]: w > 0 ? "done" : "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(total);
+      last.correct = total === refTrap(heights);
+      last.memNote = "Space: O(n) — two max arrays. Time: O(n) — three linear passes.";
+      return { steps, result: String(total), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const heights = vals.heights, n = heights.length;
+      const steps = [];
+      const snap = (text, code, cls, scalars) => steps.push({ text, code, mem: [
+        { type: "array", title: "height", data: heights, cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "running lMax · rMax · total", data: scalars || [], size: 8 }
+      ]});
+      if (n === 0) {
+        const last = { text: "Empty map → <b>0</b>.", code: 0, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      let l = 0, r = n - 1, lMax = 0, rMax = 0, total = 0;
+      snap("Two pointers from the ends. lMax/rMax = tallest wall seen on each side so far.", 0, { [l]: "hot", [r]: "hot" }, [lMax, rMax, total]);
+      while (l < r) {
+        const cls = { [l]: "hot", [r]: "hot" };
+        if (heights[l] < heights[r]) {
+          if (heights[l] >= lMax) {
+            lMax = heights[l];
+            snap(`h[l]=<b>${heights[l]}</b> &lt; h[r]=<b>${heights[r]}</b> → left side binding. h[l] ≥ lMax → bar ${l} is a NEW wall: lMax = <b>${lMax}</b>, no water here. l++.`, 3, cls, [lMax, rMax, total]);
+          } else {
+            total += lMax - heights[l];
+            snap(`h[l]=<b>${heights[l]}</b> &lt; lMax=<b>${lMax}</b> → bar ${l} sits in a basin: water += ${lMax} − ${heights[l]} = <b>${lMax - heights[l]}</b> → total = <b>${total}</b>. l++.`, 4, cls, [lMax, rMax, total]);
+          }
+          l++;
+        } else {
+          if (heights[r] >= rMax) {
+            rMax = heights[r];
+            snap(`h[r]=<b>${heights[r]}</b> ≤ h[l]=<b>${heights[l]}</b> → right side binding. h[r] ≥ rMax → bar ${r} is a NEW wall: rMax = <b>${rMax}</b>, no water here. r--.`, 6, cls, [lMax, rMax, total]);
+          } else {
+            total += rMax - heights[r];
+            snap(`h[r]=<b>${heights[r]}</b> &lt; rMax=<b>${rMax}</b> → bar ${r} sits in a basin: water += ${rMax} − ${heights[r]} = <b>${rMax - heights[r]}</b> → total = <b>${total}</b>. r--.`, 7, cls, [lMax, rMax, total]);
+          }
+          r--;
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(total);
+      last.correct = total === refTrap(heights);
+      last.memNote = "Space: O(1) — four integers. Time: O(n) — every bar finalized once.";
+      return { steps, result: String(total), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0125 — VALID PALINDROME
+ * ================================================================ */
+NC150.register({
+  id: "0125", title: "Valid Palindrome", difficulty: "Easy",
+  url: "https://leetcode.com/problems/valid-palindrome/",
+  tags: ["two pointers", "string"],
+  approaches: ["Approach 1 · Two pointers + lazy filtering (best)", "Approach 2 · Filter + reverse compare"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — normalize one char at a time" },
+    { time: "O(n)", space: "O(n)", note: "filtered copy + reverse" }
+  ],
+  compare: [
+    { name: "Two pointers", tech: "skip junk lazily", time: "O(n)", space: "O(1)", when: "always — the answer", best: true },
+    { name: "Filter + reverse", tech: "clean, then mirror", time: "O(n)", space: "O(n)", when: "readability first", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "A man, a plan, a canal: Panama" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "A man, a plan, a canal: Panama" }, result: "true" },
+    { label: "Ex 2", values: { s: "race a car" }, result: "false" },
+    { label: "Ex 3 (digits)", values: { s: "0P0" }, result: "true" }
+  ],
+  realLife: "<p><b>DNA & RNA analysis</b>: palindromic sequences are biologically meaningful (restriction sites) and bioinformatics tools scan for them with the identical two-pointer pass.</p><p><b>Text validation</b>: 'is this edit only punctuation?' — diff tools and citation checkers compare text with punctuation stripped, exactly the normalization done here.</p>",
+  dsDive: `<h3>What 'alphanumeric' really costs</h3>
+<p>isalnum() is not free: each character triggers a Unicode category lookup (bitmap table). It stays O(1) per character, so the O(n) bound survives — but doing it lazily (only on the two characters the pointers actually look at) is what buys Approach 1 its O(1) space. Approach 2 pays the same per-character cost for EVERY character once, and additionally allocates a second string:</p>
+<div class="equation">Approach 1: O(1) extra space, normalization on demand | Approach 2: O(n) copy, simpler code</div>
+<p>For interview purposes the two-pointer version is strictly superior on memory; the filter version is the fastest to write correctly under pressure.</p>`,
+  code: [
+    [
+      "l, r = 0, len(s) - 1",
+      "while l < r:",
+      "    while l < r and not s[l].isalnum(): l += 1   # skip junk left",
+      "    while l < r and not s[r].isalnum(): r -= 1   # skip junk right",
+      "    if s[l].lower() != s[r].lower(): return False",
+      "    l += 1; r -= 1",
+      "return True"
+    ],
+    [
+      "clean = ''.join(c.lower() for c in s if c.isalnum())",
+      "return clean == clean[::-1]      # palindrome ⇔ equals its reverse"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s);
+      const chars = s.split("");
+      const steps = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "string", title: "s · raw characters", data: chars, cls: cls || {}, size: 1 }
+      ]});
+      if (!chars.length) {
+        const last = { text: "Empty string normalizes to empty → trivially a palindrome → <b>true</b>.", code: 5, mem: [], result: "true", correct: true, memNote: "O(1)." };
+        steps.push(last);
+        return { steps, result: "true", correct: true, memNote: "O(1)." };
+      }
+      let l = 0, r = chars.length - 1, ok = true;
+      snap("Two pointers: l marches right, r marches left. Junk characters are skipped on demand.", 0, { [l]: "hot", [r]: "hot" });
+      while (l < r) {
+        while (l < r && !isAlnum(chars[l])) {
+          snap(`s[${l}] = '<b>${chars[l]}</b>' is not alphanumeric → invisible to the palindrome → skip, l++.`, 2, { [l]: "hot", [r]: "hot" });
+          l++;
+        }
+        while (l < r && !isAlnum(chars[r])) {
+          snap(`s[${r}] = '<b>${chars[r]}</b>' is not alphanumeric → skip, r--.`, 3, { [l]: "hot", [r]: "hot" });
+          r--;
+        }
+        if (l >= r) break;
+        const a = chars[l].toLowerCase(), b = chars[r].toLowerCase();
+        if (a !== b) {
+          ok = false;
+          snap(`Compare '<b>${a}</b>' (l=${l}) vs '<b>${b}</b>' (r=${r}) → MISMATCH → not a palindrome → <b>false</b>.`, 4, { [l]: "done", [r]: "done" });
+          break;
+        }
+        snap(`Compare '<b>${a}</b>' (l=${l}) vs '<b>${b}</b>' (r=${r}) → match. Move both pointers inward.`, 4, { [l]: "done", [r]: "done" });
+        l++; r--;
+      }
+      if (ok) snap("All compared pairs match → the normalized string reads the same both ways → <b>true</b>.", 5, {});
+      const last = steps[steps.length - 1];
+      last.result = ok ? "true" : "false";
+      last.correct = ok === refPalindrome(s);
+      last.memNote = "Space: O(1) extra. Time: O(n) — each char inspected at most once.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s);
+      const steps = [];
+      const clean = s.toLowerCase().split("").filter(isAlnum);
+      const rev = clean.slice().reverse();
+      const snap = (text, code, cls1, cls2) => steps.push({ text, code, mem: [
+        { type: "string", title: "filtered s (lowercase, alnum)", data: clean, cls: cls1 || {}, size: 1 },
+        { type: "string", title: "filtered s reversed", data: rev, cls: cls2 || {}, size: 1 }
+      ]});
+      snap("Filter: keep only alphanumeric characters, lowercase everything — O(n) one pass.", 0, {}, {});
+      let ok = true;
+      for (let i = 0; i < clean.length; i++) {
+        if (clean[i] !== rev[i]) {
+          ok = false;
+          snap(`Position ${i}: '<b>${clean[i]}</b>' ≠ '<b>${rev[i]}</b>' → the string is NOT its own reverse → <b>false</b>.`, 1, { [i]: "done" }, { [i]: "done" });
+          break;
+        }
+        snap(`Position ${i}: '<b>${clean[i]}</b>' matches its mirror → continue.`, 1, { [i]: "hot" }, { [i]: "hot" });
+      }
+      if (ok) snap("Every position matches → filtered string equals its reverse → <b>true</b>.", 1, {}, {});
+      const last = steps[steps.length - 1];
+      last.result = ok ? "true" : "false";
+      last.correct = ok === refPalindrome(s);
+      last.memNote = "Space: O(n) — the filtered copy (+ reverse). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

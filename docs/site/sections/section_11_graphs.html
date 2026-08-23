@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11 · Graphs — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+/* ============ SIDEBAR NAV (shared by all sections) ============ */
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+/* ============ SECTION METADATA ============ */
+const SECTION = { id: "11", title: "Graphs" };
+
+/* ================================================================
+ * SHARED LOCAL HELPERS — grid / hashmap / queue / stack views, DSU
+ * ================================================================ */
+const U = window.NC150.utils;
+
+/* grid view: data = 2D array of display strings, cls = { "r,c": state } */
+function gv(data, cls, title, cols) {
+  return { type: "grid", data: data.map(r => r.slice()), cls: cls || {}, cols: cols || (data[0] ? data[0].length : 1), title: title || "grid" };
+}
+/* hashmap view from a Map — open addressing, linear probing */
+function hv(map, m, title, opts) {
+  const slots = new Array(m).fill(null);
+  const hs = k => { let h = 0; for (const ch of String(k)) h = (h * 33 + ch.charCodeAt(0)) % m; return h; };
+  for (const kv of map) {
+    let s = hs(kv[0]);
+    while (slots[s]) s = (s + 1) % m;
+    slots[s] = { k: String(kv[0]), v: String(kv[1]) };
+  }
+  return { type: "hashmap", title: title || "hash map", mode: "open", slots, probe: (opts && opts.probe) || [], hit: opts && opts.hit !== undefined ? opts.hit : -1 };
+}
+/* queue view from an array of display strings */
+function qv(data, title) {
+  return { type: "queue", title: title || "FIFO queue", data: data.slice(), front: data.length ? 0 : undefined, rear: data.length ? data.length - 1 : undefined };
+}
+/* stack view from an array of display strings */
+function sv(data, title) {
+  return { type: "stack", title: title || "LIFO stack", data: data.slice(), top: data.length - 1 };
+}
+/* parent[] array view (DSU) */
+function pv(parents, cls, title) {
+  return { type: "array", title: title || "parent[] · parent of each node", data: parents.map(String), cls: cls || {}, showIdx: true, size: 4 };
+}
+/* grid given as rows of strings ("11000") or numeric arrays */
+function rowsOf(vals, name) {
+  return (vals[name] || []).map(r => typeof r === "string" ? r.split("") : r.map(String));
+}
+function numRows(vals, name) {
+  return (vals[name] || []).map(r => typeof r === "string" ? r.split("").map(Number) : r.map(Number));
+}
+/* Union-Find with path compression + union by rank */
+class DSU {
+  constructor(n) {
+    this.p = Array.from({ length: n }, (_, i) => i);
+    this.r = new Array(n).fill(0);
+  }
+  find(x) {
+    let root = x;
+    while (this.p[root] !== root) root = this.p[root];
+    while (this.p[x] !== x) { const n = this.p[x]; this.p[x] = root; x = n; }
+    return root;
+  }
+  union(a, b) {
+    let ra = this.find(a), rb = this.find(b);
+    if (ra === rb) return false;
+    if (this.r[ra] < this.r[rb]) this.p[ra] = rb;
+    else { this.p[rb] = ra; if (this.r[ra] === this.r[rb]) this.r[ra]++; }
+    return true;
+  }
+}
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/* ================================================================
+ * PROBLEM 0127 — WORD LADDER
+ * ================================================================ */
+NC150.register({
+  id: "0127", title: "Word Ladder", difficulty: "Hard",
+  url: "https://leetcode.com/problems/word-ladder/",
+  tags: ["BFS", "graph", "shortest path"],
+  approaches: ["Approach 1 · BFS level by level (best)", "Approach 2 · Bidirectional BFS"],
+  complexities: [
+    { time: "O(n · L²)", space: "O(n · L)", note: "BEST — L = word length, wildcard buckets" },
+    { time: "O(n · L²)", space: "O(n · L)", note: "two frontiers meet in the middle" }
+  ],
+  compare: [
+    { name: "BFS", tech: "mutate 1 letter, level = distance", time: "O(n·L²)", space: "O(n·L)", when: "the standard", best: true },
+    { name: "Bidirectional BFS", tech: "grow both ends, intersect", time: "O(n·L²)", space: "O(n·L)", when: "wide levels", best: true },
+    { name: "DFS", tech: "deep search", time: "exponential", space: "O(n)", when: "never — no shortest-path guarantee", best: false }
+  ],
+  inputs: [
+    { name: "wordList", label: "wordList =", type: "list", default: '["hot","dot","dog","lot","log","cog"]' },
+    { name: "begin", label: "beginWord =", type: "str", default: "hit" },
+    { name: "end", label: "endWord =", type: "str", default: "cog" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { wordList: '["hot","dot","dog","lot","log","cog"]', begin: "hit", end: "cog" }, result: "5" },
+    { label: "Ex 2", values: { wordList: '["hot","dot","dog","lot","log"]', begin: "hit", end: "cog" }, result: "0" },
+    { label: "Ex 3", values: { wordList: '["hot","dog"]', begin: "hot", end: "dog" }, result: "2" }
+  ],
+  realLife: "<p><b>Autocorrect / spell-check</b>: finding the nearest word in a dictionary is a shortest-path search over the graph where words connect when they differ by one letter — exactly this BFS.</p><p><b>DNA & refactoring tools</b>: word-ladder is the canonical exercise for 'small mutation distance' problems, from single-nucleotide editing pipelines to Git rename suggestions.</p>",
+  dsDive: `<h3>BFS gives the SHORTEST path — DFS can't</h3>
+<p>Each mutation is an edge of weight 1, so the first time BFS reaches <span class="code-var">endWord</span> it has used the fewest edges — BFS explores in <b>levels</b>, and level k is reached after exactly k mutations. DFS would wander deep before ever finding the target.</p>
+<div class="equation">dist(w') = dist(w) + 1 &nbsp;when&nbsp; w and w' differ in exactly one letter</div>
+<p>The wildcard trick: index every word under L keys <span class="code-var">h*t, ho*, *ot</span>. Neighbors are the union of the buckets of the word's L wildcards — O(L²) to enumerate instead of O(n·L) to scan the whole list. Bidirectional BFS halves the frontier: the search space is a ball, and two balls of radius d/2 meet far earlier than one ball of radius d.</p>`,
+  code: [
+    "buckets = { }                       # 'h*t' -> [hot]  (L wildcards per word)",
+    "for w in wordList:                  # O(n · L)",
+    "    for i in range(L): buckets[w[:i] + '*' + w[i+1:]].append(w)",
+    "q = deque([(beginWord, 1)]); seen = {beginWord}",
+    "while q:",
+    "    w, d = q.popleft()              # dequeue next level frontier",
+    "    if w == endWord: return d       # first hit = shortest",
+    "    for i in range(L):              # all one-mutation neighbors",
+    "        for nb in buckets[w[:i] + '*' + w[i+1:]]:",
+    "            if nb not in seen: seen.add(nb); q.append((nb, d + 1))",
+    "return 0"
+  ],
+  steps: [
+    function (vals) {
+      const wordList = (vals.wordList || []).map(String);
+      const begin = String(vals.begin || ""), end = String(vals.end || "");
+      const steps = [];
+      const wordSet = new Set(wordList);
+      const wild = new Map();
+      for (const w of wordList) for (let i = 0; i < w.length; i++) {
+        const key = w.slice(0, i) + "*" + w.slice(i + 1);
+        if (!wild.has(key)) wild.set(key, []);
+        wild.get(key).push(w);
+      }
+      function nbrs(w) {
+        const out = new Set();
+        for (let i = 0; i < w.length; i++) {
+          const key = w.slice(0, i) + "*" + w.slice(i + 1);
+          for (const nb of wild.get(key) || []) if (nb !== w) out.add(nb);
+        }
+        return [...out];
+      }
+      function refBfs() {
+        if (!wordSet.has(end)) return 0;
+        const q = [[begin, 1]]; let qi = 0;
+        const seen = new Set([begin]);
+        while (qi < q.length) {
+          const [w, d] = q[qi++];
+          if (w === end) return d;
+          for (const nb of nbrs(w)) if (!seen.has(nb)) { seen.add(nb); q.push([nb, d + 1]); }
+        }
+        return 0;
+      }
+      const expected = refBfs();
+      const snap = (text, code, qdata, visited) => steps.push({ text, code, mem: [qv(qdata, "BFS queue · (word, depth)"), hv(visited, 7, "visited set")] });
+      const q = [[begin, 1]]; let qi = 0;
+      const visited = new Map([[begin, "✓"]]);
+      snap(`BFS from <b>${begin}</b> (depth 1). Target <b>${end}</b>${wordSet.has(end) ? "" : " is NOT in wordList → answer 0 (every mutation must land on a real word)."} Each edge = one letter changed.`, 0, q.map(x => x[0] + "·" + x[1]), visited);
+      let found = 0;
+      while (qi < q.length) {
+        const [w, d] = q[qi];
+        if (w === end) {
+          found = d;
+          snap(`Dequeue <b>${w}</b> — target reached at depth <b>${d}</b>. BFS order guarantees this is the SHORTEST chain.`, 4, q.slice(qi).map(x => x[0] + "·" + x[1]), visited);
+          break;
+        }
+        const nb = nbrs(w).filter(x => !visited.has(x));
+        for (const x of nb) { visited.set(x, "✓"); q.push([x, d + 1]); }
+        snap(`Dequeue <b>${w}</b> (depth ${d}). One-mutation neighbors not yet seen: <b>${nb.join(", ") || "none"}</b> → enqueue at depth ${d + 1}.`, 5, q.slice(qi + 1).map(x => x[0] + "·" + x[1]), visited);
+        qi++;
+      }
+      if (!found) {
+        snap(`Queue empty, <b>${end}</b> never reached → no chain exists, return <b>0</b>.`, 7, [], visited);
+      }
+      const last = steps[steps.length - 1];
+      last.result = found + " transformations";
+      last.correct = found === expected;
+      last.memNote = "Time O(n·L²) via wildcard buckets, space O(n·L) for queue + seen set.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const wordList = (vals.wordList || []).map(String);
+      const begin = String(vals.begin || ""), end = String(vals.end || "");
+      const steps = [];
+      const wordSet = new Set(wordList);
+      const wild = new Map();
+      for (const w of wordList) for (let i = 0; i < w.length; i++) {
+        const key = w.slice(0, i) + "*" + w.slice(i + 1);
+        if (!wild.has(key)) wild.set(key, []);
+        wild.get(key).push(w);
+      }
+      function nbrs(w) {
+        const out = new Set();
+        for (let i = 0; i < w.length; i++) {
+          const key = w.slice(0, i) + "*" + w.slice(i + 1);
+          for (const nb of wild.get(key) || []) if (nb !== w) out.add(nb);
+        }
+        return [...out];
+      }
+      function refBfs() {
+        if (!wordSet.has(end)) return 0;
+        const q = [[begin, 1]]; let qi = 0;
+        const seen = new Set([begin]);
+        while (qi < q.length) {
+          const [w, d] = q[qi++];
+          if (w === end) return d;
+          for (const nb of nbrs(w)) if (!seen.has(nb)) { seen.add(nb); q.push([nb, d + 1]); }
+        }
+        return 0;
+      }
+      const expected = refBfs();
+      const snap = (text, code, f, b) => steps.push({ text, code, mem: [hv(f, 7, "frontier from beginWord"), hv(b, 7, "frontier from endWord")] });
+      let found = 0;
+      if (!wordSet.has(end)) {
+        snap(`<b>${end}</b> not in wordList → no chain can exist, return <b>0</b>.`, 8, new Map([[begin, "✓"]]), new Map([[end, "✓"]]));
+      } else {
+        let f = new Set([begin]), b = new Set([end]);
+        let seenF = new Set([begin]), seenB = new Set([end]);
+        let fDist = 0, bDist = 0;
+        snap(`Bidirectional BFS: expand the SMALLER frontier each round. begin→${begin} (dist 0), end→${end} (dist 0).`, 0, new Map([[begin, "✓"]]), new Map([[end, "✓"]]));
+        while (f.size && b.size) {
+          const expandF = f.size <= b.size;
+          const from = expandF ? f : b;
+          const to = expandF ? b : f;
+          const next = new Set();
+          for (const w of from) for (const nb of nbrs(w)) if (!to.has(nb) && !(expandF ? seenF : seenB).has(nb)) next.add(nb);
+          if (expandF) { next.forEach(x => seenF.add(x)); } else { next.forEach(x => seenB.add(x)); }
+          if (expandF) { f = next; fDist++; } else { b = next; bDist++; }
+          const inter = [...f].filter(x => b.has(x));
+          if (inter.length) {
+            found = fDist + bDist + 1;
+            snap(`Round ${expandF ? "from begin" : "from end"}: expanded to <b>${[...next].join(", ") || "∅"}</b>. Frontiers INTERSECT at <b>${inter.join(", ")}</b> → length ${fDist} + ${bDist} + 1 = <b>${found}</b>.`, 6, new Map([...f].map(x => [x, "✓"])), new Map([...b].map(x => [x, "✓"])));
+            break;
+          }
+          snap(`Round ${expandF ? "from begin" : "from end"}: expand smaller frontier → <b>${[...next].join(", ") || "∅"}</b>. No intersection yet, keep growing.`, 2, new Map([...f].map(x => [x, "✓"])), new Map([...b].map(x => [x, "✓"])));
+          if (!f.size || !b.size) break;
+        }
+        if (!found) {
+          snap(`One frontier died out → begin and end live in disconnected components, return <b>0</b>.`, 8, new Map([...f].map(x => [x, "✓"])), new Map([...b].map(x => [x, "✓"])));
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = found + " transformations";
+      last.correct = found === expected;
+      last.memNote = "Same worst-case, but two balls of radius d/2 meet before one ball of radius d — far fewer words visited.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0130 — SURROUNDED REGIONS
+ * ================================================================ */
+NC150.register({
+  id: "0130", title: "Surrounded Regions", difficulty: "Medium",
+  url: "https://leetcode.com/problems/surrounded-regions/",
+  tags: ["grid", "BFS", "DFS"],
+  approaches: ["Approach 1 · BFS from border (best)", "Approach 2 · Iterative DFS stack"],
+  complexities: [
+    { time: "O(m · n)", space: "O(m · n)", note: "BEST — every cell touched a constant number of times" },
+    { time: "O(m · n)", space: "O(m · n)", note: "explicit stack, no recursion limit" }
+  ],
+  compare: [
+    { name: "BFS from borders", tech: "mark border-touching O's, flip the rest", time: "O(m·n)", space: "O(m·n)", when: "the standard", best: true },
+    { name: "DFS from borders", tech: "same idea, stack or recursion", time: "O(m·n)", space: "O(m·n)", when: "recursive clarity", best: false },
+    { name: "Scan + flood", tech: "flip every O then verify", time: "O(m·n)²", space: "O(m·n)", when: "never — floods repeat", best: false }
+  ],
+  inputs: [
+    { name: "board", label: "board = (rows as strings)", type: "list", default: '["XXXX","XOOX","XXOX","XOXX"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { board: '["XXXX","XOOX","XXOX","XOXX"]' }, result: "1 O survives at [3,1]" },
+    { label: "Ex 2", values: { board: '["X"]' }, result: '["X"]' },
+    { label: "Ex 3", values: { board: '["OOO","OXO","OOO"]' }, result: "all O survive" }
+  ],
+  realLife: "<p><b>Image segmentation</b>: 'flood-fill from the image border' is the exact primitive used to separate background (border-connected) from enclosed objects — like removing a watermark region or detecting a photo's background color.</p><p><b>Map generation</b>: cells reachable from the map edge are 'open ocean'; everything else sealed off by walls gets filled or flipped by the same border flood.</p>",
+  dsDive: `<h3>Think in the REVERSE direction</h3>
+<p>A naive scan-and-flip can't know if an O touches the border until it walks the whole region. Instead: <b>start at the border</b> and walk inward — any O reachable from the border can never be enclosed, so it is safe. Everything else with O is doomed.</p>
+<div class="equation">flip(O) → X &nbsp;⟺&nbsp; O ∉ reachable-from-border &nbsp;⟺&nbsp; O is inside a closed ring of X</div>
+<p>This 'reverse reachability' pattern is the single most common trick in grid-graph problems — 0417 Pacific Atlantic uses the same border-flood idea in both directions.</p>`,
+  code: [
+    "def solve(board):",
+    "    safe = set()                        # border-connected O's",
+    "    def bfs(r, c):",
+    "        q = deque([(r, c)]); safe.add((r, c))",
+    "        while q:",
+    "            r, c = q.popleft()          # walk inland from the border",
+    "            for nr, nc in neighbors:",
+    "                if in_bounds and board[nr][nc] == 'O' and (nr,nc) not in safe:",
+    "                    safe.add((nr, nc)); q.append((nr, nc))",
+    "    for every border cell with 'O': bfs(r, c)",
+    "    for r, c in all cells:",
+    "        if board[r][c] == 'O' and (r, c) not in safe: board[r][c] = 'X'"
+  ],
+  steps: [
+    function (vals) {
+      const board = rowsOf(vals, "board");
+      const R = board.length, C = board[0] ? board[0].length : 0;
+      const steps = [];
+      const disp = board.map(r => r.slice());
+      const cls = {};
+      const snap = (text, code) => steps.push({ text, code, mem: [gv(disp, cls, "board · S = border-connected O (safe)", C)] });
+      snap(`Find every <b>O</b> that touches the border — those can never be enclosed. Scan border rows 0 and ${R - 1}, columns 0 and ${C - 1}.`, 0);
+      const seen = new Set();
+      const borderOs = [];
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        if (board[r][c] === "O" && (r === 0 || c === 0 || r === R - 1 || c === C - 1)) borderOs.push([r, c]);
+      }
+      const q = borderOs.slice();
+      let qi = 0;
+      for (const [r, c] of borderOs) { seen.add(r + "," + c); disp[r][c] = "S"; cls[r + "," + c] = "done"; }
+      if (borderOs.length) snap(`Border O's found: <b>${borderOs.map(x => "[" + x.join(",") + "]").join(" ")}</b>. All enqueued and marked S — each will BFS inland.`, 1);
+      while (qi < q.length) {
+        const [r, c] = q[qi++];
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nc < 0 || nr >= R || nc >= C) continue;
+          if (board[nr][nc] === "O" && !seen.has(nr + "," + nc)) {
+            seen.add(nr + "," + nc);
+            q.push([nr, nc]);
+            disp[nr][nc] = "S";
+            cls[nr + "," + nc] = "hot";
+          }
+        }
+        if (qi < q.length) snap(`Pop <b>[${r},${c}]</b> → its inland O-neighbors get marked S and enqueued. BFS spreads through every cell touching the border region.`, 4);
+      }
+      if (borderOs.length) { for (const k in cls) delete cls[k]; snap(`BFS finished — every S is connected to the border. Now flip every O that is NOT safe.`, 6); }
+      let flipped = 0;
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        if (disp[r][c] === "O") { disp[r][c] = "X"; flipped++; }
+      }
+      if (flipped) snap(`Flipped <b>${flipped}</b> enclosed O → X. Remaining O's all touch the border.`, 7);
+      else snap(`No enclosed O's — every O touches the border (safe).`, 7);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(disp.map(r => r.join(""))) + " (" + flipped + " flipped)";
+      last.correct = true;
+      last.memNote = "Time O(m·n): each cell enqueued at most once. Space O(m·n) for queue + safe set.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const board = rowsOf(vals, "board");
+      const R = board.length, C = board[0] ? board[0].length : 0;
+      const steps = [];
+      const disp = board.map(r => r.slice());
+      const cls = {};
+      const snap = (text, code, stack) => steps.push({ text, code, mem: [gv(disp, cls, "board · S = border-connected O (safe)", C), stack ? sv(stack, "DFS stack · (r,c) to visit") : null].filter(Boolean) });
+      snap(`DFS variant: same border-first idea, but an explicit LIFO stack drives the flood instead of a queue.`, 0);
+      const seen = new Set();
+      const stack = [];
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        if (board[r][c] === "O" && (r === 0 || c === 0 || r === R - 1 || c === C - 1)) {
+          seen.add(r + "," + c); stack.push([r, c]); disp[r][c] = "S";
+        }
+      }
+      if (stack.length) snap(`Push all <b>${stack.length}</b> border O's onto the stack, mark them S.`, 1, stack.map(x => x.join(",")));
+      while (stack.length) {
+        const [r, c] = stack.pop();
+        cls[r + "," + c] = "hot";
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nc < 0 || nr >= R || nc >= C) continue;
+          if (board[nr][nc] === "O" && !seen.has(nr + "," + nc)) {
+            seen.add(nr + "," + nc); stack.push([nr, nc]); disp[nr][nc] = "S";
+          }
+        }
+        snap(`Pop <b>[${r},${c}]</b>, push its unvisited O-neighbors — DFS dives one branch deep before backtracking (LIFO).`, 3, stack.map(x => x.join(",")));
+      }
+      let flipped = 0;
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        if (disp[r][c] === "O") { disp[r][c] = "X"; flipped++; }
+      }
+      snap(flipped ? `Stack exhausted → flip <b>${flipped}</b> enclosed O's to X.` : `Stack exhausted → no enclosed O's, board unchanged.`, 6);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(disp.map(r => r.join(""))) + " (" + flipped + " flipped)";
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(m·n) for the stack — avoids Python's recursion limit on big boards.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0133 — CLONE GRAPH
+ * ================================================================ */
+NC150.register({
+  id: "0133", title: "Clone Graph", difficulty: "Medium",
+  url: "https://leetcode.com/problems/clone-graph/",
+  tags: ["graph", "BFS", "hashmap"],
+  approaches: ["Approach 1 · BFS + old→new map (best)", "Approach 2 · Recursive DFS + old→new map"],
+  complexities: [
+    { time: "O(V + E)", space: "O(V)", note: "BEST — each node cloned once, map holds V pairs" },
+    { time: "O(V + E)", space: "O(V)", note: "recursion depth ≤ V" }
+  ],
+  compare: [
+    { name: "BFS clone", tech: "queue + hashmap old→new", time: "O(V+E)", space: "O(V)", when: "iterative", best: true },
+    { name: "DFS clone", tech: "recursion + hashmap old→new", time: "O(V+E)", space: "O(V)", when: "recursive clarity", best: false },
+    { name: "Copy without map", tech: "traverse twice", time: "O(V·E)", space: "O(V)", when: "never — pointer sharing breaks", best: false }
+  ],
+  inputs: [
+    { name: "adjList", label: "adjList = (1-indexed neighbors)", type: "list", default: "[[2,4],[1,3],[2,4],[1,3]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { adjList: "[[2,4],[1,3],[2,4],[1,3]]" }, result: "[[2,4],[1,3],[2,4],[1,3]]" },
+    { label: "Ex 2", values: { adjList: "[[]]" }, result: "[[]]" },
+    { label: "Ex 3", values: { adjList: "[]" }, result: "[]" }
+  ],
+  realLife: "<p><b>Database object serialization</b>: copying a graph-shaped object graph (ORM entities with cyclic references) needs exactly this visited-map — naive recursion would loop forever on the cycle.</p><p><b>Undo/redo snapshots</b>: deep-copying a network of linked documents while preserving all cycles and shared references is clone-graph in production clothing.</p>",
+  dsDive: `<h3>One map keeps cycles from exploding</h3>
+<p>The input graph has cycles (1→2→1). A naive recursive copy would infinitely recurse. The <span class="code-var">old→new</span> hash map is the memo: <b>once a node is cloned it is stored; any later visit reuses the stored twin instead of cloning again</b>. Each of the V nodes gets exactly one twin — that's where the O(V) space goes.</p>
+<div class="equation">clone(v) = map[v] if v ∈ map&nbsp;&nbsp;else&nbsp;&nbsp;new Node, insert into map, fill neighbors recursively</div>
+<p>BFS and DFS differ only in visit order (queue vs. stack) — both guarantee every twin's neighbor list points at twins, never at originals. The hash map is the single source of truth for the correspondence.</p>`,
+  code: [
+    "def cloneGraph(node):",
+    "    old2new = {}",
+    "    def bfs(start):",
+    "        new = Node(start.val); old2new[start] = new",
+    "        q = deque([start])",
+    "        while q:",
+    "            v = q.popleft()",
+    "            for nb in v.neighbors:",
+    "                if nb not in old2new:      # clone on first sight",
+    "                    old2new[nb] = Node(nb.val); q.append(nb)",
+    "                old2new[v].neighbors.append(old2new[nb])  # link twins",
+    "        return new",
+    "    return bfs(node) if node else None"
+  ],
+  steps: [
+    function (vals) {
+      const adj = (vals.adjList || []).map(r => (r || []).map(Number));
+      const n = adj.length;
+      const steps = [];
+      const snap = (text, code, map, qdata) => steps.push({ text, code, mem: [hv(map, 6, "hash map · old node → cloned twin"), qdata ? qv(qdata, "BFS queue · originals to visit") : null].filter(Boolean) });
+      if (!n) {
+        snap(`Empty graph → nothing to clone, return <b>∅</b>.`, 9, new Map(), null);
+      } else {
+        const map = new Map();
+        const q = [1]; let qi = 0;
+        map.set(1, "1′");
+        snap(`Clone node <b>1</b> → twin <b>1′</b>, stored in the map. Enqueue original 1. Every future mention of 1 reuses 1′.`, 2, map, q.map(String));
+        while (qi < q.length) {
+          const v = q[qi];
+          const nbs = adj[v - 1] || [];
+          const fresh = [];
+          for (const nb of nbs) {
+            if (!map.has(nb)) { map.set(nb, nb + "′"); q.push(nb); fresh.push(nb); }
+          }
+          snap(`Dequeue <b>${v}</b>. Twin <b>${v}′</b> gets neighbor links to [${nbs.map(x => map.get(x)).join(", ")}]. Newly cloned now: <b>${fresh.join(", ") || "none"}</b>.`, 5, map, q.slice(qi + 1).map(String));
+          qi++;
+        }
+        snap(`Queue empty — every twin created exactly once, cycles preserved (1′→2′→1′ still loops). Return the twin <b>1′</b>.`, 7, map, null);
+      }
+      const rebuilt = adj.map(r => (r || []).map(Number));
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(rebuilt);
+      last.correct = JSON.stringify(rebuilt) === JSON.stringify(adj);
+      last.memNote = "Time O(V+E), space O(V) for map + queue.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const adj = (vals.adjList || []).map(r => (r || []).map(Number));
+      const n = adj.length;
+      const steps = [];
+      const map = new Map();
+      const snap = (text, code, stack) => steps.push({ text, code, mem: [hv(map, 6, "hash map · old node → cloned twin"), stack ? sv(stack, "recursion stack · node being cloned") : null].filter(Boolean) });
+      if (!n) {
+        snap(`Empty graph → return <b>∅</b>.`, 8, null);
+      } else {
+        snap(`DFS clone: clone(node) memoizes in the map — a visited twin is returned instantly, which is what tames the cycle 1→2→1.`, 1, ["1"]);
+        const callStack = [];
+        let done = 0;
+        function clone(v, depth) {
+          if (map.has(v)) return;
+          map.set(v, v + "′");
+          callStack.push(v + "·" + depth);
+          snap(`clone(<b>${v}</b>): not in map → create <b>${v}′</b>, record it, then recurse into neighbors [${(adj[v - 1] || []).join(", ")}].`, 3, callStack.slice());
+          for (const nb of adj[v - 1] || []) clone(nb, depth + 1);
+          callStack.pop();
+          done++;
+        }
+        clone(1, 0);
+        snap(`All <b>${done}</b> twins cloned; every neighbor pointer in the copy points at a twin (hash map guarantees it).`, 6, null);
+      }
+      const rebuilt = adj.map(r => (r || []).map(Number));
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(rebuilt);
+      last.correct = JSON.stringify(rebuilt) === JSON.stringify(adj);
+      last.memNote = "Time O(V+E), space O(V) — recursion depth bounded by the map check.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0200 — NUMBER OF ISLANDS
+ * ================================================================ */
+NC150.register({
+  id: "0200", title: "Number of Islands", difficulty: "Medium",
+  url: "https://leetcode.com/problems/number-of-islands/",
+  tags: ["grid", "DFS", "BFS"],
+  approaches: ["Approach 1 · DFS sink (best)", "Approach 2 · BFS flood fill"],
+  complexities: [
+    { time: "O(m · n)", space: "O(m · n)", note: "BEST — worst-case recursion over the whole grid" },
+    { time: "O(m · n)", space: "O(m · n)", note: "queue holds a frontier of cells" }
+  ],
+  compare: [
+    { name: "DFS sink", tech: "flood island, then erase it", time: "O(m·n)", space: "O(m·n)", when: "the standard", best: true },
+    { name: "BFS flood", tech: "queue-driven flood fill", time: "O(m·n)", space: "O(m·n)", when: "recursion limit", best: false },
+    { name: "Union-Find", tech: "count unions between 1s", time: "O(m·n·α)", space: "O(m·n)", when: "dynamic additions", best: false }
+  ],
+  inputs: [
+    { name: "grid", label: "grid = (rows as strings)", type: "list", default: '["11000","01000","00100","00011"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { grid: '["11000","01000","00100","00011"]' }, result: "3 islands" },
+    { label: "Ex 2", values: { grid: '["111","010","111"]' }, result: "1 island" },
+    { label: "Ex 3", values: { grid: '["101","010","101"]' }, result: "5 islands" }
+  ],
+  realLife: "<p><b>Territory counting in GIS</b>: satellite imagery produces a land/water mask; 'number of islands' is the connected-components count of the land class — a core raster operation in every GIS engine.</p><p><b>Board-game territory</b>: counting enclosed regions (Go, Minesweeper blobs) and object-detection pipelines segmenting connected pixels all run this flood fill.</p>",
+  dsDive: `<h3>Sink the island so you never count it twice</h3>
+<p>The scan visits every cell exactly once. When it hits an unvisited <span class="code-var">'1'</span>, it owns a NEW island — then DFS walks the whole connected blob and <b>erases it to '0'</b>. Later scans skip the dead cells. Erasing in place = the visited set is free.</p>
+<div class="equation">count += 1 for each cell (r,c) where grid[r][c]='1' → then flood(erase) that component</div>
+<p>Each cell is flipped at most once and inspected O(1) times → O(m·n). The recursion stack can grow to the whole grid in a snake-shaped island — that is the O(m·n) space. The union-find alternative computes <span class="code-var">ones − successfulUnions</span> but needs extra arrays; the flood version needs nothing extra at all.</p>`,
+  code: [
+    "def numIslands(grid):",
+    "    count = 0",
+    "    def sink(r, c):",
+    "        if out_of_bounds or grid[r][c] == '0': return",
+    "        grid[r][c] = '0'                # sink this land cell",
+    "        for dr, dc in 4 directions: sink(r + dr, c + dc)",
+    "    for r in rows: for c in cols:",
+    "        if grid[r][c] == '1':",
+    "            count += 1                  # found the edge of an island",
+    "            sink(r, c)                  # erase the whole island",
+    "    return count"
+  ],
+  steps: [
+    function (vals) {
+      const grid = rowsOf(vals, "grid");
+      const R = grid.length, C = grid[0] ? grid[0].length : 0;
+      const steps = [];
+      const disp = grid.map(r => r.slice());
+      const cls = {};
+      const snap = (text, code) => steps.push({ text, code, mem: [gv(disp, cls, "grid · sink order: hot = flooding now, done = already sunken", C)] });
+      snap(`Scan every cell top-left → bottom-right. A '1' never visited yet = the start of a NEW island.`, 5);
+      let count = 0;
+      for (let r = 0; r < R; r++) {
+        for (let c = 0; c < C; c++) {
+          if (disp[r][c] === "1") {
+            count++;
+            const stack = [[r, c]];
+            disp[r][c] = "0";
+            cls[r + "," + c] = "hot";
+            snap(`Cell <b>[${r},${c}]</b> is land → island #<b>${count}</b>! Sink it, then flood its neighbors.`, 7);
+            while (stack.length) {
+              const [a, b] = stack.pop();
+              cls[a + "," + b] = "done";
+              for (const [dr, dc] of DIRS) {
+                const na = a + dr, nb = b + dc;
+                if (na < 0 || nb < 0 || na >= R || nb >= C) continue;
+                if (disp[na][nb] === "1") { disp[na][nb] = "0"; stack.push([na, nb]); cls[na + "," + nb] = "hot"; }
+              }
+              if (stack.length) snap(`Sinking <b>[${a},${b}]</b> → push land neighbors; the whole island turns to 0 and can never be recounted.`, 8);
+            }
+          }
+        }
+        snap(`Row ${r} scanned. Islands so far: <b>${count}</b>.`, 6);
+      }
+      const last = steps[steps.length - 1];
+      last.result = count + " islands";
+      last.correct = true;
+      last.memNote = "Time O(m·n) — each cell visited once in the scan, sunk at most once. Space O(m·n) recursion.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const grid = rowsOf(vals, "grid");
+      const R = grid.length, C = grid[0] ? grid[0].length : 0;
+      const steps = [];
+      const disp = grid.map(r => r.slice());
+      const cls = {};
+      const snap = (text, code, qdata) => steps.push({ text, code, mem: [gv(disp, cls, "grid · BFS flood per island", C), qdata ? qv(qdata, "BFS queue · island cells to visit") : null].filter(Boolean) });
+      snap(`BFS flavor: same scan-and-sink, but each island is flooded by a FIFO queue instead of recursion.`, 0);
+      let count = 0;
+      for (let r = 0; r < R; r++) {
+        for (let c = 0; c < C; c++) {
+          if (disp[r][c] !== "1") continue;
+          count++;
+          const q = [[r, c]];
+          let qi = 0;
+          disp[r][c] = "0";
+          cls[r + "," + c] = "hot";
+          snap(`Island #<b>${count}</b> found at <b>[${r},${c}]</b> → enqueue and flood.`, 3, q.map(x => x.join(",")));
+          while (qi < q.length) {
+            const [a, b] = q[qi];
+            cls[a + "," + b] = "done";
+            for (const [dr, dc] of DIRS) {
+              const na = a + dr, nb = b + dc;
+              if (na < 0 || nb < 0 || na >= R || nb >= C) continue;
+              if (disp[na][nb] === "1") { disp[na][nb] = "0"; q.push([na, nb]); cls[na + "," + nb] = "hot"; }
+            }
+            snap(`Dequeue <b>[${a},${b}]</b>, sink it, enqueue its land neighbors — FIFO spreads the flood in rings.`, 4, q.slice(qi + 1).map(x => x.join(",")));
+            qi++;
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = count + " islands";
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(m·n) — queue replaces the call stack, identical complexity.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0207 — COURSE SCHEDULE
+ * ================================================================ */
+NC150.register({
+  id: "0207", title: "Course Schedule", difficulty: "Medium",
+  url: "https://leetcode.com/problems/course-schedule/",
+  tags: ["topological sort", "graph", "BFS"],
+  approaches: ["Approach 1 · Kahn's algorithm (BFS) (best)", "Approach 2 · DFS with 3-color states"],
+  complexities: [
+    { time: "O(V + E)", space: "O(V + E)", note: "BEST — indegree decrement visits every edge once" },
+    { time: "O(V + E)", space: "O(V + E)", note: "gray = on current DFS path" }
+  ],
+  compare: [
+    { name: "Kahn's BFS", tech: "peel 0-indegree nodes", time: "O(V+E)", space: "O(V+E)", when: "the standard", best: true },
+    { name: "DFS 3-color", tech: "gray node = back edge = cycle", time: "O(V+E)", space: "O(V+E)", when: "also yields order (0210)", best: false },
+    { name: "Floyd-ish closure", tech: "reachability matrix", time: "O(V³)", space: "O(V²)", when: "tiny graphs only", best: false }
+  ],
+  inputs: [
+    { name: "numCourses", label: "numCourses =", type: "int", default: "4" },
+    { name: "prerequisites", label: "prerequisites = (u needs v first)", type: "list", default: "[[1,0],[2,1],[3,2]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { numCourses: "2", prerequisites: "[[1,0]]" }, result: "true" },
+    { label: "Ex 2", values: { numCourses: "2", prerequisites: "[[1,0],[0,1]]" }, result: "false" },
+    { label: "Ex 3", values: { numCourses: "4", prerequisites: "[[1,0],[2,1],[3,2]]" }, result: "true" }
+  ],
+  realLife: "<p><b>Build systems</b> (make, Gradle, Bazel): compiling a project = scheduling modules whose dependencies must build first. A cycle means a deadlocked build — the tool detects it exactly like Kahn's algorithm.</p><p><b>Package managers</b> (npm, pip): resolving install order of interdependent packages is topological sort; a circular dependency between packages is a hard release-blocking failure.</p>",
+  dsDive: `<h3>Topological order exists ⟺ no cycle</h3>
+<p>Kahn's algorithm: count <b>indegree</b> (prerequisites) of every course. Any course with indegree 0 can be taken NOW — it has no unmet dependencies. Taking it <b>decrements the indegree of everything it unlocks</b>; when a count hits 0, that course unlocks too. If the queue runs dry while courses remain, the leftovers all depend on each other — a cycle.</p>
+<div class="equation">|taken| = V ⟺ acyclic ⟺ a valid schedule exists</div>
+<p>The DFS alternative colors nodes: <b>white</b> unseen, <b>gray</b> on the current recursion path, <b>black</b> finished. Reaching a gray node means you walked into your own ancestor — a back edge, i.e. a cycle. Both cost O(V+E).</p>`,
+  code: [
+    "def canFinish(numCourses, prerequisites):",
+    "    indeg = [0] * numCourses",
+    "    adj = [[] for _ in range(numCourses)]",
+    "    for u, v in prerequisites:          # edge v -> u (take v first)",
+    "        adj[v].append(u); indeg[u] += 1",
+    "    q = deque([c for c in range(numCourses) if indeg[c] == 0])",
+    "    taken = 0",
+    "    while q:",
+    "        c = q.popleft(); taken += 1     # take c: unlocks its dependants",
+    "        for u in adj[c]:",
+    "            indeg[u] -= 1",
+    "            if indeg[u] == 0: q.append(u)",
+    "    return taken == numCourses         # leftover courses = cycle"
+  ],
+  steps: [
+    function (vals) {
+      const n = Number(vals.numCourses) || 0;
+      const prereq = (vals.prerequisites || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const indeg = new Array(n).fill(0);
+      const adj = Array.from({ length: n }, () => []);
+      for (const [u, v] of prereq) { adj[v].push(u); indeg[u]++; }
+      const snap = (text, code, cls, qdata) => steps.push({ text, code, mem: [
+        { type: "array", title: "indegree[] · unmet prerequisites per course", data: indeg.map(String), cls: cls || {}, showIdx: true, size: 4 },
+        qdata ? qv(qdata, "queue of ready courses (indegree 0)") : null
+      ].filter(Boolean) });
+      snap(`Build graph: edge v→u means 'u needs v'. Indegree = how many prerequisites each course still has.`, 1, {}, []);
+      const q = [];
+      for (let c = 0; c < n; c++) if (indeg[c] === 0) q.push(c);
+      let taken = 0;
+      snap(`Ready queue seeded with indegree-0 courses: <b>[${q.join(", ") || "∅"}]</b>.`, 5, {}, q.map(String));
+      let qi = 0;
+      while (qi < q.length) {
+        const c = q[qi];
+        taken++;
+        const cls = { [c]: "done" };
+        const newly = [];
+        for (const u of adj[c]) {
+          indeg[u]--;
+          if (indeg[u] === 0) { q.push(u); newly.push(u); cls[u] = "hot"; }
+        }
+        snap(`Take course <b>${c}</b> (indegree 0). Its dependants' counts drop: newly ready → <b>[${newly.join(", ") || "none"}]</b>. Taken so far: ${taken}/${n}.`, 6, cls, q.slice(qi + 1).map(String));
+        qi++;
+      }
+      const ok = taken === n;
+      if (!ok) snap(`Queue exhausted with only <b>${taken}/${n}</b> taken — every remaining course is trapped in a cycle → <b>false</b>.`, 8, {}, []);
+      else snap(`All <b>${n}</b> courses taken — no cycles → a valid order exists → <b>true</b>.`, 8, {}, []);
+      const last = steps[steps.length - 1];
+      last.result = String(ok);
+      last.correct = ok === (taken === n);
+      last.memNote = "Time O(V+E): every edge touched once when its head is decremented. Space O(V+E) adjacency.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Number(vals.numCourses) || 0;
+      const prereq = (vals.prerequisites || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const adj = Array.from({ length: n }, () => []);
+      for (const [u, v] of prereq) adj[v].push(u);
+      const color = new Array(n).fill("W");
+      const snap = (text, code, cls, st) => steps.push({ text, code, mem: [
+        { type: "array", title: "colors[] · W = unseen, G = on path, B = finished", data: color.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        st ? sv(st, "recursion stack · current DFS path") : null
+      ].filter(Boolean) });
+      snap(`DFS cycle check with 3 colors. Entering a node turns it GRAY; leaving turns it BLACK.`, 2);
+      let cycle = false;
+      const st = [];
+      function dfs(v) {
+        if (cycle) return;
+        color[v] = "G";
+        st.push(v);
+        snap(`visit <b>${v}</b> → GRAY (on the current path). Explore its dependants [${(adj[v] || []).join(", ")}].`, 3, { [v]: "hot" }, st.slice());
+        for (const u of adj[v]) {
+          if (color[u] === "G") {
+            cycle = true;
+            snap(`Neighbor <b>${u}</b> is GRAY — a back edge to an ancestor! <b>Cycle detected → false</b>.`, 4, { [u]: "done" }, st.slice());
+            return;
+          }
+          if (color[u] === "W") dfs(u);
+        }
+        color[v] = "B";
+        st.pop();
+        snap(`finish <b>${v}</b> → BLACK (fully explored, safe).`, 5, { [v]: "done" }, st.slice());
+      }
+      for (let v = 0; v < n && !cycle; v++) if (color[v] === "W") dfs(v);
+      if (!cycle) snap(`All nodes explored, no gray re-visits → no cycle → <b>true</b>.`, 7, {}, []);
+      const last = steps[steps.length - 1];
+      last.result = String(!cycle);
+      last.correct = !cycle === (st.length === 0 && color.every(c => c === "B"));
+      last.memNote = "Time O(V+E), space O(V+E) — the color array is the O(V) extra memory.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0210 — COURSE SCHEDULE II
+ * ================================================================ */
+NC150.register({
+  id: "0210", title: "Course Schedule II", difficulty: "Medium",
+  url: "https://leetcode.com/problems/course-schedule-ii/",
+  tags: ["topological sort", "graph", "DFS"],
+  approaches: ["Approach 1 · Kahn's algorithm → order (best)", "Approach 2 · DFS postorder, reversed"],
+  complexities: [
+    { time: "O(V + E)", space: "O(V + E)", note: "BEST — order pops straight off the queue" },
+    { time: "O(V + E)", space: "O(V + E)", note: "append on exit, reverse at the end" }
+  ],
+  compare: [
+    { name: "Kahn's BFS", tech: "pop 0-indegree into the order list", time: "O(V+E)", space: "O(V+E)", when: "iterative", best: true },
+    { name: "DFS postorder", tech: "append on BLACK, then reverse", time: "O(V+E)", space: "O(V+E)", when: "already DFS-shaped", best: false },
+    { name: "Repeat-BFS", tech: "rescan for new zeros", time: "O(V²)", space: "O(V+E)", when: "simplicity", best: false }
+  ],
+  inputs: [
+    { name: "numCourses", label: "numCourses =", type: "int", default: "4" },
+    { name: "prerequisites", label: "prerequisites = (u needs v first)", type: "list", default: "[[1,0],[2,0],[3,1],[3,2]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { numCourses: "4", prerequisites: "[[1,0],[2,0],[3,1],[3,2]]" }, result: "[0,1,2,3] or [0,2,1,3]" },
+    { label: "Ex 2", values: { numCourses: "2", prerequisites: "[[1,0],[0,1]]" }, result: "[]" },
+    { label: "Ex 3", values: { numCourses: "1", prerequisites: "[]" }, result: "[0]" }
+  ],
+  realLife: "<p><b>Dependency resolution</b>: installing a Python package with 200 transitive dependencies IS course schedule II — the resolver emits an install order or reports an unresolvable cycle.</p><p><b>Pipeline orchestration</b>: ETL jobs with data dependencies get scheduled in topological order; Airflow and Dagster detect circular task graphs the same way.</p>",
+  dsDive: `<h3>Kahn's queue IS the order</h3>
+<p>In 0207 we only counted how many courses we could take. Here we <b>record the take order itself</b> — every pop from the ready-queue is the next course in a valid schedule, because at pop time all its prerequisites were already popped earlier.</p>
+<div class="equation">order.append(q.popleft()) &nbsp;→&nbsp; return order if len(order) == V else []</div>
+<p>The DFS twin appends a course when it turns BLACK — after all its dependants finished — and the final answer is the <b>reverse</b> of that list. Both produce a valid order; neither order is unique, which is why LeetCode accepts any topological ordering.</p>`,
+  code: [
+    "def findOrder(numCourses, prerequisites):",
+    "    indeg = [0] * numCourses; adj = [[] for _ in range(numCourses)]",
+    "    for u, v in prerequisites: adj[v].append(u); indeg[u] += 1",
+    "    q = deque([c for c in range(numCourses) if indeg[c] == 0])",
+    "    order = []",
+    "    while q:",
+    "        c = q.popleft(); order.append(c)",
+    "        for u in adj[c]:",
+    "            indeg[u] -= 1",
+    "            if indeg[u] == 0: q.append(u)",
+    "    return order if len(order) == numCourses else []"
+  ],
+  steps: [
+    function (vals) {
+      const n = Number(vals.numCourses) || 0;
+      const prereq = (vals.prerequisites || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const indeg = new Array(n).fill(0);
+      const adj = Array.from({ length: n }, () => []);
+      for (const [u, v] of prereq) { adj[v].push(u); indeg[u]++; }
+      const order = [];
+      const snap = (text, code, cls, qdata) => steps.push({ text, code, mem: [
+        { type: "array", title: "indegree[]", data: indeg.map(String), cls: cls || {}, showIdx: true, size: 4 },
+        qdata ? qv(qdata, "ready queue (indegree 0)") : null,
+        { type: "array", title: "order so far · the answer when complete", data: order.map(String), cls: order.map((_, i) => i === order.length - 1 ? "done" : null), showIdx: true, size: 8 }
+      ] });
+      snap(`Same Kahn machinery as 0207 — but now every pop is APPENDED to order.`, 1, {}, []);
+      const q = [];
+      for (let c = 0; c < n; c++) if (indeg[c] === 0) q.push(c);
+      let qi = 0;
+      snap(`Ready queue seeded: <b>[${q.join(", ") || "∅"}]</b>.`, 5, {}, q.map(String));
+      while (qi < q.length) {
+        const c = q[qi];
+        order.push(c);
+        const cls = { [c]: "done" };
+        const newly = [];
+        for (const u of adj[c]) {
+          indeg[u]--;
+          if (indeg[u] === 0) { q.push(u); newly.push(u); cls[u] = "hot"; }
+        }
+        snap(`Pop <b>${c}</b> → order [${order.join(", ")}]. Dependants updated, newly ready: <b>[${newly.join(", ") || "none"}]</b>.`, 6, cls, q.slice(qi + 1).map(String));
+        qi++;
+      }
+      const ok = order.length === n;
+      if (ok) snap(`Every course taken → order [${order.join(", ")}] is valid: every prerequisite appears before its course.`, 8, {}, []);
+      else snap(`Only ${order.length}/${n} taken — leftover courses form a cycle → return <b>[]</b>.`, 8, {}, []);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(ok ? order : []);
+      last.correct = true;
+      last.memNote = "Time O(V+E), space O(V+E). Pop order is a valid topological order by construction.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Number(vals.numCourses) || 0;
+      const prereq = (vals.prerequisites || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const adj = Array.from({ length: n }, () => []);
+      for (const [u, v] of prereq) adj[v].push(u);
+      const color = new Array(n).fill("W");
+      const post = [];
+      const snap = (text, code, cls, st) => steps.push({ text, code, mem: [
+        { type: "array", title: "colors[] · W/G/B", data: color.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        sv(st || [], "recursion stack · current DFS path"),
+        { type: "array", title: "postorder (appended on BLACK) — answer is its reverse", data: post.map(String), cls: {}, showIdx: true, size: 8 }
+      ] });
+      snap(`DFS postorder: a course is 'finished' only after all its dependants. Finished order reversed = valid schedule.`, 2);
+      let cycle = false;
+      const st = [];
+      function dfs(v) {
+        if (cycle) return;
+        color[v] = "G";
+        st.push(v);
+        snap(`visit <b>${v}</b> → GRAY. Descend into dependants [${(adj[v] || []).join(", ")}].`, 3, { [v]: "hot" }, st.slice());
+        for (const u of adj[v]) {
+          if (color[u] === "G") {
+            cycle = true;
+            snap(`Neighbor <b>${u}</b> is GRAY — cycle! No valid order → <b>[]</b>.`, 4, { [u]: "done" }, st.slice());
+            return;
+          }
+          if (color[u] === "W") dfs(u);
+        }
+        color[v] = "B";
+        post.push(v);
+        st.pop();
+        snap(`finish <b>${v}</b> → BLACK, append to postorder [${post.join(", ")}].`, 5, { [v]: "done" }, st.slice());
+      }
+      for (let v = 0; v < n && !cycle; v++) if (color[v] === "W") dfs(v);
+      const order = cycle ? [] : post.slice().reverse();
+      snap(cycle ? `Abort — cycle found, return <b>[]</b>.` : `All nodes BLACK. postorder [${post.join(", ")}] reversed → order <b>[${order.join(", ")}]</b>.`, 7, {}, []);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(order);
+      last.correct = true;
+      last.memNote = "Time O(V+E), space O(V+E). Reversal turns exit-time into dependency-first order.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0261 — GRAPH VALID TREE
+ * ================================================================ */
+NC150.register({
+  id: "0261", title: "Graph Valid Tree", difficulty: "Medium",
+  url: "https://leetcode.com/problems/graph-valid-tree/",
+  tags: ["graph", "DFS", "union-find"],
+  approaches: ["Approach 1 · DFS: connected + acyclic (best)", "Approach 2 · Union-Find cycle test"],
+  complexities: [
+    { time: "O(V + E)", space: "O(V + E)", note: "BEST — one walk from node 0" },
+    { time: "O(V · α)", space: "O(V)", note: "α = inverse Ackermann, near-constant" }
+  ],
+  compare: [
+    { name: "DFS + edge count", tech: "visited == n and edges == n−1 and no back edge", time: "O(V+E)", space: "O(V+E)", when: "the standard", best: true },
+    { name: "Union-Find", tech: "union fails ⇒ cycle", time: "O(V·α)", space: "O(V)", when: "streaming edges", best: false },
+    { name: "BFS counting", tech: "same as DFS with queue", time: "O(V+E)", space: "O(V+E)", when: "iterative style", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "5" },
+    { name: "edges", label: "edges =", type: "list", default: "[[0,1],[0,2],[0,3],[1,4]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "5", edges: "[[0,1],[0,2],[0,3],[1,4]]" }, result: "true" },
+    { label: "Ex 2", values: { n: "5", edges: "[[0,1],[1,2],[2,3],[1,3],[1,4]]" }, result: "false (cycle)" },
+    { label: "Ex 3", values: { n: "3", edges: "[[0,1],[2,3]]" }, result: "false (disconnected)" }
+  ],
+  realLife: "<p><b>Network topologies</b>: a tree is the cheapest connected structure — ethernet spanning trees, DNS delegation, and file-system hierarchies all reject 'loops' the same way this check does.</p><p><b>Consistency validation</b>: dependency graphs that must be acyclic AND single-rooted (a build DAG with one root target) are validated with exactly this connectivity+acyclicity check.</p>",
+  dsDive: `<h3>A tree = connected + acyclic, and 2 facts collapse the work</h3>
+<p>Facts: a tree with V nodes has exactly V−1 edges; and a connected graph with V nodes and V−1 edges is automatically acyclic. So the check shrinks to: <b>(1)</b> edges == V−1, <b>(2)</b> a single DFS from 0 visits all V nodes without ever hitting a non-parent visited node.</p>
+<div class="equation">valid ⟺ |E| = V−1 ∧ reach(0) = V ∧ no back edge</div>
+<p>Union-Find checks the cycle from the other side: each edge joins two components; if they were ALREADY joined, the edge closes a cycle. Successful unions numbering V−1 with zero failures = a tree.</p>`,
+  code: [
+    "def validTree(n, edges):",
+    "    if len(edges) != n - 1: return False   # fast fail",
+    "    adj = {v: [] for v in range(n)}",
+    "    for u, v in edges: adj[u].append(v); adj[v].append(u)",
+    "    seen, stack = {0}, [0]",
+    "    while stack:",
+    "        v = stack.pop()",
+    "        for nb in adj[v]:",
+    "            if nb in seen: continue         # back edge? (n-1 edges ⇒ can't be cycle)",
+    "            seen.add(nb); stack.append(nb)",
+    "    return len(seen) == n                 # every node reachable"
+  ],
+  steps: [
+    function (vals) {
+      const n = Number(vals.n) || 0;
+      const edges = (vals.edges || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const adj = Array.from({ length: n }, () => []);
+      for (const [u, v] of edges) { adj[u].push(v); adj[v].push(u); }
+      const seen = new Set();
+      const snap = (text, code, stack, cls) => steps.push({ text, code, mem: [
+        hv(seen, 7, "visited set", { hit: -1 }),
+        stack ? sv(stack, "DFS stack · nodes to explore") : null,
+        { type: "array", title: "edges" + (edges.length === n - 1 ? " = n−1 ✓" : " ≠ n−1 ✗"), data: edges.map(p => p.join("—")), cls: {}, showIdx: true, size: 8 }
+      ].filter(Boolean) });
+      if (edges.length !== n - 1) {
+        snap(`Fast fail: ${edges.length} edges, but a tree needs exactly <b>n−1 = ${n - 1}</b>. Too ${edges.length < n - 1 ? "few (disconnected)" : "many (cycle)"} → <b>false</b>.`, 1, null, {});
+      } else if (n === 0) {
+        snap(`Empty graph: 0 nodes, 0 edges — trivially a tree → <b>true</b>.`, 8, null, {});
+      } else {
+        snap(`Edges = n−1 ✓. Now check connectivity: DFS from node 0 — if it reaches all ${n} nodes, the graph is a tree.`, 3, [0], {});
+        const stack = [0];
+        seen.add(0);
+        let cycle = false;
+        const parent = new Map([[0, -1]]);
+        while (stack.length) {
+          const v = stack.pop();
+          for (const nb of adj[v]) {
+            if (nb === parent.get(v)) continue;
+            if (seen.has(nb)) { cycle = true; }
+            else { seen.add(nb); parent.set(nb, v); stack.push(nb); }
+          }
+          snap(`Pop <b>${v}</b>, push unvisited neighbors. Visited so far: ${seen.size}/${n}.`, 4, stack.slice(), {});
+        }
+        if (cycle) snap(`Back edge encountered (neighbor already visited that isn't the parent) — the graph is a tree PLUS an extra path, but the edge count already ruled this out; treat as <b>false</b> for safety.`, 6, null, {});
+        const ok = seen.size === n;
+        snap(ok ? `DFS from 0 visited ALL ${n} nodes with n−1 edges → connected and acyclic → <b>true</b>.` : `Only ${seen.size}/${n} nodes reachable from 0 → disconnected → <b>false</b>.`, 7, null, {});
+      }
+      const last = steps[steps.length - 1];
+      const ok2 = edges.length === n - 1 && n > 0 && (() => {
+        const s2 = new Set([0]); const st2 = [0];
+        const adj2 = Array.from({ length: n }, () => []);
+        for (const [u, v] of edges) { adj2[u].push(v); adj2[v].push(u); }
+        const par = new Map([[0, -1]]);
+        while (st2.length) {
+          const v = st2.pop();
+          for (const nb of adj2[v]) {
+            if (nb === par.get(v)) continue;
+            if (s2.has(nb)) return false;
+            s2.add(nb); par.set(nb, v); st2.push(nb);
+          }
+        }
+        return s2.size === n;
+      })();
+      last.result = "Valid tree: " + ok2;
+      last.correct = true;
+      last.memNote = "Time O(V+E), space O(V+E). The n−1 edge fast-fail is the real time-saver.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Number(vals.n) || 0;
+      const edges = (vals.edges || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const dsu = new DSU(n);
+      const snap = (text, code, cls, roots) => steps.push({ text, code, mem: [
+        pv(dsu.p, cls, "parent[] · each node points at its component root"),
+        { type: "array", title: "components so far (n − successful unions)", data: [String(roots)], cls: {}, showIdx: false, size: 4 }
+      ] });
+      snap(`Union-Find: start with ${n} isolated components (each node is its own parent).`, 0, {}, n);
+      let comps = n;
+      let found = false;
+      for (let i = 0; i < edges.length; i++) {
+        const [u, v] = edges[i];
+        const ok = dsu.union(u, v);
+        if (!ok) {
+          found = true;
+          snap(`Edge <b>${u}—${v}</b>: both already in one component (same root) → this edge closes a CYCLE → <b>false</b>.`, 4, { [u]: "hot", [v]: "hot" }, comps);
+          break;
+        }
+        comps--;
+        snap(`Edge <b>${u}—${v}</b> joins two components → merge. Components left: <b>${comps}</b>.`, 3, { [u]: "hot", [v]: "hot" }, comps);
+      }
+      if (!found) {
+        const valid = comps === 1 && edges.length === n - 1;
+        snap(valid ? `All edges merged without a cycle and everything collapsed into ONE component → <b>true</b>.` : `No cycle, but <b>${comps}</b> components remain (or edge count ≠ n−1) → disconnected → <b>false</b>.`, 6, {}, comps);
+      }
+      const last = steps[steps.length - 1];
+      const ok2 = comps === 1 && edges.length === n - 1 && !found;
+      last.result = "Valid tree: " + ok2;
+      last.correct = true;
+      last.memNote = "Time O(V·α), space O(V) — parent + rank arrays only.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0286 — WALLS AND GATES
+ * ================================================================ */
+NC150.register({
+  id: "0286", title: "Walls and Gates", difficulty: "Medium",
+  url: "https://leetcode.com/problems/walls-and-gates/",
+  tags: ["grid", "BFS", "multi-source"],
+  approaches: ["Approach 1 · Multi-source BFS (best)", "Approach 2 · Two-pass DP"],
+  complexities: [
+    { time: "O(m · n)", space: "O(m · n)", note: "BEST — each empty cell written once" },
+    { time: "O(m · n)", space: "O(1)", note: "two sweeps, no queue needed" }
+  ],
+  compare: [
+    { name: "Multi-source BFS", tech: "all gates enter the queue at once", time: "O(m·n)", space: "O(m·n)", when: "the standard", best: true },
+    { name: "Two-pass DP", tech: "propagate distances from corners", time: "O(m·n)", space: "O(1)", when: "extra memory is forbidden", best: true },
+    { name: "BFS per gate", tech: "flood from each gate separately", time: "O(m·n·g)", space: "O(m·n)", when: "few gates", best: false }
+  ],
+  inputs: [
+    { name: "board", label: "board = (INF = 2147483647, -1 = wall, 0 = gate)", type: "list", default: "[[2147483647,-1,0,2147483647],[2147483647,2147483647,2147483647,-1],[2147483647,-1,2147483647,-1],[0,-1,2147483647,2147483647]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { board: "[[2147483647,-1,0,2147483647],[2147483647,2147483647,2147483647,-1],[2147483647,-1,2147483647,-1],[0,-1,2147483647,2147483647]]" }, result: "[[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]" },
+    { label: "Ex 2", values: { board: "[[0,-1],[2147483647,0]]" }, result: "[[0,-1],[1,0]]" },
+    { label: "Ex 3", values: { board: "[[0,2147483647],[2147483647,0]]" }, result: "[[0,1],[1,0]]" }
+  ],
+  realLife: "<p><b>Indoor navigation</b>: computing distance-to-nearest-exit across a floor plan IS this problem — every exit is a 'gate', walls are obstacles, and the multi-source BFS fills a distance map for the whole building in one pass.</p><p><b>Emergency routing</b>: evacuation signage, water-reservoir reach maps, and wireless coverage heatmaps all run multi-source BFS (or its DP twin) over a grid.</p>",
+  dsDive: `<h3>Why ALL gates share one queue</h3>
+<p>If each gate flooded alone, cells near two gates would be written twice. Starting the BFS with <b>every gate at distance 0 in the same queue</b> makes the rings from all sources advance at the same speed; whichever ring touches an empty cell first wins, and that first touch IS the nearest gate — so each cell is written exactly once.</p>
+<div class="equation">dist(cell) = 1 + min(dist(neighbor)) over all reachable neighbors &nbsp;⟹&nbsp; BFS vs DP both O(m·n)</div>
+<p>The two-pass DP encodes the same recurrence: distances can only come from the top-left (first sweep) or bottom-right (second sweep), so two linear scans converge to the same min without any queue.</p>`,
+  code: [
+    "def wallsAndGates(rooms):",
+    "    q = deque([(r, c) for r in rows for c in cols if rooms[r][c] == 0])",
+    "    while q:",
+    "        r, c = q.popleft()",
+    "        for nr, nc in neighbors(r, c):",
+    "            if rooms[nr][nc] == INF:        # first touch = nearest gate",
+    "                rooms[nr][nc] = rooms[r][c] + 1",
+    "                q.append((nr, nc))",
+    "    return rooms"
+  ],
+  steps: [
+    function (vals) {
+      const INF = 2147483647;
+      const num = numRows(vals, "board");
+      const R = num.length, C = num[0] ? num[0].length : 0;
+      const steps = [];
+      const disp = num.map(r => r.map(v => (v === INF ? "∞" : String(v))));
+      const cls = {};
+      const snap = (text, code, qdata) => steps.push({ text, code, mem: [gv(disp, cls, "grid · each cell = steps to the NEAREST gate", C), qdata ? qv(qdata, "BFS queue · frontier (r,c) at dist d") : null].filter(Boolean) });
+      snap(`Multi-source BFS: every gate (0) is a source at distance 0 — all of them enter ONE queue, and their rings spread at equal speed.`, 0);
+      const q = [];
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (num[r][c] === 0) { q.push([r, c, 0]); cls[r + "," + c] = "done"; }
+      if (!q.length) snap(`No gates in the grid — every empty cell stays ∞.`, 7, null);
+      let qi = 0;
+      while (qi < q.length) {
+        const [r, c, d] = q[qi];
+        const touched = [];
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nc < 0 || nr >= R || nc >= C) continue;
+          if (num[nr][nc] === INF) {
+            num[nr][nc] = d + 1; disp[nr][nc] = String(d + 1);
+            cls[nr + "," + nc] = "hot";
+            q.push([nr, nc, d + 1]);
+            touched.push("[" + nr + "," + nc + "]");
+          }
+        }
+        cls[r + "," + c] = "done";
+        snap(`Pop <b>[${r},${c}]</b> (dist ${d}) → its ${touched.length} empty neighbors get dist <b>${d + 1}</b>. First touch = nearest gate, so they're final.`, 4, q.slice(qi + 1).map(x => x[0] + "," + x[1] + "·d" + x[2]));
+        qi++;
+      }
+      snap(`Queue empty — every reachable cell carries its distance to the closest gate. Walls (-1) and unreachable ∞ stay untouched.`, 6, null);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(num);
+      const ok = num.every((row, r) => row.every((v, c) => {
+        if (v === -1 || v === 0) return true;
+        let m = INF;
+        for (const [dr, dc] of DIRS) {
+          const a = r + dr, b = c + dc;
+          if (a < 0 || b < 0 || a >= R || b >= C) continue;
+          if (num[a][b] !== -1 && num[a][b] < m) m = num[a][b];
+        }
+        if (v === INF) return m === INF;
+        return v === m + 1;
+      }));
+      last.correct = ok;
+      last.memNote = "Time O(m·n) — each cell enqueued once. Space O(m·n) for the queue.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const INF = 2147483647;
+      const num = numRows(vals, "board");
+      const R = num.length, C = num[0] ? num[0].length : 0;
+      const steps = [];
+      const disp = () => num.map(r => r.map(v => (v === INF ? "∞" : String(v))));
+      const snap = (text, code) => steps.push({ text, code, mem: [gv(disp(), {}, "grid · distances", C)] });
+      snap(`Two-pass DP: dist(r,c) = 1 + min(dist(neighbors)). Sweep 1 from top-left pushes values down and right.`, 0);
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        if (num[r][c] === -1 || num[r][c] === 0) continue;
+        const fromUp = r > 0 && num[r - 1][c] !== -1 ? num[r - 1][c] + 1 : INF;
+        const fromLeft = c > 0 && num[r][c - 1] !== -1 ? num[r][c - 1] + 1 : INF;
+        num[r][c] = Math.min(num[r][c], fromUp, fromLeft);
+      }
+      snap(`After sweep 1 (top-left → bottom-right): every cell got a candidate from its up/left neighbors.`, 1);
+      for (let r = R - 1; r >= 0; r--) for (let c = C - 1; c >= 0; c--) {
+        if (num[r][c] === -1 || num[r][c] === 0) continue;
+        const fromDown = r < R - 1 && num[r + 1][c] !== -1 ? num[r + 1][c] + 1 : INF;
+        const fromRight = c < C - 1 && num[r][c + 1] !== -1 ? num[r][c + 1] + 1 : INF;
+        num[r][c] = Math.min(num[r][c], fromDown, fromRight);
+      }
+      snap(`Sweep 2 (bottom-right → top-left) propagates the other half — the two sweeps cover every path direction. No queue needed.`, 2);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(num);
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(1) beyond the grid — two passes, no auxiliary structures.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0323 — NUMBER OF CONNECTED COMPONENTS
+ * ================================================================ */
+NC150.register({
+  id: "0323", title: "Number of Connected Components in an Undirected Graph", difficulty: "Medium",
+  url: "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/",
+  tags: ["graph", "union-find", "DFS"],
+  approaches: ["Approach 1 · Union-Find count (best)", "Approach 2 · DFS flood count"],
+  complexities: [
+    { time: "O(V · α)", space: "O(V)", note: "BEST — α ≈ 1, parent + rank only" },
+    { time: "O(V + E)", space: "O(V + E)", note: "adjacency + visited set" }
+  ],
+  compare: [
+    { name: "Union-Find", tech: "count -= 1 per successful union", time: "O(V·α)", space: "O(V)", when: "edge stream", best: true },
+    { name: "DFS flood", tech: "one flood per unvisited node", time: "O(V+E)", space: "O(V+E)", when: "graph already built", best: true },
+    { name: "BFS flood", tech: "queue instead of recursion", time: "O(V+E)", space: "O(V+E)", when: "iterative style", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "5" },
+    { name: "edges", label: "edges =", type: "list", default: "[[0,1],[1,2],[3,4]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "5", edges: "[[0,1],[1,2],[3,4]]" }, result: "2" },
+    { label: "Ex 2", values: { n: "5", edges: "[[0,1],[1,2],[2,3],[3,4]]" }, result: "1" },
+    { label: "Ex 3", values: { n: "5", edges: "[]" }, result: "5" }
+  ],
+  realLife: "<p><b>Cluster analysis</b>: connected components of a similarity graph are the cheapest form of unsupervised grouping — 'are these accounts one person?' reduces to component counting over a link graph.</p><p><b>Network islands</b>: after failures, telecom engineers count disconnected subnetworks; union-find updates incrementally as links drop and return.</p>",
+  dsDive: `<h3>Components = n − successful unions</h3>
+<p>Every node starts as its own component. Each successful union merges two distinct components, shrinking the count by exactly 1. After all edges, the count equals the number of connected components — an O(V·α) total, faster than any traversal.</p>
+<div class="equation">components = V − |{e : union(e) merges two different roots}|</div>
+<p>DFS floods count the same thing from the other side: each time the scan meets an unvisited node, one new component is found, and its flood marks all its members visited. Both answers always agree — a nice property check between the two approaches.</p>`,
+  code: [
+    "def countComponents(n, edges):",
+    "    parent = list(range(n)); rank = [0] * n",
+    "    def find(x):                        # path compression",
+    "        while parent[x] != x: parent[x] = parent[parent[x]]; x = parent[x]",
+    "        return x",
+    "    count = n",
+    "    for u, v in edges:",
+    "        ru, rv = find(u), find(v)",
+    "        if ru != rv:                    # merge two components",
+    "            parent[rv] = ru; count -= 1",
+    "    return count"
+  ],
+  steps: [
+    function (vals) {
+      const n = Number(vals.n) || 0;
+      const edges = (vals.edges || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const dsu = new DSU(n);
+      let comps = n;
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [pv(dsu.p, cls, "parent[] · arrows point at component roots"), { type: "array", title: "components count", data: [String(comps)], cls: {}, showIdx: false, size: 4 }] });
+      snap(`Start: ${n} isolated nodes → <b>${n} components</b>. Every successful union merges two of them.`, 0, {});
+      for (let i = 0; i < edges.length; i++) {
+        const [u, v] = edges[i];
+        const ok = dsu.union(u, v);
+        if (!ok) snap(`Edge <b>${u}—${v}</b> joins nodes already in the same component → no change (a cycle edge, fine here).`, 3, { [u]: "hot", [v]: "hot" });
+        else { comps--; snap(`Edge <b>${u}—${v}</b> merges two components → count <b>${comps}</b>.`, 3, { [u]: "hot", [v]: "hot" }); }
+      }
+      snap(`All edges processed → <b>${comps}</b> connected components.`, 6, {});
+      const last = steps[steps.length - 1];
+      last.result = String(comps) + " components";
+      last.correct = true;
+      last.memNote = "Time O(V·α), space O(V) — parent + rank arrays only.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Number(vals.n) || 0;
+      const edges = (vals.edges || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const adj = Array.from({ length: n }, () => []);
+      for (const [u, v] of edges) { adj[u].push(v); adj[v].push(u); }
+      const seen = new Set();
+      const snap = (text, code, stack) => steps.push({ text, code, mem: [hv(seen, 8, "visited set", { hit: -1 }), stack ? sv(stack, "DFS stack · flooding current component") : null].filter(Boolean) });
+      snap(`DFS flood: scan nodes 0…${n - 1}. First unvisited node opens a NEW component; the flood marks its whole component.`, 1);
+      let count = 0;
+      for (let v = 0; v < n; v++) {
+        if (seen.has(v)) continue;
+        count++;
+        seen.add(v);
+        const stack = [v];
+        snap(`Node <b>${v}</b> unvisited → component #<b>${count}</b> starts; flood it.`, 3, stack.slice());
+        while (stack.length) {
+          const x = stack.pop();
+          for (const nb of adj[x]) if (!seen.has(nb)) { seen.add(nb); stack.push(nb); }
+          snap(`Flood at <b>${x}</b> → push unvisited neighbors; component #${count} grows.`, 4, stack.slice());
+        }
+      }
+      snap(`Scan complete → <b>${count}</b> connected components.`, 6, null);
+      const last = steps[steps.length - 1];
+      last.result = String(count) + " components";
+      last.correct = true;
+      last.memNote = "Time O(V+E), space O(V+E) for adjacency + visited set.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0417 — PACIFIC ATLANTIC WATER FLOW
+ * ================================================================ */
+NC150.register({
+  id: "0417", title: "Pacific Atlantic Water Flow", difficulty: "Medium",
+  url: "https://leetcode.com/problems/pacific-atlantic-water-flow/",
+  tags: ["grid", "BFS", "DFS"],
+  approaches: ["Approach 1 · Border BFS from both oceans (best)", "Approach 2 · Border DFS with explicit stack"],
+  complexities: [
+    { time: "O(m · n)", space: "O(m · n)", note: "BEST — each ocean flood touches cells once" },
+    { time: "O(m · n)", space: "O(m · n)", note: "stack version of the same flood" }
+  ],
+  compare: [
+    { name: "Border BFS", tech: "reverse flows: walk uphill from each shore", time: "O(m·n)", space: "O(m·n)", when: "the standard", best: true },
+    { name: "Border DFS", tech: "same idea, stack or recursion", time: "O(m·n)", space: "O(m·n)", when: "recursive clarity", best: false },
+    { name: "Per-cell DFS", tech: "simulate rain from every cell", time: "O(m·n·(m+n))", space: "O(m·n)", when: "never — repeated work", best: false }
+  ],
+  inputs: [
+    { name: "heights", label: "heights =", type: "list", default: "[[1,2,2,3,5],[3,2,3,4,4],[2,4,5,3,1],[6,7,1,4,5],[5,1,1,2,4]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { heights: "[[1,2,2,3,5],[3,2,3,4,4],[2,4,5,3,1],[6,7,1,4,5],[5,1,1,2,4]]" }, result: "7 cells, e.g. [0,4],[3,1]" },
+    { label: "Ex 2", values: { heights: "[[1]]" }, result: "[[0,0]]" },
+    { label: "Ex 3", values: { heights: "[[2,1],[1,2]]" }, result: "[[0,0],[0,1],[1,0],[1,1]]" }
+  ],
+  realLife: "<p><b>Hydrology</b>: which terrain cells drain to which watershed is literally this problem — reverse the water's direction and flood from each ocean, exactly as the algorithm does.</p><p><b>Reachability analysis</b>: any 'who can reach the boundary' question — air-conditioned zones in a building, radio coverage from edge towers, erosion paths — is a border-flood on a grid.</p>",
+  dsDive: `<h3>Reverse the rain</h3>
+<p>Simulating rain from each of m·n cells is wasteful. Instead notice: water flows DOWNHILL. So walk UP the gradient from each shore: a cell can send water to the Pacific iff it is reached by the reverse flood seeded on the top+left borders. The answer is the INTERSECTION of the two floods.</p>
+<div class="equation">cell ∈ answer ⟺ cell ∈ reach(Pacific, walking up) ∧ cell ∈ reach(Atlantic, walking up)</div>
+<p>Moving uphill means expanding to neighbors with <span class="code-var">h[nb] >= h[cell]</span>. BFS and DFS differ only in visit order; both floods together cost O(m·n).</p>`,
+  code: [
+    "def pacificAtlantic(heights):",
+    "    R, C = len(heights), len(heights[0])",
+    "    pac, atl = set(), set()",
+    "    def flood(ocean_set, seeds):          # walk UP from shore cells",
+    "        q = deque(seeds)",
+    "        while q:",
+    "            r, c = q.popleft()",
+    "            for nr, nc in neighbors(r, c):",
+    "                if heights[nr][nc] >= heights[r][c] and (nr,nc) not in ocean_set:",
+    "                    ocean_set.add((nr, nc)); q.append((nr, nc))",
+    "    flood(pac, top row + left col); flood(atl, bottom row + right col)",
+    "    return sorted(pac & atl)"
+  ],
+  steps: [
+    function (vals) {
+      const h = (vals.heights || []).map(r => r.map(Number));
+      const R = h.length, C = h[0] ? h[0].length : 0;
+      const steps = [];
+      const P = new Set(), A = new Set();
+      const disp = () => h.map((row, r) => row.map((v, c) => {
+        const k = r + "," + c;
+        return P.has(k) && A.has(k) ? "PA" : P.has(k) ? "P" : A.has(k) ? "A" : String(v);
+      }));
+      const snap = (text, code, qdata, title) => steps.push({ text, code, mem: [gv(disp(), { "0,0": "done" }, title || "heights · P = reaches Pacific, A = reaches Atlantic, PA = both", C), qdata ? qv(qdata, "frontier") : null].filter(Boolean) });
+      const seedsP = [];
+      for (let c = 0; c < C; c++) seedsP.push([0, c]);
+      for (let r = 1; r < R; r++) seedsP.push([r, 0]);
+      const seedsA = [];
+      for (let c = 0; c < C; c++) seedsA.push([R - 1, c]);
+      for (let r = 0; r < R - 1; r++) seedsA.push([r, C - 1]);
+      function levelsOf(ocean) {
+        const seeds = ocean === "P" ? seedsP : seedsA;
+        const seen = new Set(seeds.map(x => x.join(",")));
+        const levels = [seeds];
+        let cur = seeds;
+        while (cur.length) {
+          const next = [];
+          for (const [r, c] of cur) for (const [dr, dc] of DIRS) {
+            const a = r + dr, b = c + dc;
+            if (a < 0 || b < 0 || a >= R || b >= C) continue;
+            const k = a + "," + b;
+            if (seen.has(k)) continue;
+            if (h[a][b] >= h[r][c]) { seen.add(k); next.push([a, b]); }
+          }
+          if (!next.length) break;
+          levels.push(next);
+          cur = next;
+        }
+        return { levels, seen };
+      }
+      const Pfl = levelsOf("P");
+      Pfl.levels.forEach((lvl, i) => {
+        for (const [r, c] of lvl) P.add(r + "," + c);
+        snap(i === 0 ? `Pacific flood starts at the whole top row + left column (${lvl.length} shore cells).` : `Pacific flood, wave ${i}: cells <b>${lvl.map(x => "[" + x.join(",") + "]").join(" ")}</b> can all reach the Pacific.`, 3, lvl.map(x => x.join(",")), "heights · P = reaches Pacific");
+      });
+      const Afl = levelsOf("A");
+      Afl.levels.forEach((lvl, i) => {
+        for (const [r, c] of lvl) A.add(r + "," + c);
+        snap(i === 0 ? `Atlantic flood starts at the whole bottom row + right column (${lvl.length} shore cells).` : `Atlantic flood, wave ${i}: cells <b>${lvl.map(x => "[" + x.join(",") + "]").join(" ")}</b> can all reach the Atlantic.`, 5, lvl.map(x => x.join(",")), "heights · A = reaches Atlantic");
+      });
+      const both = [];
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (P.has(r + "," + c) && A.has(r + "," + c)) both.push([r, c]);
+      snap(`Intersection of the two floods → <b>${both.length}</b> cells drain to BOTH oceans: ${both.map(x => "[" + x.join(",") + "]").join(" ")}.`, 7, null, "heights · PA = drains to both");
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(both);
+      last.correct = both.length === [...P].filter(k => A.has(k)).length;
+      last.memNote = "Time O(m·n) — two floods, each cell enqueued once per ocean. Space O(m·n) for both sets.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const h = (vals.heights || []).map(r => r.map(Number));
+      const R = h.length, C = h[0] ? h[0].length : 0;
+      const steps = [];
+      const P = new Set(), A = new Set();
+      const disp = () => h.map((row, r) => row.map((v, c) => {
+        const k = r + "," + c;
+        return P.has(k) && A.has(k) ? "PA" : P.has(k) ? "P" : A.has(k) ? "A" : String(v);
+      }));
+      const snap = (text, code, stack, title) => steps.push({ text, code, mem: [gv(disp(), {}, title || "heights · P/A/PA overlay", C), stack ? sv(stack, "DFS stack · (r,c) uphill walk") : null].filter(Boolean) });
+      function flood(set, ocean) {
+        const seeds = [];
+        if (ocean === "P") {
+          for (let c = 0; c < C; c++) seeds.push([0, c]);
+          for (let r = 1; r < R; r++) seeds.push([r, 0]);
+        } else {
+          for (let c = 0; c < C; c++) seeds.push([R - 1, c]);
+          for (let r = 0; r < R - 1; r++) seeds.push([r, C - 1]);
+        }
+        const stack = [];
+        for (const s of seeds) { const k = s.join(","); if (!set.has(k)) { set.add(k); stack.push(s); } }
+        snap(ocean === "P" ? `DFS push all Pacific shore cells — each pops, then dives uphill (h[nb] ≥ h[cur]).` : `DFS push all Atlantic shore cells.`, 2, stack.map(x => x.join(",")));
+        while (stack.length) {
+          const [r, c] = stack.pop();
+          for (const [dr, dc] of DIRS) {
+            const a = r + dr, b = c + dc;
+            if (a < 0 || b < 0 || a >= R || b >= C) continue;
+            const k = a + "," + b;
+            if (set.has(k)) continue;
+            if (h[a][b] >= h[r][c]) { set.add(k); stack.push([a, b]); }
+          }
+          snap(`Pop <b>[${r},${c}]</b>, push uphill neighbors — LIFO dives one ridge deep before backtracking.`, 4, stack.map(x => x.join(",")));
+        }
+      }
+      flood(P, "P");
+      flood(A, "A");
+      const both = [];
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (P.has(r + "," + c) && A.has(r + "," + c)) both.push([r, c]);
+      snap(`Both floods done → <b>${both.length}</b> cells reach both oceans: ${both.map(x => "[" + x.join(",") + "]").join(" ")}.`, 7, null);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(both);
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(m·n) — explicit stack avoids recursion depth issues on tall grids.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0684 — REDUNDANT CONNECTION
+ * ================================================================ */
+NC150.register({
+  id: "0684", title: "Redundant Connection", difficulty: "Medium",
+  url: "https://leetcode.com/problems/redundant-connection/",
+  tags: ["union-find", "graph", "cycle detection"],
+  approaches: ["Approach 1 · Union-Find (best)", "Approach 2 · DFS path check per edge"],
+  complexities: [
+    { time: "O(V · α)", space: "O(V)", note: "BEST — α ≈ 1, parent array only" },
+    { time: "O(V · E)", space: "O(V + E)", note: "DFS for every candidate edge" }
+  ],
+  compare: [
+    { name: "Union-Find", tech: "first union that fails = the answer", time: "O(V·α)", space: "O(V)", when: "the standard", best: true },
+    { name: "DFS per edge", tech: "path exists ⇒ skip this edge", time: "O(V·E)", space: "O(V+E)", when: "educational, no DSU", best: false },
+    { name: "Degree-based", tech: "peel degree-1 leaves", time: "O(V)", space: "O(V)", when: "variant insight", best: false }
+  ],
+  inputs: [
+    { name: "edges", label: "edges = (1-indexed nodes)", type: "list", default: "[[1,2],[1,3],[2,3]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { edges: "[[1,2],[1,3],[2,3]]" }, result: "[2,3]" },
+    { label: "Ex 2", values: { edges: "[[1,2],[2,3],[3,4],[1,4],[1,5]]" }, result: "[1,4]" },
+    { label: "Ex 3", values: { edges: "[[1,2],[1,3],[1,4],[3,4]]" }, result: "[3,4]" }
+  ],
+  realLife: "<p><b>Network dedup</b>: when physical links are reported redundantly, detecting 'which cable report closes a loop' is this exact DSU scan — utilities and LAN auto-config use it to prune redundant links.</p><p><b>Schema/inventory cleanup</b>: given a connected system description with one extra relationship, find the edge that can be dropped without breaking connectivity.</p>",
+  dsDive: `<h3>The edge that joins an already-joined pair</h3>
+<p>The graph is a tree plus one extra edge — exactly one cycle. Process edges in order with union-find: an edge whose endpoints are <b>already in the same component</b> closes the cycle, and because we process in order, that is the 'last' edge of the cycle — precisely what LeetCode asks for.</p>
+<div class="equation">answer = first edge (u,v) where find(u) == find(v)</div>
+<p>The DFS variant builds the graph edge by edge and, before adding (u,v), asks: <span class="code-var\">is there already a path u→v?</span> — a full traversal per candidate, hence O(V·E) worst case. Union-find answers the same question in near-constant time per edge.</p>`,
+  code: [
+    "def findRedundantConnection(edges):",
+    "    parent = list(range(len(edges) + 1))  # nodes are 1..n",
+    "    def find(x):",
+    "        while parent[x] != x: x = parent[x]",
+    "        return x",
+    "    for u, v in edges:",
+    "        ru, rv = find(u), find(v)",
+    "        if ru == rv: return [u, v]      # already connected → closes a cycle",
+    "        parent[rv] = ru",
+    "    return []"
+  ],
+  steps: [
+    function (vals) {
+      const edges = (vals.edges || []).map(p => (p || []).map(Number));
+      const n = edges.length ? Math.max(...edges.flat()) : 0;
+      const steps = [];
+      const dsu = new DSU(n + 1);
+      const snap = (text, code, cls, hot) => steps.push({ text, code, mem: [pv(dsu.p.slice(1), cls, "parent[] · index 1..n, points at root"), { type: "array", title: "current edge", data: hot ? [hot.join("—")] : [], cls: {}, showIdx: true, size: 4 }] });
+      snap(`Tree + one extra edge ⇒ exactly one cycle. Union every edge; an edge that joins ALREADY-connected endpoints is the redundant one.`, 0, {});
+      let answer = [];
+      for (let i = 0; i < edges.length; i++) {
+        const [u, v] = edges[i];
+        if (!dsu.union(u, v)) {
+          answer = [u, v];
+          snap(`Edge <b>${u}—${v}</b>: endpoints share root <b>${dsu.find(u)}</b> — they were already connected, so this edge closes the cycle → <b>redundant: [${u},${v}]</b>.`, 4, { [u]: "hot", [v]: "hot" }, [u, v]);
+          break;
+        }
+        snap(`Edge <b>${u}—${v}</b> joins two different components → keep it (tree part).`, 3, { [u]: "hot", [v]: "hot" }, [u, v]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(answer);
+      last.correct = answer.length === 2;
+      last.memNote = "Time O(V·α), space O(V). Processing in order picks the LAST cycle edge, as required.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const edges = (vals.edges || []).map(p => (p || []).map(Number));
+      const steps = [];
+      const snap = (text, code, adj) => steps.push({ text, code, mem: [adj && adj.length ? { type: "array", title: "adjacency built so far (edges kept)", data: adj.slice(), cls: {}, showIdx: true, size: 8 } : { type: "array", title: "adjacency built so far", data: ["(empty)"], cls: {}, showIdx: true, size: 8 }] });
+      snap(`DFS variant: build the graph incrementally. Before KEEPING edge (u,v), check whether a path u→v already exists — if so, the edge is redundant.`, 0);
+      const kept = [];
+      let answer = [];
+      for (let i = 0; i < edges.length; i++) {
+        const [u, v] = edges[i];
+        const adj = Array.from({ length: edges.length + 1 }, () => []);
+        for (const [a, b] of kept) { adj[a].push(b); adj[b].push(a); }
+        let reach = false;
+        if (kept.length) {
+          const stack = [u]; const seen = new Set([u]);
+          while (stack.length && !reach) {
+            const x = stack.pop();
+            for (const nb of adj[x]) {
+              if (nb === v) { reach = true; break; }
+              if (!seen.has(nb)) { seen.add(nb); stack.push(nb); }
+            }
+          }
+        }
+        if (reach) {
+          answer = [u, v];
+          snap(`Edge <b>${u}—${v}</b>: DFS finds path <b>${u} → … → ${v}</b> already exists → redundant → return <b>[${u},${v}]</b>.`, 5, kept);
+          break;
+        }
+        kept.push([u, v]);
+        snap(`Edge <b>${u}—${v}</b>: no existing path → keep it (tree part).`, 3, kept);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(answer);
+      last.correct = answer.length === 2;
+      last.memNote = "Time O(V·E) — a full DFS per edge. Union-Find answers the same question in O(α).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0695 — MAX AREA OF ISLAND
+ * ================================================================ */
+NC150.register({
+  id: "0695", title: "Max Area of Island", difficulty: "Medium",
+  url: "https://leetcode.com/problems/max-area-of-island/",
+  tags: ["grid", "DFS", "BFS"],
+  approaches: ["Approach 1 · DFS sink, track size (best)", "Approach 2 · BFS flood with counter"],
+  complexities: [
+    { time: "O(m · n)", space: "O(m · n)", note: "BEST — each cell visited at most twice" },
+    { time: "O(m · n)", space: "O(m · n)", note: "queue per island" }
+  ],
+  compare: [
+    { name: "DFS sink", tech: "count cells while erasing", time: "O(m·n)", space: "O(m·n)", when: "the standard", best: true },
+    { name: "BFS flood", tech: "queue + running size", time: "O(m·n)", space: "O(m·n)", when: "recursion limit", best: false },
+    { name: "Union-Find", tech: "union adjacent 1s, track size", time: "O(m·n·α)", space: "O(m·n)", when: "dynamic grid edits", best: false }
+  ],
+  inputs: [
+    { name: "grid", label: "grid = (1 = land, 0 = water)", type: "list", default: "[[0,0,1,0,0,0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,1,1,1,0,0,0],[0,1,1,0,1,0,0,0,0,0,0,0,0],[0,1,0,0,1,1,0,0,1,0,1,0,0],[0,1,0,0,1,1,0,0,1,1,1,0,0],[0,0,0,0,0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1,1,1,0,0,0],[0,0,0,0,0,0,0,1,1,0,0,0,0]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { grid: "[[0,0,1,0,0,0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,1,1,1,0,0,0],[0,1,1,0,1,0,0,0,0,0,0,0,0],[0,1,0,0,1,1,0,0,1,0,1,0,0],[0,1,0,0,1,1,0,0,1,1,1,0,0],[0,0,0,0,0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1,1,1,0,0,0],[0,0,0,0,0,0,0,1,1,0,0,0,0]]" }, result: "6" },
+    { label: "Ex 2", values: { grid: "[[0,0,0,0,0,0,0,0]]" }, result: "0" },
+    { label: "Ex 3", values: { grid: "[[1]]" }, result: "1" }
+  ],
+  realLife: "<p><b>Object sizing in imaging</b>: after segmentation, the largest connected blob's pixel count IS the largest object's size — the standard metric for tumor size, crop damage, or parking-lot occupancy from aerial images.</p><p><b>Cluster size analytics</b>: largest cluster in a bot-network link graph, largest contiguous region in a 2D sensor array — same flood fill with a counter.</p>",
+  dsDive: `<h3>0200's sink + one counter</h3>
+<p>Identical machinery to Number of Islands — but instead of counting islands, each flood <b>counts its own cells</b> and we track the maximum. The sink trick (erase land as you flood) again removes the visited-set overhead.</p>
+<div class="equation">area(component) = Σ 1 over flooded cells &nbsp;→&nbsp; answer = max over components</div>
+<p>Union-Find with a size-per-root array is the dynamic alternative: every union of two 1-cells adds their sizes, and the max root size is the answer — O(m·n·α) total.</p>`,
+  code: [
+    "def maxAreaOfIsland(grid):",
+    "    best = 0",
+    "    def flood(r, c):",
+    "        if out_of_bounds or grid[r][c] == 0: return 0",
+    "        grid[r][c] = 0                  # sink + count in one step",
+    "        size = 1",
+    "        for dr, dc in 4 directions: size += flood(r + dr, c + dc)",
+    "        return size",
+    "    for r in rows: for c in cols:",
+    "        if grid[r][c] == 1: best = max(best, flood(r, c))",
+    "    return best"
+  ],
+  steps: [
+    function (vals) {
+      const grid = numRows(vals, "grid");
+      const R = grid.length, C = grid[0] ? grid[0].length : 0;
+      const steps = [];
+      const disp = grid.map(r => r.map(String));
+      const cls = {};
+      const snap = (text, code) => steps.push({ text, code, mem: [gv(disp, cls, "grid · sink order: hot = flooding, done = sunken (counted)", C)] });
+      snap(`Scan + sink, same as 0200 — but every flood returns its SIZE and we track the maximum.`, 5);
+      let best = 0;
+      for (let r = 0; r < R; r++) {
+        for (let c = 0; c < C; c++) {
+          if (disp[r][c] !== "1") continue;
+          let size = 0;
+          const stack = [[r, c]];
+          disp[r][c] = "0";
+          cls[r + "," + c] = "hot";
+          snap(`Island start <b>[${r},${c}]</b> — begin counting size.`, 7);
+          while (stack.length) {
+            const [a, b] = stack.pop();
+            size++;
+            cls[a + "," + b] = "done";
+            for (const [dr, dc] of DIRS) {
+              const na = a + dr, nb = b + dc;
+              if (na < 0 || nb < 0 || na >= R || nb >= C) continue;
+              if (disp[na][nb] === "1") { disp[na][nb] = "0"; stack.push([na, nb]); cls[na + "," + nb] = "hot"; }
+            }
+            if (stack.length) snap(`Sink <b>[${a},${b}]</b> → size <b>${size}</b> so far, flood continues.`, 8);
+          }
+          if (size > best) { best = size; snap(`Island done: size <b>${size}</b> — new maximum!`, 9); }
+          else snap(`Island done: size <b>${size}</b> — not bigger than current best ${best}.`, 9);
+        }
+        snap(`Row ${r} scanned. Largest island so far: <b>${best}</b>.`, 6);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "max area: " + best;
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(m·n) recursion — each 1-cell sunken exactly once.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const grid = numRows(vals, "grid");
+      const R = grid.length, C = grid[0] ? grid[0].length : 0;
+      const steps = [];
+      const disp = grid.map(r => r.map(String));
+      const cls = {};
+      const snap = (text, code, qdata) => steps.push({ text, code, mem: [gv(disp, cls, "grid · BFS flood, queue in sync", C), qdata ? qv(qdata, "BFS queue · island cells") : null].filter(Boolean) });
+      snap(`BFS flavor: count cells while the FIFO queue floods — same O(m·n), no recursion.`, 0);
+      let best = 0;
+      for (let r = 0; r < R; r++) {
+        for (let c = 0; c < C; c++) {
+          if (disp[r][c] !== "1") continue;
+          let size = 0;
+          const q = [[r, c]];
+          let qi = 0;
+          disp[r][c] = "0";
+          cls[r + "," + c] = "hot";
+          snap(`Island start <b>[${r},${c}]</b> enqueued.`, 3, q.map(x => x.join(",")));
+          while (qi < q.length) {
+            const [a, b] = q[qi];
+            size++;
+            cls[a + "," + b] = "done";
+            for (const [dr, dc] of DIRS) {
+              const na = a + dr, nb = b + dc;
+              if (na < 0 || nb < 0 || na >= R || nb >= C) continue;
+              if (disp[na][nb] === "1") { disp[na][nb] = "0"; q.push([na, nb]); cls[na + "," + nb] = "hot"; }
+            }
+            snap(`Dequeue <b>[${a},${b}]</b> → size <b>${size}</b>, enqueue land neighbors — rings spread FIFO.`, 4, q.slice(qi + 1).map(x => x.join(",")));
+            qi++;
+          }
+          if (size > best) best = size;
+          snap(`Island done: size <b>${size}</b>, best now <b>${best}</b>.`, 6, null);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "max area: " + best;
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(m·n) for the queue.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0994 — ROTTING ORANGES
+ * ================================================================ */
+NC150.register({
+  id: "0994", title: "Rotting Oranges", difficulty: "Medium",
+  url: "https://leetcode.com/problems/rotting-oranges/",
+  tags: ["grid", "BFS", "multi-source"],
+  approaches: ["Approach 1 · Multi-source BFS by minute (best)", "Approach 2 · Brute simulation per minute"],
+  complexities: [
+    { time: "O(m · n)", space: "O(m · n)", note: "BEST — each orange rots once" },
+    { time: "O(minutes · m · n)", space: "O(1)", note: "re-scan the grid every minute" }
+  ],
+  compare: [
+    { name: "Multi-source BFS", tech: "all rotten oranges in one queue", time: "O(m·n)", space: "O(m·n)", when: "the standard", best: true },
+    { name: "Brute simulation", tech: "re-scan until no spread", time: "O(t·m·n)", space: "O(1)", when: "tiny grids", best: false },
+    { name: "Per-orange BFS", tech: "distance per fresh orange", time: "O(m·n·f)", space: "O(m·n)", when: "few fresh cells", best: false }
+  ],
+  inputs: [
+    { name: "grid", label: "grid = (2 = rotten, 1 = fresh, 0 = empty)", type: "list", default: "[[2,1,1],[1,1,0],[0,1,1]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { grid: "[[2,1,1],[1,1,0],[0,1,1]]" }, result: "4 minutes" },
+    { label: "Ex 2", values: { grid: "[[2,1,1],[0,1,1],[1,0,1]]" }, result: "-1 (one orange unreachable)" },
+    { label: "Ex 3", values: { grid: "[[0,2]]" }, result: "0 minutes" }
+  ],
+  realLife: "<p><b>Epidemic / rumor spread</b>: 'days until infection reaches everyone' is this exact multi-source BFS — every infected cell is a source spreading at one unit per time step.</p><p><b>Fire & flood simulators</b>: fire fronts, spills, and biological blooms propagate one cell per minute; the minute counter of the BFS is the simulated time.</p>",
+  dsDive: `<h3>One queue, one clock</h3>
+<p>All rotten oranges start at minute 0 in the same queue. Each 'minute' of the simulation is one BFS level: everything in the queue rots its neighbors, and those newly-rotten cells form the next level. The level depth is the minute count — no timestamps needed.</p>
+<div class="equation">minute k = BFS level k &nbsp;→&nbsp; fresh cell gets dist = minutes since its source rotted</div>
+<p>If fresh cells remain after the queue dies, they are unreachable (isolated by empty cells) → answer -1. The brute simulation loops the whole grid per minute and reaches the same answer in O(t·m·n).</p>`,
+  code: [
+    "def orangesRotting(grid):",
+    "    q = deque([(r, c) for r in rows for c in cols if grid[r][c] == 2])",
+    "    fresh = count of 1s; minutes = 0",
+    "    while q and fresh:",
+    "        for _ in range(len(q)):          # one MINUTE = one level",
+    "            r, c = q.popleft()",
+    "            for nr, nc in neighbors(r, c):",
+    "                if grid[nr][nc] == 1:",
+    "                    grid[nr][nc] = 2; fresh -= 1; q.append((nr, nc))",
+    "        minutes += 1",
+    "    return minutes if fresh == 0 else -1"
+  ],
+  steps: [
+    function (vals) {
+      const grid = numRows(vals, "grid");
+      const R = grid.length, C = grid[0] ? grid[0].length : 0;
+      const steps = [];
+      const disp = grid.map(r => r.map(String));
+      const cls = {};
+      const snap = (text, code, qdata) => steps.push({ text, code, mem: [gv(disp, cls, "grid · 2 = rotten, 1 = fresh, 0 = empty", C), qdata ? qv(qdata, "BFS queue · rotten frontier") : null].filter(Boolean) });
+      let fresh = 0;
+      const q = [];
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+        if (grid[r][c] === 1) fresh++;
+        if (grid[r][c] === 2) { q.push([r, c]); cls[r + "," + c] = "done"; }
+      }
+      snap(`Minute 0: ${q.length} rotten source(s), <b>${fresh}</b> fresh. All sources share one queue → rings advance together.`, 0, q.map(x => x.join(",")));
+      let minutes = 0;
+      let qi = 0;
+      while (qi < q.length && fresh > 0) {
+        const levelEnd = q.length;
+        const newly = [];
+        while (qi < levelEnd) {
+          const [r, c] = q[qi++];
+          for (const [dr, dc] of DIRS) {
+            const nr = r + dr, nc = c + dc;
+            if (nr < 0 || nc < 0 || nr >= R || nc >= C) continue;
+            if (grid[nr][nc] === 1) {
+              grid[nr][nc] = 2; fresh--; q.push([nr, nc]);
+              disp[nr][nc] = "2"; cls[nr + "," + nc] = "hot";
+              newly.push("[" + nr + "," + nc + "]");
+            }
+          }
+          cls[r + "," + c] = "done";
+        }
+        minutes++;
+        snap(`Minute <b>${minutes}</b>: the whole frontier rots <b>${newly.join(" ") || "nothing"}</b>. Fresh remaining: <b>${fresh}</b>.`, 4, q.slice(qi).map(x => x.join(",")));
+      }
+      if (fresh > 0) snap(`Queue empty but <b>${fresh}</b> fresh orange(s) remain — cut off by empty cells, they rot never → <b>-1</b>.`, 7, null);
+      else snap(`All ${fresh === 0 ? "oranges" : "fresh"} rotted in <b>${minutes}</b> minutes.`, 6, null);
+      const last = steps[steps.length - 1];
+      last.result = (fresh > 0 ? -1 : minutes) + " minutes";
+      last.correct = true;
+      last.memNote = "Time O(m·n) — each orange rots once. Space O(m·n) for the queue.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const grid = numRows(vals, "grid");
+      const R = grid.length, C = grid[0] ? grid[0].length : 0;
+      const steps = [];
+      const disp = grid.map(r => r.map(String));
+      const cls = {};
+      const snap = (text, code) => steps.push({ text, code, mem: [gv(disp, cls, "grid · brute simulation", C)] });
+      let fresh = 0;
+      for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (grid[r][c] === 1) fresh++;
+      snap(`Brute simulation: each minute, scan the WHOLE grid and rot every fresh orange touching a rotten one. O(t·m·n) — slower but dead simple.`, 0);
+      let minutes = 0;
+      while (fresh > 0) {
+        const rot = [];
+        for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+          if (grid[r][c] !== 1) continue;
+          for (const [dr, dc] of DIRS) {
+            const nr = r + dr, nc = c + dc;
+            if (nr < 0 || nc < 0 || nr >= R || nc >= C) continue;
+            if (grid[nr][nc] === 2) { rot.push([r, c]); break; }
+          }
+        }
+        if (!rot.length) break;
+        for (const [r, c] of rot) { grid[r][c] = 2; disp[r][c] = "2"; cls[r + "," + c] = "hot"; fresh--; }
+        minutes++;
+        snap(`Minute <b>${minutes}</b>: scan found ${rot.length} orange(s) adjacent to rot → they rot now. Fresh: <b>${fresh}</b>.`, 2);
+      }
+      if (fresh > 0) snap(`A full minute passed with no new rot but <b>${fresh}</b> fresh remain → unreachable → <b>-1</b>.`, 3);
+      else snap(`All fresh oranges rotted after <b>${minutes}</b> minutes.`, 4);
+      const last = steps[steps.length - 1];
+      last.result = (fresh > 0 ? -1 : minutes) + " minutes";
+      last.correct = true;
+      last.memNote = "Time O(t·m·n) where t = minutes — re-scans the grid every minute. Space O(1) extra.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

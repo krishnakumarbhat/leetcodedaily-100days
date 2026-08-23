@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<!-- ============================================================
+     SECTION TEMPLATE — copy this file, replace the <script> data
+     with your section's problems. Everything else stays identical.
+     ============================================================ -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · Arrays & Hashing — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+/* ============ SIDEBAR NAV (shared by all sections) ============ */
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+/* ============ SECTION METADATA ============ */
+const SECTION = { id: "01", title: "Arrays & Hashing" };
+
+/* ============ PROBLEM DEFINITIONS ============ */
+/* One NC150.register({...}) call per problem. The shape of a
+   problem object is documented at the top of engine.js. */
+NC150.register({
+  id: "0001",
+  title: "Two Sum",
+  difficulty: "Easy",
+  url: "https://leetcode.com/problems/two-sum/",
+  tags: ["hashmap", "array"],
+  approaches: ["Approach 1 · One-pass hash map", "Approach 2 · Sort + two pointers"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — one pass, hash map" },
+    { time: "O(n log n)", space: "O(n)", note: "no hash map needed" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "nested loops", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "One-pass hash map", tech: "complement lookup", time: "O(n)", space: "O(n)", when: "general case", best: true },
+    { name: "Sort + two pointers", tech: "sorted two-pointer", time: "O(n log n)", space: "O(n)", when: "memory-constrained, no hash", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[2,7,11,15]" },
+    { name: "target", label: "target =", type: "int", default: "9" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,7,11,15]", target: "9" }, result: "[0,1]" },
+    { label: "Ex 2", values: { nums: "[3,2,4]", target: "6" }, result: "[1,2]" },
+    { label: "Ex 3", values: { nums: "[3,3]", target: "6" }, result: "[0,1]" }
+  ],
+  realLife: "<p>Autocomplete on your phone: dictionary words are hashed; when you type, the engine computes a hash of the prefix and jumps straight to the bucket instead of scanning the whole dictionary. Same trick as Two Sum: <b>turn an O(n) scan into an O(1) lookup</b>.</p><p>Banking: detecting duplicate transactions against a ledger uses the identical 'seen-set' pattern.</p>",
+  dsDive: `<h3>Why a hash map, and WHICH one?</h3>
+<p><b>Python</b> — <span class="code-var">dict</span> is an <b>open-addressing hash table</b> with <b>linear probing</b>. Key k is placed at slot:</p>
+<div class="equation">h(k, i) = (hash(k) + i) mod m   &nbsp; i = 0, 1, 2, …  (m = table size)</div>
+<p>If slot h(k) is occupied, Python walks i = 1, 2, … to find the next free slot. Lookup walks the same probe sequence. This keeps all data in <b>one contiguous array</b> → great cache locality, low memory.</p>
+<p><b>C++</b> — <span class="code-cpp">std::unordered_map</span> uses <b>separate chaining</b>: each slot is a bucket (linked list) of colliding keys. Lookup cost O(1) average. If keys are <b>ordered</b> and you need range queries (e.g. 'all keys ≤ x'), use <span class="code-cpp">std::map</span> — a red-black tree, O(log n) per op. For Two Sum: unordered_map wins (unordered lookups only).</p>
+<p><b>Cache trick:</b> Python's linear probing beats C++ chaining on cache hits for small tables; chaining wins under heavy load factor (no probing storms). Reverse iteration or sorted order never helps Two Sum — the hash map is already optimal.</p>`,
+  code: [
+    "def two_sum(nums, target):",
+    "    seen = {}                          # value -> index  (dict = open addressing, linear probing)",
+    "    for i, num in enumerate(nums):     # one pass only",
+    "        need = target - num            # the complement we are hunting for",
+    "        if need in seen:               # O(1) probe sequence lookup",
+    "            return [seen[need], i]     # found: earlier index, current index",
+    "        seen[num] = i                  # not found: remember this value",
+    "    return []"
+  ],
+  /* step generator: returns animated script */
+  steps: [
+    function (vals) {
+      const nums = vals.nums, target = vals.target;
+      const U = window.NC150.utils;
+      const steps = [];
+      const seen = new Map();             /* simulated dict: key -> slot */
+      const m = 8;                        /* table size for the picture */
+      const slots = new Array(m).fill(null);
+      const h = k => ((k % m) + m) % m;   /* simple hash so kids can verify */
+      function snap(text, code, probe, hit, pairs) {
+        const s = { text, code, mem: [{
+          type: "hashmap", title: "dict · open addressing", mode: "open",
+          slots: slots.map(x => x ? { k: x.k, v: x.v } : null),
+          probe, hit, formula: "h(k, i) = (hash(k) + i) mod 8"
+        }, {
+          type: "array", title: "nums", data: nums, cls: pairs || {}, showIdx: true, size: 4
+        }] };
+        steps.push(s);
+      }
+      snap("Start: table empty, scan <b>nums</b> one element at a time (O(n)).", 1, [], -1, {});
+      let found = [];
+      for (let i = 0; i < nums.length; i++) {
+        const num = nums[i], need = target - num;
+        const probe = [];
+        let slot = -1;
+        for (let j = 0; j < m; j++) {          /* simulate linear probing lookup */
+          const s = (h(need) + j) % m;
+          probe.push(s);
+          if (slots[s] && slots[s].k === need) { slot = s; break; }
+          if (!slots[s]) break;                 /* empty slot = not present */
+        }
+        if (slot !== -1) {
+          found = [seen.get(need), i];
+          snap(`<b>num=${num}</b> → complement <b>need=${need}</b>. Probing slots ${probe.join("→")} finds it at slot ${slot}! Return [${found}].`,
+            5, probe, slot, { [i]: "hl", [found[0]]: "done" });
+          break;
+        }
+        /* insert with visible probing */
+        const iprobe = [];
+        let placed = -1;
+        for (let j = 0; j < m; j++) {
+          const s = (h(num) + j) % m;
+          iprobe.push(s);
+          if (!slots[s]) { placed = s; break; }
+        }
+        slots[placed] = { k: num, v: i };
+        seen.set(num, i);
+        snap(`<b>need=${need}</b> not in table → probe ${iprobe.join("→")} from h(${num})=${h(num)}, insert <b>${num}→${i}</b> at slot ${placed}.`, 6, iprobe, placed, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(found);
+      last.correct = (nums[found[0]] + nums[found[1]] === target);
+      last.memNote = "Space: dict holds ≤ n key→index pairs → O(n). Time: every op O(1) average → O(n).";
+      return { steps, result: JSON.stringify(found), correct: nums[found[0]] + nums[found[1]] === target };
+    },
+    function (vals) {
+      /* Approach 2: sort + two pointers */
+      const nums = vals.nums, target = vals.target;
+      const steps = [];
+      const pairs = nums.map((v, i) => ({ v, i }));
+      const snap = (text, code, l, r, cls) => steps.push({
+        text, code,
+        mem: [{ type: "array", title: "sorted (val,originalIdx)", data: pairs.map(p => p.v + "·" + p.i), cls, showIdx: true, size: 8 }]
+      });
+      snap("Step 1: attach original indices, then <b>sort</b> — O(n log n).", 0, -1, -1, {});
+      pairs.sort((a, b) => a.v - b.v);
+      let l = 0, r = pairs.length - 1, found = [];
+      snap("Step 2: two pointers — l at the smallest, r at the largest.", 2, l, r, { [l]: "hot", [r]: "hot" });
+      while (l < r) {
+        const sum = pairs[l].v + pairs[r].v;
+        const cls = { [l]: "hot", [r]: "hot" };
+        if (sum === target) {
+          found = [pairs[l].i, pairs[r].i];
+          snap(`<b>${pairs[l].v} + ${pairs[r].v} = ${sum} = target!</b> → return original indices [${found}].`, 6, l, r, { [l]: "done", [r]: "done" });
+          break;
+        } else if (sum < target) {
+          snap(`Sum <b>${sum} &lt; ${target}</b> → too small, move l right (need bigger partner).`, 8, l, r, cls);
+          l++;
+        } else {
+          snap(`Sum <b>${sum} &gt; ${target}</b> → too big, move r left (need smaller partner).`, 10, l, r, cls);
+          r--;
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(found);
+      last.memNote = "Space: O(n) for the pairs copy. Time: sort O(n log n) + walk O(n).";
+      return { steps, result: JSON.stringify(found), correct: found.length === 2 && nums[found[0]] + nums[found[1]] === target, memNote: last.memNote };
+    }
+  ]
+});
+
+/* more problems registered here ... */
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

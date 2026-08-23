@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeetCode 150 — Interactive Learning Playground</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  body { margin: 0; background: #0d1117; color: #c9d1d9; font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .hero { text-align: center; padding: 56px 20px 40px; background: linear-gradient(180deg, #161b22 0%, #0d1117 100%); border-bottom: 1px solid #21262d; }
+  .hero h1 { margin: 0 0 10px; font-size: 2.1rem; color: #f0f6fc; letter-spacing: -0.5px; }
+  .hero h1 .mono { font-family: "SFMono-Regular", Consolas, monospace; color: #58a6ff; }
+  .hero p { margin: 0 auto; max-width: 640px; color: #8b949e; font-size: 1rem; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; padding: 32px 24px 8px; max-width: 1180px; margin: 0 auto; }
+  .card { display: block; text-decoration: none; color: inherit; background: #161b22; border: 1px solid #21262d; border-radius: 10px; padding: 18px 18px 14px; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .card:hover { transform: translateY(-4px); border-color: #58a6ff; box-shadow: 0 8px 24px rgba(88,166,255,.12); }
+  .card .num { font-family: "SFMono-Regular", Consolas, monospace; font-size: .78rem; color: #58a6ff; letter-spacing: 1px; }
+  .card .name { margin: 6px 0 8px; font-size: 1.05rem; font-weight: 600; color: #f0f6fc; }
+  .card .mix { display: inline-block; font-family: "SFMono-Regular", Consolas, monospace; font-size: .72rem; color: #8b949e; border: 1px solid #30363d; border-radius: 20px; padding: 2px 10px; }
+  .card .mix .easy { color: #3fb950; } .card .mix .medium { color: #d29922; } .card .mix .hard { color: #f85149; }
+  .card .arrow { float: right; color: #30363d; font-size: 1rem; transition: color .15s ease; }
+  .card:hover .arrow { color: #58a6ff; }
+  .foot { text-align: center; color: #484f58; font-size: .82rem; padding: 34px 20px 40px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>NeetCode 150 — <span class="mono">Interactive</span> Learning Playground</h1>
+  <p>Every problem ships with animated step-by-step visualizations of how data moves in memory, per-approach time &amp; space complexity, and real-world use cases. Pick a section, hit ▶ Run, and watch the algorithm think.</p>
+</header>
+
+<main class="grid">
+
+  <a class="card" href="sections/section_01_arrays_and_hashing.html">
+    <span class="num">01</span><span class="arrow">→</span>
+    <div class="name">Arrays &amp; Hashing</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_02_two_pointers.html">
+    <span class="num">02</span><span class="arrow">→</span>
+    <div class="name">Two Pointers</div>
+    <span class="mix"><span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_03_sliding_window.html">
+    <span class="num">03</span><span class="arrow">→</span>
+    <div class="name">Sliding Window</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_04_stack.html">
+    <span class="num">04</span><span class="arrow">→</span>
+    <div class="name">Stack</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_05_binary_search.html">
+    <span class="num">05</span><span class="arrow">→</span>
+    <div class="name">Binary Search</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_06_linked_list.html">
+    <span class="num">06</span><span class="arrow">→</span>
+    <div class="name">Linked List</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_07_trees.html">
+    <span class="num">07</span><span class="arrow">→</span>
+    <div class="name">Trees</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_08_tries.html">
+    <span class="num">08</span><span class="arrow">→</span>
+    <div class="name">Tries</div>
+    <span class="mix"><span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_09_heap.html">
+    <span class="num">09</span><span class="arrow">→</span>
+    <div class="name">Heap / Priority Queue</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_10_backtracking.html">
+    <span class="num">10</span><span class="arrow">→</span>
+    <div class="name">Backtracking</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_11_graphs.html">
+    <span class="num">11</span><span class="arrow">→</span>
+    <div class="name">Graphs</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_12_advanced_graphs.html">
+    <span class="num">12</span><span class="arrow">→</span>
+    <div class="name">Advanced Graphs</div>
+    <span class="mix"><span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_13_1d_dp.html">
+    <span class="num">13</span><span class="arrow">→</span>
+    <div class="name">1-D Dynamic Programming</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_14_2d_dp.html">
+    <span class="num">14</span><span class="arrow">→</span>
+    <div class="name">2-D Dynamic Programming</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_15_greedy.html">
+    <span class="num">15</span><span class="arrow">→</span>
+    <div class="name">Greedy</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_16_intervals.html">
+    <span class="num">16</span><span class="arrow">→</span>
+    <div class="name">Intervals</div>
+    <span class="mix"><span class="medium">Medium</span> / <span class="hard">Hard</span></span>
+  </a>
+
+  <a class="card" href="sections/section_17_math_geometry.html">
+    <span class="num">17</span><span class="arrow">→</span>
+    <div class="name">Math &amp; Geometry</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+  <a class="card" href="sections/section_18_bit_manipulation.html">
+    <span class="num">18</span><span class="arrow">→</span>
+    <div class="name">Bit Manipulation</div>
+    <span class="mix"><span class="easy">Easy</span> / <span class="medium">Medium</span></span>
+  </a>
+
+</main>
+
+<footer class="foot">NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+</body>
+</html>

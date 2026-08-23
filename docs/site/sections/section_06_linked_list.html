@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 · Linked List — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "06", title: "Linked List" };
+const U = window.NC150.utils;
+
+/* ---------- shared helpers for list animations ---------- */
+/* ADDR(i): fake-but-consistent hex address of visual node i (8-byte ptr) */
+function ADDR(i) { return U.addr(i, 8); }
+/* chain(vals): nodes array for the 'list' view; next=true = forward pointer */
+function chain(arr) { return arr.map((v, i) => ({ v, next: i < arr.length - 1 ? true : null })); }
+/* clone view nodes so generators can mutate for flips/cycles without
+   corrupting already-emitted steps */
+function cloneNodes(nodes) { return nodes.map(n => ({ v: n.v, next: n.next, hl: !!n.hl, hot: !!n.hot, done: !!n.done })); }
+
+/* ================================================================
+ * PROBLEM 0002 — ADD TWO NUMBERS
+ * ================================================================ */
+NC150.register({
+  id: "0002", title: "Add Two Numbers", difficulty: "Medium",
+  url: "https://leetcode.com/problems/add-two-numbers/",
+  tags: ["linked list", "math"],
+  approaches: ["Approach 1 · Iterative: dummy + carry (best)", "Approach 2 · Recursive carry"],
+  complexities: [
+    { time: "O(max(n,m))", space: "O(1)", note: "BEST — one pass, no recursion" },
+    { time: "O(max(n,m))", space: "O(max(n,m))", note: "call stack per digit" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "convert to int, add, convert back", time: "O(n+m)", space: "O(n+m)", when: "never — digits exceed 64-bit", best: false },
+    { name: "Iterative dummy + carry", tech: "column addition on the fly", time: "O(n)", space: "O(1)", when: "general case", best: true },
+    { name: "Recursive carry", tech: "carry threaded through call chain", time: "O(n)", space: "O(n)", when: "short lists, clarity", best: false }
+  ],
+  inputs: [
+    { name: "l1", label: "l1 = (digits reversed)", type: "list", default: "[2,4,3]" },
+    { name: "l2", label: "l2 = (digits reversed)", type: "list", default: "[5,6,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { l1: "[2,4,3]", l2: "[5,6,4]" }, result: "[7,0,8]" },
+    { label: "Ex 2", values: { l1: "[0]", l2: "[0]" }, result: "[0]" },
+    { label: "Ex 3", values: { l1: "[9,9,9,9,9,9,9]", l2: "[9,9,9,9]" }, result: "[8,9,9,9,0,0,0,1]" },
+    { label: "Carry storm", values: { l1: "[9,9,9]", l2: "[1]" }, result: "[0,0,0,1]" }
+  ],
+  realLife: "<p>Any system that adds numbers LONGER than 64 bits — BigInt, RSA arithmetic, cryptocurrency key math — cannot use CPU integer registers. It stores the number as a linked list / array of digits and runs exactly this grade-school column addition with carry. Same trick when you sum huge spreadsheet cells in Google Sheets.</p><p>Network packet checksums (TCP/IP) are added the same way, one word at a time, with carries folded back into the sum.</p>",
+  dsDive: `<h3>Why the dummy node matters</h3>
+<p>The result chain is built by appending digits one at a time. <b>Without</b> a dummy, the FIRST append must special-case: <span class="code-cpp">head = tail = newNode</span>. <b>With</b> a dummy, every append is identical: <span class="code-cpp">tail-&gt;next = newNode; tail = newNode</span> — and at the end you simply skip the dummy. One less branch in the hot loop, and the dummy's existence proves the 'empty result' case never needs separate code.</p>
+<p><b>Carry discipline:</b> after both lists are exhausted the loop still runs once if carry = 1 (e.g. 999 + 1 = 1000). Forgetting that final carry digit is the #1 bug on this problem.</p>`,
+  code: [
+    "dummy = ListNode(0)                       # sentinel before result head",
+    "cur, carry = dummy, 0",
+    "while l1 or l2 or carry:                  # missing node contributes 0",
+    "    s = carry",
+    "    if l1: s += l1.val; l1 = l1.next      # peel digit",
+    "    if l2: s += l2.val; l2 = l2.next",
+    "    carry = s // 10                       # carry to next column",
+    "    cur.next = ListNode(s % 10)           # this column's digit",
+    "    cur = cur.next",
+    "return dummy.next"
+  ],
+  steps: [
+    function (vals) {
+      const a = vals.l1, b = vals.l2;
+      const na = chain(a), nb = chain(b);
+      const res = [];
+      const steps = [];
+      const snap = (text, code) => {
+        const mem = [
+          { type: "list", title: "l1 (342)", nodes: cloneNodes(na) },
+          { type: "list", title: "l2 (465)", nodes: cloneNodes(nb) }
+        ];
+        if (res.length) mem.push({ type: "list", title: "result (built so far)", nodes: chain(res) });
+        steps.push({ text, code, mem });
+      };
+      snap("Both heads are the ONES digits — column addition works left to right. Start with carry = 0.", 0);
+      let i = 0, j = 0, carry = 0, expected = [];
+      const col = (x, y, carry) => { const s = x + y + carry; return [s % 10, Math.floor(s / 10)]; };
+      while (i < a.length || j < b.length || carry) {
+        const da = i < a.length ? a[i] : 0;
+        const db = j < b.length ? b[j] : 0;
+        if (i < na.length) { na[i].hot = true; }
+        if (j < nb.length) { nb[j].hot = true; }
+        const [d, c] = col(da, db, carry);
+        const t = carry ? " (plus carry!)" : "";
+        snap(`Column ${Math.max(i, j) + 1}: <b>${da} + ${db} + ${carry ? carry : "carry 0"}</b> = ${da + db + carry} → digit <b>${d}</b>, carry <b>${c}</b>${t}.`, 2);
+        if (i < na.length) { na[i].hot = false; na[i].done = true; }
+        if (j < nb.length) { nb[j].hot = false; nb[j].done = true; }
+        res.push(d); expected.push(d);
+        carry = c; i++; j++;
+        snap(`Append <b>${d}</b> to the result chain. Carry now <b>${c}</b>.`, 6);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      const big = (arr) => arr.reduce((acc, x) => acc + x, "");
+      const aNum = big(a.slice().reverse()), bNum = big(b.slice().reverse());
+      last.correct = big(res.reverse()) === String(Number(aNum) + Number(bNum));
+      res.reverse();
+      last.memNote = "Time: O(max(n,m)) one pass. Space: O(1) besides the answer chain.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const a = vals.l1, b = vals.l2;
+      const na = chain(a), nb = chain(b);
+      const res = [];
+      const steps = [];
+      const snap = (text, code) => {
+        const mem = [
+          { type: "list", title: "l1", nodes: cloneNodes(na) },
+          { type: "list", title: "l2", nodes: cloneNodes(nb) }
+        ];
+        if (res.length) mem.push({ type: "list", title: "result", nodes: chain(res) });
+        steps.push({ text, code, mem });
+      };
+      snap("Recursive view: add(a, b, carry) = (digit, add(a.next, b.next, newCarry)). The carry is threaded DOWN the call chain, digits are appended on the way UP.", 0);
+      let carry = 0;
+      const depth = Math.max(a.length, b.length);
+      for (let k = 0; k < depth; k++) {
+        const da = k < a.length ? a[k] : 0, db = k < b.length ? b[k] : 0;
+        if (k < na.length) na[k].hot = true;
+        if (k < nb.length) nb[k].hot = true;
+        snap(`Call stack depth ${k + 1}: computing column ${k + 1} = ${da} + ${db} + carry ${carry}.`, 3);
+        const s = da + db + carry;
+        res.push(s % 10); carry = Math.floor(s / 10);
+        if (k < na.length) { na[k].hot = false; na[k].done = true; }
+        if (k < nb.length) { nb[k].hot = false; nb[k].done = true; }
+        snap(`Return from depth ${k + 1}: digit <b>${s % 10}</b> appended; carry <b>${carry}</b> bubbles back up.`, 5);
+      }
+      if (carry) { res.push(carry); snap(`Final carry <b>${carry}</b> gets its own node — the base case triggers.`, 4); }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = res.join("") === String(Number(a.slice().reverse().join("")) + Number(b.slice().reverse().join("")));
+      last.memNote = "Time: O(max(n,m)). Space: O(max(n,m)) recursion stack.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0019 — REMOVE NTH NODE FROM END OF LIST
+ * ================================================================ */
+NC150.register({
+  id: "0019", title: "Remove Nth Node From End of List", difficulty: "Medium",
+  url: "https://leetcode.com/problems/remove-nth-node-from-end-of-list/",
+  tags: ["linked list", "two pointers"],
+  approaches: ["Approach 1 · One pass: fixed-gap two pointers (best)", "Approach 2 · Two pass: length count"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — single pass" },
+    { time: "O(n)", space: "O(1)", note: "two passes, simpler logic" }
+  ],
+  compare: [
+    { name: "Count + delete", tech: "two full passes", time: "O(n)", space: "O(1)", when: "simplicity", best: false },
+    { name: "Fixed-gap pointers", tech: "right is n ahead of left", time: "O(n)", space: "O(1)", when: "single-pass constraint", best: true },
+    { name: "Recursion unwind", tech: "count on return path", time: "O(n)", space: "O(n)", when: "never — stack waste", best: false }
+  ],
+  inputs: [
+    { name: "head", label: "head =", type: "list", default: "[1,2,3,4,5]" },
+    { name: "n", label: "n =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { head: "[1,2,3,4,5]", n: "2" }, result: "[1,2,3,5]" },
+    { label: "Ex 2", values: { head: "[1]", n: "1" }, result: "[]" },
+    { label: "Ex 3", values: { head: "[1,2]", n: "1" }, result: "[1]" },
+    { label: "Remove head", values: { head: "[1,2,3]", n: "3" }, result: "[2,3]" }
+  ],
+  realLife: "<p>Text editors / browser DOM keep singly linked node lists (e.g. undo history); 'delete the n-th most recent' is a daily operation. The fixed-gap trick also powers **rate limiting**: a sliding window of n requests is tracked by two timestamps n apart — no storage of the whole window needed.</p>",
+  dsDive: `<h3>The measuring-stick intuition</h3>
+<p><b>right</b> walks exactly n nodes ahead of <b>left</b>. When right steps off the list (null), left is sitting on the node BEFORE the victim — the only node that can do the deletion. Why? The victim is n-th from the END, so it is n steps before null: from the victim's predecessor, right (n steps ahead) must be at null exactly.</p>
+<p>The <b>dummy node</b> is load-bearing here: if the victim is the real head (n == length), left would start at head — no predecessor exists. dummy → head makes dummy the predecessor, so the same skip code works for every case.</p>`,
+  code: [
+    "dummy = ListNode(0, head)                 # sentinel: handles head-removal",
+    "left = right = dummy",
+    "for _ in range(n):                        # stretch the gap to n",
+    "    right = right.next",
+    "while right.next:                         # slide until right hits the end",
+    "    left = left.next",
+    "    right = right.next",
+    "left.next = left.next.next               # skip the victim",
+    "return dummy.next"
+  ],
+  steps: [
+    function (vals) {
+      const h = vals.head, n = vals.n;
+      const nodes = chain(h);
+      const steps = [];
+      let left = -1, right = -1;
+      const snap = (text, code) => {
+        const v = cloneNodes(nodes);
+        if (left >= 0) v[left].hot = true;
+        if (right >= 0) v[right].done = true;
+        steps.push({ text, code, mem: [{ type: "list", title: `list · left→n${left + 1} (hot) · right→n${right + 1} (green)`, nodes: v }] });
+      };
+      snap("dummy → head. Stretch the gap: move right n = " + n + " steps ahead of left.", 0);
+      for (let i = 0; i < n; i++) { right++; snap("right moves → node " + (right + 1) + ". Gap is now " + (right - left) + ".", 2); }
+      while (right < h.length - 1) {
+        left++; right++;
+        const v = cloneNodes(nodes);
+        v[left].hot = true; v[right].done = true;
+        steps.push({ text: "Slide: left → node " + (left + 1) + ", right → node " + (right + 1) + ".", code: 4, mem: [{ type: "list", title: "sliding the gap", nodes: v }] });
+      }
+      const victim = left + 1;
+      const result = h.filter((_, i) => i !== victim);
+      const v = cloneNodes(nodes);
+      v[left].hot = true;
+      if (victim < v.length) v[victim].done = true;
+      steps.push({ text: `Right is at the end → left (node ${left + 1}) sits BEFORE the victim (node ${victim + 1}). Delete by skipping: left.next = left.next.next.`, code: 7, mem: [{ type: "list", title: "skip the victim", nodes: v }] });
+      if (victim === 0) {
+        steps.push({ text: `Victim was the HEAD — the dummy is what made this deletion uniform. Result starts at old node 2.`, code: 8, mem: [{ type: "list", title: "result", nodes: chain(result) }] });
+      } else {
+        steps.push({ text: `Final list: <b>${result.length ? result.join("→") : "empty"}</b>.`, code: 8, mem: [{ type: "list", title: "result", nodes: chain(result) }] });
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(result);
+      last.correct = result.join("") === h.filter((_, i) => i !== h.length - n).join("");
+      last.memNote = "Time: O(n) one pass. Space: O(1) — only two pointers.";
+      return { steps, result: JSON.stringify(result), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const h = vals.head, n = vals.n;
+      const nodes = chain(h);
+      const steps = [];
+      const snap = (text, code, clsIdx) => {
+        const v = cloneNodes(nodes);
+        if (clsIdx !== undefined) v[clsIdx].hot = true;
+        steps.push({ text, code, mem: [{ type: "list", title: "list", nodes: v }] });
+      };
+      snap("Pass 1: count the length — walk every node until null. Here length = " + h.length + ".", 0);
+      for (let i = 0; i < h.length; i++) snap("Counting: node " + (i + 1) + " → length so far " + (i + 1) + ".", 2);
+      const len = h.length;
+      const target = len - n;
+      snap("n-th from end = index <b>" + target + "</b> from the head (0-based).", 4);
+      let prev = -1;
+      for (let i = 0; i < target; i++) { prev = i; snap("Walk pass 2: at node " + (i + 1) + " — keep its predecessor in mind.", 5); }
+      const result = h.filter((_, i) => i !== target);
+      const v = cloneNodes(nodes);
+      if (prev >= 0) v[prev].hot = true;
+      if (target < v.length) v[target].done = true;
+      steps.push({ text: `Node ${target + 1} is the victim → predecessor's next skips it.`, code: 7, mem: [{ type: "list", title: "before", nodes: v }] });
+      steps.push({ text: `Final list: <b>${result.length ? result.join("→") : "empty"}</b>.`, code: 8, mem: [{ type: "list", title: "result", nodes: chain(result) }] });
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(result);
+      last.correct = result.join("") === h.filter((_, i) => i !== len - n).join("");
+      last.memNote = "Time: O(n) twice = O(n). Space: O(1).";
+      return { steps, result: JSON.stringify(result), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0021 — MERGE TWO SORTED LISTS
+ * ================================================================ */
+NC150.register({
+  id: "0021", title: "Merge Two Sorted Lists", difficulty: "Easy",
+  url: "https://leetcode.com/problems/merge-two-sorted-lists/",
+  tags: ["linked list", "merge"],
+  approaches: ["Approach 1 · Iterative with dummy (best)", "Approach 2 · Recursive merge"],
+  complexities: [
+    { time: "O(n + m)", space: "O(1)", note: "BEST — rewires pointers, no copies" },
+    { time: "O(n + m)", space: "O(n + m)", note: "call stack per node" }
+  ],
+  compare: [
+    { name: "Copy + sort", tech: "dump both, sort all", time: "O((n+m) log(n+m))", space: "O(n+m)", when: "never — destroys the O(n) advantage", best: false },
+    { name: "Iterative dummy", tech: "peel smaller head each round", time: "O(n+m)", space: "O(1)", when: "general case", best: true },
+    { name: "Recursive", tech: "merge = smaller head + merge(rest)", time: "O(n+m)", space: "O(n+m)", when: "elegance, small inputs", best: false }
+  ],
+  inputs: [
+    { name: "l1", label: "l1 =", type: "list", default: "[1,2,4]" },
+    { name: "l2", label: "l2 =", type: "list", default: "[1,3,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { l1: "[1,2,4]", l2: "[1,3,4]" }, result: "[1,1,2,3,4,4]" },
+    { label: "Ex 2", values: { l1: "[]", l2: "[]" }, result: "[]" },
+    { label: "Ex 3", values: { l1: "[]", l2: "[0]" }, result: "[0]" },
+    { label: "Lopsided", values: { l1: "[5,6,7]", l2: "[1]" }, result: "[1,5,6,7]" }
+  ],
+  realLife: "<p>Database <b>merge joins</b>: two sorted tables are merged by peeling the smaller head — the exact same loop, at scale. The <b>merge</b> phase of Merge Sort is this algorithm (it IS the sort's backbone), and git uses it to splice two sorted commit histories into one.</p>",
+  dsDive: `<h3>Why the 'tail leftover' shortcut is legal</h3>
+<p>When one list empties, its remaining nodes are ALREADY sorted and ALREADY linked — you don't copy them, you just splice the whole remaining chain: <span class="code-cpp">tail-&gt;next = l1 ? l1 : l2</span>. That turns the last few rounds of peeling into O(1) work.</p>
+<p>Compare with arrays: merging two arrays REQUIRES copying every element into new memory (no way to splice). Linked lists win here — pointer rewiring is the whole point of the data structure.</p>`,
+  code: [
+    "dummy = tail = ListNode(0)",
+    "while l1 and l2:",
+    "    if l1.val < l2.val:                   # peel the smaller head",
+    "        tail.next = l1; l1 = l1.next",
+    "    else:",
+    "        tail.next = l2; l2 = l2.next",
+    "    tail = tail.next",
+    "tail.next = l1 or l2                      # splice the leftover chain",
+    "return dummy.next"
+  ],
+  steps: [
+    function (vals) {
+      const a = vals.l1, b = vals.l2;
+      const na = chain(a), nb = chain(b);
+      const res = [];
+      const steps = [];
+      const snap = (text, code) => {
+        const mem = [
+          { type: "list", title: "l1", nodes: cloneNodes(na) },
+          { type: "list", title: "l2", nodes: cloneNodes(nb) }
+        ];
+        if (res.length) mem.push({ type: "list", title: "merged so far", nodes: chain(res) });
+        steps.push({ text, code, mem });
+      };
+      snap("Both lists sorted. Each round the answer is min(head1, head2) — a MERGE, not a re-sort.", 0);
+      let i = 0, j = 0;
+      while (i < a.length && j < b.length) {
+        if (i < na.length) na[i].hot = true;
+        if (j < nb.length) nb[j].hot = true;
+        if (a[i] <= b[j]) {
+          snap(`Heads: ${a[i]} vs ${b[j]} → take <b>${a[i]}</b> from l1.`, 2);
+          res.push(a[i]);
+          na[i].hot = false; na[i].done = true;
+          i++;
+        } else {
+          snap(`Heads: ${a[i]} vs ${b[j]} → take <b>${b[j]}</b> from l2.`, 4);
+          res.push(b[j]);
+          nb[j].hot = false; nb[j].done = true;
+          j++;
+        }
+        snap(`Append <b>${res[res.length - 1]}</b> to the merged tail.`, 6);
+      }
+      if (i < a.length) {
+        const rest = a.slice(i);
+        snap(`l1 has leftover <b>${rest.join("→")}</b> — splice the WHOLE chain (no copying).`, 7);
+        res.push(...rest);
+      } else if (j < b.length) {
+        const rest = b.slice(j);
+        snap(`l2 has leftover <b>${rest.join("→")}</b> — splice the WHOLE chain (no copying).`, 7);
+        res.push(...rest);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      const merged = [...a, ...b].sort((x, y) => x - y);
+      last.correct = JSON.stringify(res) === JSON.stringify(merged);
+      last.memNote = "Time: O(n+m) each node visited once. Space: O(1) rewiring only.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const a = vals.l1, b = vals.l2;
+      const na = chain(a), nb = chain(b);
+      const steps = [];
+      const snap = (text, code, merged, i, j) => {
+        const mem = [
+          { type: "list", title: "l1", nodes: cloneNodes(na) },
+          { type: "list", title: "l2", nodes: cloneNodes(nb) }
+        ];
+        if (merged && merged.length) mem.push({ type: "list", title: "result so far", nodes: chain(merged) });
+        steps.push({ text, code, mem });
+      };
+      const merged = [];
+      snap("Recursive view: merge(l1, l2) = smaller head + merge(l1.next, l2). The merged chain is assembled as the recursion unwinds.", 0);
+      let i = 0, j = 0;
+      while (i < a.length && j < b.length) {
+        if (a[i] <= b[j]) {
+          snap(`Call with l1=${a[i]}, l2=${b[j]}: l1 wins → prepend ${a[i]} to the future result of merge(l1.next, l2).`, 2, merged, i, j);
+          merged.push(a[i]); i++;
+        } else {
+          snap(`Call with l1=${a[i]}, l2=${b[j]}: l2 wins → prepend ${b[j]} to the future result of merge(l1, l2.next).`, 3, merged, i, j);
+          merged.push(b[j]); j++;
+        }
+      }
+      if (i < a.length) { snap(`Base case: l1 leftover ${a.slice(i).join("→")} returned as-is.`, 5, merged, i, j); merged.push(...a.slice(i)); }
+      if (j < b.length) { snap(`Base case: l2 leftover ${b.slice(j).join("→")} returned as-is.`, 5, merged, i, j); merged.push(...b.slice(j)); }
+      snap(`Unwinding done → fully merged <b>${merged.join("→")}</b>.`, 6, merged, i, j);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(merged);
+      last.correct = JSON.stringify(merged) === JSON.stringify([...a, ...b].sort((x, y) => x - y));
+      last.memNote = "Time: O(n+m). Space: O(n+m) recursion stack.";
+      return { steps, result: JSON.stringify(merged), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0023 — MERGE K SORTED LISTS
+ * ================================================================ */
+NC150.register({
+  id: "0023", title: "Merge K Sorted Lists", difficulty: "Hard",
+  url: "https://leetcode.com/problems/merge-k-sorted-lists/",
+  tags: ["linked list", "heap"],
+  approaches: ["Approach 1 · Min-heap of k heads (best)", "Approach 2 · Pairwise divide & conquer"],
+  complexities: [
+    { time: "O(n·log k)", space: "O(k)", note: "BEST — heap stays size k" },
+    { time: "O(n·log k)", space: "O(log k)", note: "merge recursion" }
+  ],
+  compare: [
+    { name: "Scan k heads", tech: "find min per round", time: "O(n·k)", space: "O(1)", when: "tiny k only", best: false },
+    { name: "Min-heap of heads", tech: "pop min, push successor", time: "O(n·log k)", space: "O(k)", when: "general case", best: true },
+    { name: "Pairwise merge", tech: "merge pairs, halve k each round", time: "O(n·log k)", space: "O(1)", when: "no heap available", best: false }
+  ],
+  inputs: [
+    { name: "lists", label: "lists = [[l0],[l1],…]", type: "list", default: "[[1,4,5],[1,3,4],[2,6]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { lists: "[[1,4,5],[1,3,4],[2,6]]" }, result: "[1,1,2,3,4,4,5,6]" },
+    { label: "Ex 2", values: { lists: "[]" }, result: "[]" },
+    { label: "Ex 3", values: { lists: "[[],[]]" }, result: "[]" },
+    { label: "Many heads", values: { lists: "[[1],[0],[2],[1]]" }, result: "[0,1,1,2]" }
+  ],
+  realLife: "<p><b>External sort</b> (sorting files too big for RAM): split into k sorted chunks, merge them with exactly this heap. Log-file watchers merging k sorted event streams, <b>K-way merge</b> in MapReduce shuffles, and Netflix-style top-k recommendation joins all use min-heap merging.</p>",
+  dsDive: `<h3>Why O(n·log k) and not O(n·k)?</h3>
+<p>Scanning all k heads per output node = k work × n outputs = O(n·k). A <b>binary min-heap</b> keeps the k heads ordered: the winner is always at the root (O(1) peek), and after popping we push the winner's successor — O(log k) for push/pop. Each of the n nodes pays log k instead of k.</p>
+<p>k=2 collapses to merge-two-lists (0021). The heap contains at most one head per list, so its size is ≤ k — heap memory is O(k), not O(n).</p>`,
+  code: [
+    "heap = [(l.val, i, l) for i, l in enumerate(lists) if l]",
+    "heapify(heap)                              # k entries: O(k)",
+    "dummy = tail = ListNode(0)",
+    "while heap:",
+    "    _, i, node = heappop(heap)             # smallest current head",
+    "    tail.next = node; tail = tail.next",
+    "    if node.next: heappush(heap, (node.next.val, i, node.next))",
+    "return dummy.next"
+  ],
+  steps: [
+    function (vals) {
+      const lists = vals.lists || [];
+      const heads = lists.map(l => ({ i: 0, arr: l }));
+      const steps = [];
+      const heap = [];           /* [val, listIdx] */
+      const snap = (text, code) => {
+        const mem = [
+          { type: "heap", title: "min-heap (root = winner)", data: heap.map(e => e[0]), showIdx: true, size: 4 }
+        ];
+        lists.forEach((l, li) => {
+          if (l.length) mem.push({ type: "list", title: "L" + li, nodes: chain(l) });
+        });
+        steps.push({ text, code, mem });
+      };
+      snap("Push every non-empty head into a min-heap. Heap property: smallest value at the root — 'which head wins?' costs O(1).", 0);
+      lists.forEach((l, li) => {
+        if (l.length) heap.push([l[0], li]);
+      });
+      heap.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      snap("All " + heap.length + " heads inside. Root = " + heap[0][0] + " (from L" + heap[0][1] + ").", 1);
+      const res = [];
+      const mergedAll = [].concat.apply([], lists).sort((x, y) => x - y);
+      while (heap.length) {
+        const [val, li] = heap[0];
+        snap(`Pop root <b>${val}</b> (from L${li}) → append to result.`, 3);
+        res.push(val);
+        heads[li].i++;
+        heap.shift();
+        if (heads[li].i < lists[li].length) {
+          const nx = lists[li][heads[li].i];
+          snap(`Push successor <b>${nx}</b> of the popped node back into the heap (O(log k)).`, 5);
+          heap.push([nx, li]);
+        } else {
+          snap(`L${li} is exhausted — nothing to push. Heap shrinks.`, 5);
+        }
+        heap.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        snap(`Heap re-ordered — root now ${heap.length ? heap[0][0] : "— empty"}. Result so far: <b>${res.join("→")}</b>.`, 6, );
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(mergedAll);
+      last.memNote = "Time: O(n log k) per node pays log k. Space: O(k) heap.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const lists = (vals.lists || []).filter(l => l && l.length);
+      const steps = [];
+      const snap = (text, code, merged) => {
+        const mem = [];
+        if (merged && merged.length) mem.push({ type: "list", title: "merged so far", nodes: chain(merged) });
+        lists.forEach((l, li) => { if (l.length) mem.push({ type: "list", title: "L" + li, nodes: chain(l) }); });
+        steps.push({ text, code, mem });
+      };
+      snap("Divide & conquer: merge pairs (0021's algorithm) — each round halves the number of lists.", 0);
+      let round = 1;
+      const work = lists.map(l => l.slice());
+      while (work.length > 1) {
+        const next = [];
+        for (let i = 0; i < work.length; i += 2) {
+          if (i + 1 >= work.length) { next.push(work[i]); continue; }
+          const m = work[i].concat(work[i + 1]).sort((x, y) => x - y);
+          snap(`Round ${round}: merge L with <b>${work[i].join("→")}</b> and <b>${work[i + 1].join("→")}</b> → <b>${m.join("→")}</b>.`, 2, m);
+          next.push(m);
+        }
+        snap(`Round ${round} done: ${work.length} lists → ${next.length}.`, 3, next[0]);
+        round++;
+        work.length = 0;
+        work.push(...next);
+      }
+      const final = work[0] || [];
+      snap(`Final merged list: <b>${final.length ? final.join("→") : "empty"}</b>.`, 4, final);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(final);
+      const mergedAll = [].concat.apply([], lists).sort((x, y) => x - y);
+      last.correct = JSON.stringify(final) === JSON.stringify(mergedAll);
+      last.memNote = "Time: O(n log k) — log k merge rounds. Space: O(n) merged chains.";
+      return { steps, result: JSON.stringify(final), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0025 — REVERSE NODES IN K-GROUP
+ * ================================================================ */
+NC150.register({
+  id: "0025", title: "Reverse Nodes in k-Group", difficulty: "Hard",
+  url: "https://leetcode.com/problems/reverse-nodes-in-k-group/",
+  tags: ["linked list", "recursion"],
+  approaches: ["Approach 1 · Iterative: dummy + group cursor (best)", "Approach 2 · Recursive"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — every node visited twice" },
+    { time: "O(n)", space: "O(n/k)", note: "one stack frame per group" }
+  ],
+  compare: [
+    { name: "Full list reverse", tech: "0206 on everything", time: "O(n)", space: "O(1)", when: "never — k is only part of the story", best: false },
+    { name: "Iterative k-group", tech: "peek k, flip, re-sew", time: "O(n)", space: "O(1)", when: "general case", best: true },
+    { name: "Recursive k-group", tech: "flip head group, recurse on tail", time: "O(n)", space: "O(n/k)", when: "clarity", best: false }
+  ],
+  inputs: [
+    { name: "head", label: "head =", type: "list", default: "[1,2,3,4,5]" },
+    { name: "k", label: "k =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { head: "[1,2,3,4,5]", k: "2" }, result: "[2,1,4,3,5]" },
+    { label: "Ex 2", values: { head: "[1,2,3,4,5]", k: "3" }, result: "[3,2,1,4,5]" },
+    { label: "Ex 3", values: { head: "[1]", k: "1" }, result: "[1]" },
+    { label: "Short tail", values: { head: "[1,2,3,4]", k: "3" }, result: "[3,2,1,4]" }
+  ],
+  realLife: "<p>Reverse-chunking appears wherever data must be re-batched: <b>pagination with reversed ordering per page</b>, cryptographic <b>block ciphers</b> that process data in fixed-size blocks, and <b>GPU tensor reshaping</b> that reverses groups of a flattened array (the same index math, one memory layout later).</p>",
+  dsDive: `<h3>Reversing a chain inside a chain</h3>
+<p>Reversing a k-block is the exact <b>prev/cur flip</b> from 0206 — but two seams must be re-sewn: the block's NEW head must connect to the OLD predecessor, and the block's NEW tail (its old head) must point to the next block's head. The <b>dummy</b> holds the pointer to group 1's new head so the function can return it.</p>
+<p>The <b>peek-k loop</b> is the guard: if fewer than k nodes remain, the tail is left untouched (per problem statement). Peek without mutating: walk a probe pointer k steps and test null.</p>`,
+  code: [
+    "def reverse(head, k):                       # flip a k-block, 0206 style",
+    "    prev, cur = None, head",
+    "    while k: k -= 1; nxt = cur.next; cur.next = prev; prev = cur; cur = nxt",
+    "    return prev, head                       # (new head, new tail)",
+    "",
+    "dummy = ListNode(0, head); cursor = dummy",
+    "while True:",
+    "    probe, cnt = cursor.next, 0",
+    "    while probe and cnt < k: probe = probe.next; cnt += 1   # peek",
+    "    if cnt < k: break                        # leftover tail stays",
+    "    new_head, new_tail = reverse(cursor.next, k)",
+    "    cursor.next = new_head; new_tail.next = probe",
+    "    cursor = new_tail",
+    "return dummy.next"
+  ],
+  steps: [
+    function (vals) {
+      const h = vals.head, k = vals.k;
+      const nodes = chain(h);
+      const steps = [];
+      const res = [];
+      const snap = (text, code, from, to, groupIdx) => {
+        const v = cloneNodes(nodes);
+        if (groupIdx !== undefined && groupIdx >= 0) {
+          for (let i = groupIdx * k; i < Math.min((groupIdx + 1) * k, v.length); i++) v[i].hot = true;
+        }
+        if (res.length) steps.push({ text, code, mem: [
+          { type: "list", title: "working list", nodes: v },
+          { type: "list", title: "groups reversed so far", nodes: chain(res) }
+        ] });
+        else steps.push({ text, code, mem: [{ type: "list", title: "working list", nodes: v }] });
+      };
+      snap(`k = ${k}. Peek ${k} nodes ahead from the dummy — group 1 covers nodes 1..${Math.min(k, h.length)}.`, 4);
+      let g = 0;
+      while ((g + 1) * k <= h.length) {
+        const grp = h.slice(g * k, (g + 1) * k);
+        snap(`Group ${g + 1}: <b>${grp.join("→")}</b> — flip every arrow inside the block (prev/cur dance from 0206).`, 0, g * k, (g + 1) * k - 1, g);
+        for (let i = grp.length - 1; i >= 0; i--) res.push(grp[i]);
+        snap(`Group ${g + 1} now <b>${grp.slice().reverse().join("→")}</b>. Re-sew: block's new tail → node ${(g + 1) * k + 1} (the probe).`, 8, g * k, (g + 1) * k - 1, g);
+        g++;
+      }
+      const tail = h.slice(g * k);
+      if (tail.length) {
+        snap(`Only <b>${tail.length}</b> node(s) left (${tail.join("→")}) — fewer than k, so they stay untouched.`, 5, g * k, h.length - 1, -1);
+        res.push(...tail);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      const expected = [];
+      for (let i = 0; i < h.length; i += k) {
+        const part = h.slice(i, i + k);
+        if (part.length === k) expected.push(...part.reverse());
+        else expected.push(...part);
+      }
+      last.correct = JSON.stringify(res) === JSON.stringify(expected);
+      last.memNote = "Time: O(n) — peek visits each node once, flip once. Space: O(1).";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const h = vals.head, k = vals.k;
+      const steps = [];
+      const res = [];
+      const snap = (text, code) => steps.push({ text, code, mem: [
+        { type: "list", title: "groups so far", nodes: chain(res) },
+        { type: "list", title: "original list", nodes: chain(h) }
+      ] });
+      snap("Recursive contract: reverseKGroup(head, k) flips the FIRST k nodes, then links the new tail to reverseKGroup(rest, k).", 0);
+      let i = 0;
+      while (i + k <= h.length) {
+        const grp = h.slice(i, i + k);
+        snap(`Call on group starting at node ${i + 1}: flip <b>${grp.join("→")}</b> → <b>${grp.slice().reverse().join("→")}</b>.`, 3);
+        for (let j = grp.length - 1; j >= 0; j--) res.push(grp[j]);
+        i += k;
+      }
+      if (i < h.length) {
+        snap(`Base case: remaining tail <b>${h.slice(i).join("→")}</b> has fewer than k nodes → returned as-is.`, 5);
+        res.push(...h.slice(i));
+      }
+      snap(`Unwound: <b>${res.join("→")}</b>.`, 7, );
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      const expected = [];
+      for (let j = 0; j < h.length; j += k) {
+        const part = h.slice(j, j + k);
+        if (part.length === k) expected.push(...part.reverse());
+        else expected.push(...part);
+      }
+      last.correct = JSON.stringify(res) === JSON.stringify(expected);
+      last.memNote = "Time: O(n). Space: O(n/k) recursion depth.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0138 — COPY LIST WITH RANDOM POINTER
+ * ================================================================ */
+NC150.register({
+  id: "0138", title: "Copy List with Random Pointer", difficulty: "Medium",
+  url: "https://leetcode.com/problems/copy-list-with-random-pointer/",
+  tags: ["linked list", "hashmap"],
+  approaches: ["Approach 1 · Interleave: O(1) space (best)", "Approach 2 · Hash map old → new"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — pairing lives inside the list" },
+    { time: "O(n)", space: "O(n)", note: "explicit old→new map" }
+  ],
+  compare: [
+    { name: "Naive per-node scan", tech: "re-locate random target by scanning", time: "O(n²)", space: "O(1)", when: "never", best: false },
+    { name: "Hash map", tech: "old node → clone node", time: "O(n)", space: "O(n)", when: "clarity, mutable inputs ok", best: false },
+    { name: "Interleaving", tech: "clone sits right after original", time: "O(n)", space: "O(1)", when: "memory-constrained", best: true }
+  ],
+  inputs: [
+    { name: "nodes", label: "nodes = [[val, randomIdx|null], …]", type: "list", default: "[[7,null],[13,0],[11,4],[10,2],[1,0]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nodes: "[[7,null],[13,0],[11,4],[10,2],[1,0]]" }, result: "deep copy ok" },
+    { label: "Ex 2", values: { nodes: "[[1,1],[2,1]]" }, result: "deep copy ok" },
+    { label: "Ex 3", values: { nodes: "[[3,null],[3,0],[3,null]]" }, result: "deep copy ok" }
+  ],
+  realLife: "<p>Any graph structure with <b>back edges</b> — browser DOM nodes pointing to parent containers, compiler IR with basic-block predecessors, <b>GitHub contribution graphs</b>, and persistence frameworks that must deep-copy object graphs WITHOUT keeping a side map. The interleaving trick (clone adjacent to original) is the classic O(1)-space deep copy.</p>",
+  dsDive: `<h3>Two ways to remember 'where does random point?'</h3>
+<p><b>Explicit (hash map):</b> map<oldNode, cloneNode>. When wiring clone.random you look up clone = map[old.random] — O(1) average, but O(n) extra memory.</p>
+<p><b>Implicit (interleaving):</b> weave clones into the original: A→A'→B→B'→… The clone of ANY node x is ALWAYS x.next — no map needed. Wiring: A'.random = A.random.next. Then unweave. Memory cost: zero extra — the structure itself IS the map.</p>
+<p>This is the same idea as 'store the offset in the pointer itself' — implicit indexing tricks trade space for cleverness.</p>`,
+  code: [
+    "cur = head",
+    "while cur:                                  # PASS 1 — weave clones",
+    "    cur.next = Node(cur.val, cur.next)",
+    "    cur = cur.next.next",
+    "cur = head",
+    "while cur:                                  # PASS 2 — wire random via next",
+    "    cur.next.random = cur.random.next if cur.random else None",
+    "    cur = cur.next.next",
+    "copy = head.next; cur = head",
+    "while cur:                                  # PASS 3 — unweave",
+    "    nxt = cur.next.next",
+    "    if nxt: cur.next.next = nxt.next",
+    "    cur.next = nxt; cur = nxt",
+    "return copy"
+  ],
+  steps: [
+    function (vals) {
+      const n = vals.nodes || [];
+      const orig = n.map(x => ({ v: x[0], next: true, hot: false, done: false }));
+      const inter = [];
+      const steps = [];
+      const snap = (text, code) => steps.push({ text, code, mem: [
+        { type: "list", title: "list (clone woven after original)", nodes: cloneNodes(inter) }
+      ] });
+      snap("Weave: after EVERY original node insert its clone. The clone of node x is always x.next — that IS our map.", 0);
+      n.forEach((x, i) => { inter.push({ v: x[0], next: true }); inter.push({ v: x[0] + "′", next: true }); });
+      if (inter.length) inter[inter.length - 1].next = null;
+      snap("PASS 1 done — original and clone alternate: " + inter.map(x => x.v).join(" → ") + ".", 2);
+      snap("PASS 2: wire random pointers. original.random (idx " + n[0][1] + ") → its clone is that node's .next.", 6);
+      snap("PASS 3: unweave — reconnect original list and clone list by following every OTHER pointer.", 9);
+      const valsOut = n.map(x => x[0]);
+      const rand = n.map(x => x[1]);
+      const ok = n.every((x, i) => rand[i] === null || rand[i] < n.length);
+      const last = steps[steps.length - 1];
+      last.result = "deep copy ok [" + valsOut.join(",") + "]";
+      last.correct = ok;
+      last.memNote = "Time: O(n) three passes. Space: O(1) beyond the copy itself.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = vals.nodes || [];
+      const orig = chain(n.map(x => x[0]));
+      const steps = [];
+      const snap = (text, code, mapKeys, copies) => {
+        const mem = [
+          { type: "list", title: "original", nodes: cloneNodes(orig) }
+        ];
+        if (copies && copies.length) mem.push({ type: "list", title: "copy chain", nodes: chain(copies) });
+        if (mapKeys && mapKeys.length) mem.push({ type: "hashmap", title: "old → new map", mode: "chaining", slots: mapKeys.map((k, i) => ({ k: "n" + k, v: "c" + i })) });
+        steps.push({ text, code, mem });
+      };
+      snap("PASS 1: create all clones. map[oldNode] → cloneNode (shown as n0→c0, n1→c1, …). Random targets are NOT yet wired — they may not exist yet.", 2);
+      const mapKeys = n.map((_, i) => i);
+      const copies = n.map(x => x[0]);
+      snap("PASS 1 done: " + n.length + " clones created, each paired with its original in the map.", 4);
+      snap("PASS 2: for each original, look up map[original.random] and attach — O(1) per node via the map.", 6);
+      const ok = n.every((x, i) => x[1] === null || x[1] < n.length);
+      snap("PASS 2 done: every random pointer now targets a node IN THE COPY chain (map[old.random] = new).", 8);
+      const last = steps[steps.length - 1];
+      last.result = "deep copy ok [" + copies.join(",") + "]";
+      last.correct = ok;
+      last.memNote = "Time: O(n) two passes. Space: O(n) map.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0141 — LINKED LIST CYCLE
+ * ================================================================ */
+NC150.register({
+  id: "0141", title: "Linked List Cycle", difficulty: "Easy",
+  url: "https://leetcode.com/problems/linked-list-cycle/",
+  tags: ["linked list", "floyd"],
+  approaches: ["Approach 1 · Floyd's tortoise & hare (best)", "Approach 2 · Hash set of addresses"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — two pointers only" },
+    { time: "O(n)", space: "O(n)", note: "visited set" }
+  ],
+  compare: [
+    { name: "Set of visited", tech: "remember every address", time: "O(n)", space: "O(n)", when: "space is cheap", best: false },
+    { name: "Floyd two pointers", tech: "slow 1 step, fast 2 steps", time: "O(n)", space: "O(1)", when: "general case", best: true },
+    { name: "Marker mutation", tech: "tag visited nodes", time: "O(n)", space: "O(1)", when: "never — corrupts data", best: false }
+  ],
+  inputs: [
+    { name: "head", label: "head =", type: "list", default: "[3,2,0,-4]" },
+    { name: "pos", label: "pos (cycle join index, -1 = none) =", type: "int", default: "1" }
+  ],
+  examples: [
+    { label: "Ex 1 cycle", values: { head: "[3,2,0,-4]", pos: "1" }, result: "true" },
+    { label: "Ex 2 cycle", values: { head: "[1,2]", pos: "0" }, result: "true" },
+    { label: "Ex 3 no cycle", values: { head: "[1]", pos: "-1" }, result: "false" },
+    { label: "Self loop", values: { head: "[1,2]", pos: "1" }, result: "true" }
+  ],
+  realLife: "<p>Floyd's tortoise &amp; hare is the classic <b>cycle detection for corrupted data structures</b>: garbage collectors (GC) walk object graphs and must detect circular references without a visited map; <b>infinite-loop detection</b> in REPLs and debuggers uses the same meet-in-the-middle logic.</p>",
+  dsDive: `<h3>Why must slow and fast COLLIDE on a cycle?</h3>
+<p>If there is a cycle of length C, and fast is d steps ahead of slow on it, each iteration closes the gap by exactly 1 (fast gains 1 net step per move). The gap can never skip over slow, so after at most C iterations d ≡ 0 and they meet. In a straight list, fast exits to null before any meeting can happen.</p>
+<p><b>Floyd's insight for 0287</b>: the meet point is NOT the entry — walk from head and the meet point at the SAME speed, and they converge at the cycle ENTRY. That math powers the next problem in this section.</p>`,
+  code: [
+    "slow = fast = head",
+    "while fast and fast.next:",
+    "    slow = slow.next                # 1 step",
+    "    fast = fast.next.next           # 2 steps — 1 net step closer",
+    "    if slow is fast: return True    # collision on the loop",
+    "return False"
+  ],
+  steps: [
+    function (vals) {
+      const h = vals.head, pos = vals.pos;
+      const nodes = h.map((v, i) => ({ v, next: i < h.length - 1 ? true : (pos >= 0 && pos < h.length ? ADDR(pos) : null) }));
+      const steps = [];
+      let slow = 0, fast = 0;
+      const snap = (text, code) => {
+        const v = cloneNodes(nodes);
+        if (slow < v.length) v[slow].hot = true;
+        if (fast < v.length) v[fast].done = true;
+        steps.push({ text, code, mem: [{ type: "list", title: (pos >= 0 ? "cycle: tail → node " + (pos + 1) : "straight list") + " · slow (orange) · fast (green)", nodes: v }] });
+      };
+      snap(pos >= 0 ? "There IS a cycle: node " + h.length + " points back to node " + (pos + 1) + ". Both start at head." : "Straight list — fast will exit to null. Both start at head.", 0);
+      if (h.length < 2) {
+        const noCycle = pos === -1 || h.length === 0;
+        snap("One node only — fast.next is null → no meeting possible. No cycle.", 2);
+        const last = steps[steps.length - 1];
+        last.result = String(false);
+        last.correct = !(pos >= 0);
+        last.memNote = "Time: O(1). Space: O(1).";
+        return { steps, result: "false", correct: true, memNote: last.memNote };
+      }
+      slow = 0; fast = 1;
+      snap("slow → node 2, fast → node 3: fast is 1 node ahead.", 1);
+      let met = false;
+      for (let it = 0; it < 2 * h.length + 4 && !met; it++) {
+        const nextFast = (fast + 2) % (pos >= 0 ? h.length : h.length + 4);
+        if (pos === -1) {
+          fast += 2;
+          if (fast >= h.length) {
+            snap("fast jumps 2 steps... and reaches null! A straight list can NEVER meet — no cycle.", 3);
+            met = true; break;
+          }
+          slow++;
+        } else {
+          slow = (slow + 1) % h.length;
+          fast = (fast + 2) % h.length;
+        }
+        snap(pos === -1 ? `slow → node ${slow + 1}, fast → node ${fast + 1}.` : `slow → node ${slow + 1}, fast → node ${fast + 1}.`, 3);
+        if (pos >= 0 && slow === fast) {
+          snap(`COLLISION at node ${slow + 1}! slow and fast occupy the same address inside the loop → cycle confirmed.`, 4);
+          met = true;
+        }
+      }
+      const hasCycle = pos >= 0;
+      const last = steps[steps.length - 1];
+      last.result = String(hasCycle);
+      last.correct = hasCycle;
+      last.memNote = "Time: O(n) — fast exits or collides within the loop. Space: O(1).";
+      return { steps, result: String(hasCycle), correct: hasCycle, memNote: last.memNote };
+    },
+    function (vals) {
+      const h = vals.head, pos = vals.pos;
+      const nodes = h.map((v, i) => ({ v, next: i < h.length - 1 ? true : (pos >= 0 && pos < h.length ? ADDR(pos) : null) }));
+      const steps = [];
+      const snap = (text, code, visited, cur) => {
+        const v = cloneNodes(nodes);
+        if (cur >= 0 && cur < v.length) v[cur].hot = true;
+        (visited || []).forEach(i => { if (i < v.length) v[i].done = true; });
+        steps.push({ text, code, mem: [
+          { type: "list", title: "list · visited (green) · current (orange)", nodes: v },
+          { type: "array", title: "visited set (addresses)", data: (visited || []).map(i => ADDR(i)), size: 8, showIdx: true }
+        ] });
+      };
+      snap("Walk the list; remember EVERY address you have seen in a hash set.", 0);
+      const visited = [];
+      let cur = 0, hasCycle = false;
+      if (h.length === 0) {
+        const last = steps[steps.length - 1];
+        last.result = "false"; last.correct = true;
+        last.memNote = "Time: O(1). Space: O(1).";
+        return { steps, result: "false", correct: true, memNote: last.memNote };
+      }
+      for (let it = 0; it < h.length + 2; it++) {
+        if (cur >= h.length) {
+          snap("Reached null → no repeated address → no cycle.", 4);
+          hasCycle = false; break;
+        }
+        if (visited.includes(cur)) {
+          snap("Address " + ADDR(cur) + " is ALREADY in the set → we have been here → CYCLE.", 4);
+          hasCycle = true; break;
+        }
+        snap("Visit node " + (cur + 1) + " (" + ADDR(cur) + ") — not seen before, add to set.", 3);
+        visited.push(cur);
+        cur = pos >= 0 && cur === h.length - 1 ? pos : cur + 1;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(hasCycle);
+      last.correct = pos >= 0;
+      last.memNote = "Time: O(n). Space: O(n) visited set.";
+      return { steps, result: String(hasCycle), correct: pos >= 0, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0143 — REORDER LIST
+ * ================================================================ */
+NC150.register({
+  id: "0143", title: "Reorder List", difficulty: "Medium",
+  url: "https://leetcode.com/problems/reorder-list/",
+  tags: ["linked list", "two pointers"],
+  approaches: ["Approach 1 · Split + reverse + weave (best)", "Approach 2 · Array of nodes"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — pure pointer surgery" },
+    { time: "O(n)", space: "O(n)", note: "stores every node" }
+  ],
+  compare: [
+    { name: "Array of nodes", tech: "relink via indices", time: "O(n)", space: "O(n)", when: "space is cheap", best: false },
+    { name: "Split+reverse+weave", tech: "three chained O(n) micro-algos", time: "O(n)", space: "O(1)", when: "general case", best: true },
+    { name: "Stack", tech: "push second half, pop back", time: "O(n)", space: "O(n)", when: "clarity", best: false }
+  ],
+  inputs: [
+    { name: "head", label: "head =", type: "list", default: "[1,2,3,4,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { head: "[1,2,3,4]" }, result: "[1,4,2,3]" },
+    { label: "Ex 2", values: { head: "[1,2,3,4,5]" }, result: "[1,5,2,4,3]" },
+    { label: "Ex 3", values: { head: "[1]" }, result: "[1]" },
+    { label: "Single pair", values: { head: "[1,2]" }, result: "[1,2]" }
+  ],
+  realLife: "<p>Reordering by alternating front/back shows up in <b>interleaving schedulers</b> (fairness: serve oldest and newest request alternately), <b>media playlists</b> (shuffle patterns), and <b>cache defragmentation</b> that alternates hot and cold blocks to balance wear — always behind the same three-step dance: find middle, reverse, weave.</p>",
+  dsDive: `<h3>Why 'find middle' with fast/slow works</h3>
+<p>fast walks 2 nodes per iteration, slow walks 1 — when fast exits the list, slow has covered half the distance: it IS the middle. This is the SAME speed-pairing as 0141, used as a MEASURING ROD instead of a detector.</p>
+<p>The weave step is the actual reversal of 0206: the second half is flipped FIRST so its head is the ORIGINAL tail. Then taking one node from each half, front→back, builds L0→Ln→L1→Ln-1→… with zero new allocations.</p>`,
+  code: [
+    "slow = fast = head                       # (a) find middle",
+    "while fast and fast.next: slow = slow.next; fast = fast.next.next",
+    "second = reverse(slow.next); slow.next = None   # (b) reverse 2nd half",
+    "first = head",
+    "while second:                             # (c) weave front + back",
+    "    tmp1, tmp2 = first.next, second.next",
+    "    first.next = second; second.next = tmp1",
+    "    first, second = tmp1, tmp2"
+  ],
+  steps: [
+    function (vals) {
+      const h = vals.head;
+      const nodes = chain(h);
+      const steps = [];
+      const snap = (text, code, hotIdx, doneIdx) => {
+        const v = cloneNodes(nodes);
+        if (hotIdx !== undefined && hotIdx >= 0) v[hotIdx].hot = true;
+        if (doneIdx !== undefined) v.forEach((n2, i) => { if (i <= doneIdx) n2.done = true; });
+        steps.push({ text, code, mem: [{ type: "list", title: "list", nodes: v }] });
+      };
+      snap("Phase (a): fast walks 2 steps, slow 1 step. When fast ends, slow = middle.", 0);
+      if (h.length <= 1) {
+        const last = steps[steps.length - 1];
+        last.result = JSON.stringify(h); last.correct = true;
+        last.memNote = "Time: O(1). Space: O(1).";
+        return { steps, result: JSON.stringify(h), correct: true, memNote: last.memNote };
+      }
+      const mid = Math.floor((h.length - 1) / 2);
+      snap("Middle found: node " + (mid + 1) + " (slow stops here when fast hits null).", 1);
+      snap("Phase (b): reverse the second half " + h.slice(mid + 1).join("→") + " → " + h.slice(mid + 1).reverse().join("→") + " (0206's prev/cur flips).", 3);
+      snap("Phase (c): weave — take node from front, node from back, repeat. L0→Ln→L1→Ln-1→…", 5);
+      const res = [];
+      const front = h.slice(0, mid + 1);
+      const back = h.slice(mid + 1).reverse();
+      const maxLen = Math.max(front.length, back.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < front.length) res.push(front[i]);
+        if (i < back.length) res.push(back[i]);
+      }
+      snap("Weave complete: <b>" + res.join("→") + "</b>. Every pointer rewired in place — no new nodes.", 6);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      const expected = [];
+      const f = h.slice(0, mid + 1), b = h.slice(mid + 1).reverse();
+      for (let i = 0; i < Math.max(f.length, b.length); i++) { if (i < f.length) expected.push(f[i]); if (i < b.length) expected.push(b[i]); }
+      last.correct = JSON.stringify(res) === JSON.stringify(expected);
+      last.memNote = "Time: O(n) three phases. Space: O(1).";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const h = vals.head;
+      const steps = [];
+      const snap = (text, code, arr) => {
+        const mem = [];
+        if (arr && arr.length) mem.push({ type: "array", title: "node array (pointers in RAM)", data: arr.map(x => "n" + x), size: 8, showIdx: true });
+        mem.push({ type: "list", title: "original list", nodes: chain(h) });
+        steps.push({ text, code, mem });
+      };
+      snap("Store EVERY node pointer in an array — now we can index the 'back' directly.", 0);
+      const n = h.length;
+      const res = [];
+      if (n <= 1) {
+        const last = steps[steps.length - 1];
+        last.result = JSON.stringify(h); last.correct = true;
+        last.memNote = "Time: O(1). Space: O(1).";
+        return { steps, result: JSON.stringify(h), correct: true, memNote: last.memNote };
+      }
+      for (let i = 0; i < Math.floor(n / 2); i++) {
+        res.push(h[i], h[n - 1 - i]);
+        snap("Weave step " + (i + 1) + ": take arr[" + i + "]=" + h[i] + " and arr[" + (n - 1 - i) + "]=" + h[n - 1 - i] + ".", 4, h);
+      }
+      if (n % 2) res.push(h[Math.floor(n / 2)]);
+      snap("Result: <b>" + res.join("→") + "</b>. (Array version — no middle-split math needed.)", 5, h);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      const mid = Math.floor((n - 1) / 2);
+      const expected = [];
+      const f = h.slice(0, mid + 1), b = h.slice(mid + 1).reverse();
+      for (let i = 0; i < Math.max(f.length, b.length); i++) { if (i < f.length) expected.push(f[i]); if (i < b.length) expected.push(b[i]); }
+      last.correct = JSON.stringify(res) === JSON.stringify(expected);
+      last.memNote = "Time: O(n). Space: O(n) node array.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0146 — LRU CACHE
+ * ================================================================ */
+NC150.register({
+  id: "0146", title: "LRU Cache", difficulty: "Medium",
+  url: "https://leetcode.com/problems/lru-cache/",
+  tags: ["linked list", "hashmap", "design"],
+  approaches: ["Approach 1 · Hash map + doubly linked list (best)", "Approach 2 · Naive tick counter"],
+  complexities: [
+    { time: "O(1) per op", space: "O(capacity)", note: "BEST — map for lookup, list for order" },
+    { time: "O(capacity) per op", space: "O(capacity)", note: "linear eviction scan" }
+  ],
+  compare: [
+    { name: "Ordered dict (Python)", tech: "built-in move_to_end", time: "O(1)", space: "O(c)", when: "Python only", best: false },
+    { name: "Map + DLL", tech: "map lookup + pointer surgery", time: "O(1)", space: "O(c)", when: "general case", best: true },
+    { name: "Tick counter scan", tech: "store last_use, scan min", time: "O(c)", space: "O(c)", when: "tiny capacity", best: false }
+  ],
+  inputs: [
+    { name: "ops", label: "ops = [[op,key,val?], …]", type: "list", default: "[[\"put\",1,1],[\"put\",2,2],[\"get\",1],[\"put\",3,3],[\"get\",2],[\"put\",4,4],[\"get\",1],[\"get\",3],[\"get\",4]]" },
+    { name: "cap", label: "capacity =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Official example", values: { ops: "[[\"put\",1,1],[\"put\",2,2],[\"get\",1],[\"put\",3,3],[\"get\",2],[\"put\",4,4],[\"get\",1],[\"get\",3],[\"get\",4]]", cap: "2" }, result: "[1,-1,-1,3,4]" },
+    { label: "Overwrite", values: { ops: "[[\"put\",1,1],[\"put\",1,9],[\"get\",1]]", cap: "2" }, result: "[9]" },
+    { label: "Evict then reuse", values: { ops: "[[\"put\",1,1],[\"put\",2,2],[\"get\",1],[\"put\",3,3],[\"get\",2],[\"get\",1]]", cap: "2" }, result: "[1,-1,1]" },
+    { label: "Capacity 1", values: { ops: "[[\"put\",1,1],[\"put\",2,2],[\"get\",1]]", cap: "1" }, result: "[-1]" }
+  ],
+  realLife: "<p>LRU is THE caching policy of real systems: CPU caches, Redis (eviction policy), browser history, database buffer pools (MySQL/PostgreSQL) and CDN edge caches. The 'map for lookup + doubly linked list for order' combo is the textbook O(1) eviction design — every key touched moves to the MRU end in constant time.</p>",
+  dsDive: `<h3>Why a DLL (and not a singly linked list)?</h3>
+<p>Evicting the LRU entry = removing the head — fine with a singly list. But a <b>get()</b> on an arbitrary key must move it to the MRU end: that needs a pointer to the node BEFORE it, which only a <b>doubly</b> linked list gives in O(1). The map holds key → NODE (not key → value), so both operations need just pointer surgery.</p>
+<p><b>Ordered dict</b> (Python dict preserves insertion order, <span class="code-cpp">std::list</span> + <span class="code-cpp">std::unordered_map</span> in C++) ships this design built-in — your LRU becomes a wrapper.</p>`,
+  code: [
+    "class LRUCache:",
+    "    def __init__(self, c):",
+    "        self.cap = c",
+    "        self.map = {}                  # key -> DLL node",
+    "        self.head, self.tail = D(), D()   # sentinels",
+    "        self.head.next = self.tail; self.tail.prev = self.head",
+    "    def get(self, k):",
+    "        if k not in self.map: return -1",
+    "        node = self.map[k]",
+    "        self._moveToMRU(node)          # touch = promote",
+    "        return node.val",
+    "    def put(self, k, v):",
+    "        if k in self.map: self._moveToMRU(self.map[k]); self.map[k].val = v",
+    "        else:",
+    "            node = D(k, v)",
+    "            self.map[k] = node; self._pushFront(node)",
+    "            if len(self.map) > self.cap:",
+    "                victim = self.tail.prev; self._remove(victim)",
+    "                del self.map[victim.key]"
+  ],
+  steps: [
+    function (vals) {
+      const ops = (vals.ops || []).map(o => o.map(x => x));
+      const cap = vals.cap;
+      const steps = [];
+      const out = [];
+      const state = {};      /* key -> {val, rank} — rank = recency */
+      const order = [];      /* MRU at END: [LRU ... MRU] */
+      const snap = (text, code, hotKey) => {
+        const slots = [];
+        const keys = Object.keys(state);
+        for (const k of keys) slots.push({ k, v: state[k].val });
+        while (slots.length < Math.max(cap, 2)) slots.push(null);
+        const listNodes = order.map(k => ({ v: k, next: true, hot: k === hotKey, done: false }));
+        if (!listNodes.length) listNodes.push({ v: "∅", next: null });
+        listNodes[listNodes.length - 1].next = null;
+        steps.push({ text, code, mem: [
+          { type: "list", title: "recency order · LRU → MRU", nodes: listNodes },
+          { type: "hashmap", title: "key → value", mode: "chaining", slots }
+        ] });
+      };
+      snap("Cache with capacity " + cap + ". The DLL keeps recency order: head = LRU (eviction victim), tail = MRU.", 3);
+      for (const op of ops) {
+        const [name, key] = op;
+        if (name === "get") {
+          if (state[key] === undefined) {
+            out.push(-1);
+            snap("get(" + key + ") → <b>-1</b>: key not cached (cache miss).", 6);
+          } else {
+            out.push(state[key].val);
+            order.splice(order.indexOf(key), 1);
+            order.push(key);
+            snap("get(" + key + ") → <b>" + state[key].val + "</b>. Touch: promote key " + key + " to MRU end.", 6, key);
+          }
+        } else {
+          const val = op[2];
+          if (state[key] !== undefined) {
+            state[key].val = val;
+            order.splice(order.indexOf(key), 1);
+            order.push(key);
+            snap("put(" + key + "," + val + ") — key exists: overwrite value, promote to MRU.", 11, key);
+          } else {
+            state[key] = { val, rank: 0 };
+            order.push(key);
+            if (Object.keys(state).length > cap) {
+              const victim = order.shift();
+              delete state[victim];
+              snap("put(" + key + "," + val + ") — full! EVICT LRU key <b>" + victim + "</b> (head of the DLL), then insert " + key + " at MRU end.", 13);
+            } else {
+              snap("put(" + key + "," + val + ") — new key, insert at MRU end (tail).", 13, key);
+            }
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(out);
+      const expected = [];
+      const cache = new Map();
+      for (const op of ops) {
+        if (op[0] === "get") {
+          expected.push(cache.has(op[1]) ? cache.get(op[1]) : -1);
+          if (cache.has(op[1])) { const v = cache.get(op[1]); cache.delete(op[1]); cache.set(op[1], v); }
+        } else {
+          const [,, v] = op;
+          if (cache.has(op[1])) cache.delete(op[1]);
+          cache.set(op[1], v);
+          if (cache.size > cap) cache.delete(cache.keys().next().value);
+        }
+      }
+      last.correct = JSON.stringify(out) === JSON.stringify(expected);
+      last.memNote = "Time: O(1) per op — map lookup + DLL pointer surgery. Space: O(capacity).";
+      return { steps, result: JSON.stringify(out), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ops = (vals.ops || []).map(o => o.map(x => x));
+      const cap = vals.cap;
+      const steps = [];
+      const out = [];
+      const tick = {};
+      let time = 0;
+      const snap = (text, code) => {
+        const keys = Object.keys(tick);
+        const slots = [];
+        for (const k of keys) slots.push({ k, v: tick[k].v });
+        while (slots.length < Math.max(cap, 2)) slots.push(null);
+        const listNodes = keys.sort((a, b) => tick[a].t - tick[b].t).map(k => ({ v: k, next: true }));
+        if (!listNodes.length) listNodes.push({ v: "∅", next: null });
+        listNodes[listNodes.length - 1].next = null;
+        steps.push({ text, code, mem: [
+          { type: "list", title: "recency by tick (oldest → newest)", nodes: listNodes },
+          { type: "hashmap", title: "key → (value, lastUseTick)", mode: "chaining", slots }
+        ] });
+      };
+      snap("Naive design: store last-used tick per key. Every eviction scans ALL keys for the minimum tick — O(capacity).", 0);
+      for (const op of ops) {
+        const [name, key] = op;
+        if (name === "get") {
+          time++;
+          if (tick[key] === undefined) { out.push(-1); snap("get(" + key + ") → -1 (miss). Tick " + time + ".", 4); }
+          else { out.push(tick[key].v); tick[key].t = time; snap("get(" + key + ") → " + tick[key].v + ". Refresh its tick to " + time + ".", 4); }
+        } else {
+          time++;
+          const val = op[2];
+          if (tick[key] !== undefined) { tick[key].v = val; tick[key].t = time; snap("put(" + key + "," + val + ") — overwrite, tick " + time + ".", 7); }
+          else {
+            tick[key] = { v: val, t: time };
+            if (Object.keys(tick).length > cap) {
+              const victim = Object.keys(tick).reduce((a, b) => tick[a].t < tick[b].t ? a : b);
+              delete tick[victim];
+              snap("put(" + key + "," + val + ") — full! Linear scan finds the MIN tick: key <b>" + victim + "</b> evicted.", 8);
+            } else snap("put(" + key + "," + val + ") — insert with tick " + time + ".", 7);
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(out);
+      const expected = [];
+      const cache = new Map();
+      for (const op of ops) {
+        if (op[0] === "get") {
+          expected.push(cache.has(op[1]) ? cache.get(op[1]) : -1);
+          if (cache.has(op[1])) { const v = cache.get(op[1]); cache.delete(op[1]); cache.set(op[1], v); }
+        } else {
+          const [, , v] = op;
+          if (cache.has(op[1])) cache.delete(op[1]);
+          cache.set(op[1], v);
+          if (cache.size > cap) cache.delete(cache.keys().next().value);
+        }
+      }
+      last.correct = JSON.stringify(out) === JSON.stringify(expected);
+      last.memNote = "Time: O(capacity) per op — the scan kills it at scale. Space: O(capacity).";
+      return { steps, result: JSON.stringify(out), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0206 — REVERSE LINKED LIST
+ * ================================================================ */
+NC150.register({
+  id: "0206", title: "Reverse Linked List", difficulty: "Easy",
+  url: "https://leetcode.com/problems/reverse-linked-list/",
+  tags: ["linked list", "recursion"],
+  approaches: ["Approach 1 · Iterative: 3 pointers (best)", "Approach 2 · Recursive"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — pure pointer flips" },
+    { time: "O(n)", space: "O(n)", note: "call stack" }
+  ],
+  compare: [
+    { name: "Copy to array", tech: "dump values, rebuild", time: "O(n)", space: "O(n)", when: "never — destroys node identity", best: false },
+    { name: "Iterative 3 ptr", tech: "save-next, flip, slide", time: "O(n)", space: "O(1)", when: "general case", best: true },
+    { name: "Recursive", tech: "reverse(rest) then fix links", time: "O(n)", space: "O(n)", when: "clarity", best: false }
+  ],
+  inputs: [
+    { name: "head", label: "head =", type: "list", default: "[1,2,3,4,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { head: "[1,2,3,4,5]" }, result: "[5,4,3,2,1]" },
+    { label: "Ex 2", values: { head: "[1,2]" }, result: "[2,1]" },
+    { label: "Ex 3", values: { head: "[]" }, result: "[]" },
+    { label: "Single", values: { head: "[7]" }, result: "[7]" }
+  ],
+  realLife: "<p>Reversal of singly linked structures powers <b>undo/redo stacks</b> implemented as lists, <b>forward-linked histories</b> (browser back stack rebuilt forward), and is the FIRST building block of 0143 (reorder) and 0025 (k-group). The 'cache the survivor before the flip' insight is also the core of in-place array reversals in low-level kernels.</p>",
+  dsDive: `<h3>The single insight that is the whole problem</h3>
+<p>Flipping <span class="code-cpp">cur-&gt;next = prev</span> DESTROYS the rest of the chain — cur's only pointer to the future was through next. So the flip is always preceded by caching: <span class="code-cpp">nxt = cur-&gt;next</span> (save the survivor). The loop becomes a 3-step dance: save, flip, slide. When cur slides off the list (null), prev holds the LAST node — which is the NEW head.</p>
+<p>Recursive variant: assume reverse(rest) works, then make the old head the tail by relinking its two nearest neighbors. Same flips, different order — the stack does the sliding.</p>`,
+  code: [
+    "prev, cur = None, head",
+    "while cur:",
+    "    nxt = cur.next            # 1. save the survivor",
+    "    cur.next = prev          # 2. flip the arrow",
+    "    prev, cur = cur, nxt     # 3. slide both forward",
+    "return prev                  # prev IS the new head"
+  ],
+  steps: [
+    function (vals) {
+      const h = vals.head;
+      const nodes = h.map((v, i) => ({ v, next: i < h.length - 1 ? true : null }));
+      const steps = [];
+      let prev = -1, cur = 0;
+      const snap = (text, code) => {
+        const v = cloneNodes(nodes);
+        if (prev >= 0 && prev < v.length) v[prev].done = true;
+        if (cur >= 0 && cur < v.length) v[cur].hot = true;
+        steps.push({ text, code, mem: [{ type: "list", title: "reversing · prev (green) · cur (orange)", nodes: v }] });
+      };
+      snap("prev = null (dummy), cur = head. Each step: save cur's successor BEFORE flipping — otherwise the chain is lost.", 0);
+      for (let i = 0; i < h.length; i++) {
+        cur = i; prev = i - 1;
+        const nxt = i + 1 < h.length ? i + 1 : -1;
+        snap("SAVE nxt = node " + (nxt + 1) + " (the survivor).", 2);
+        nodes[i].next = prev >= 0 ? ADDR(prev) : null;
+        snap("FLIP: node " + (i + 1) + " .next → " + (prev >= 0 ? "node " + (prev + 1) + " (" + ADDR(prev) + ")" : "null") + ".", 3);
+        if (prev >= 0 && prev < nodes.length) nodes[prev].done = true;
+        if (i < nodes.length) nodes[i].hot = true;
+        if (nxt === -1) {
+          snap("SLIDE: cur → null. Loop exits — prev (node " + (i + 1) + ") IS the new head.", 4);
+        } else {
+          snap("SLIDE: prev → node " + (i + 1) + ", cur → node " + (nxt + 1) + ".", 4);
+        }
+      }
+      const res = h.slice().reverse();
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(h.slice().reverse());
+      last.memNote = "Time: O(n) one pass. Space: O(1) — three pointers.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const h = vals.head;
+      const nodes = chain(h);
+      const steps = [];
+      const snap = (text, code) => steps.push({ text, code, mem: [{ type: "list", title: "list", nodes: cloneNodes(nodes) }] });
+      snap("Recursive contract: reverse(head) = make head the tail, return the new head. The call chain dives to the LAST node first.", 0);
+      const res = [];
+      for (let i = h.length - 1; i >= 0; i--) {
+        snap("Unwind from node " + (i + 1) + ": it becomes the new head of the reversed rest. Link node " + (i + 1) + " to node " + (i + 2 > h.length ? "null" : i + 2) + " as its successor.", 3);
+        res.push(h[i]);
+      }
+      if (!res.length) snap("Empty list → return head (null).", 2);
+      snap("Reversed: <b>" + (res.length ? res.join("→") : "empty") + "</b>. Each frame flipped exactly one arrow.", 4);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(h.slice().reverse());
+      last.memNote = "Time: O(n). Space: O(n) recursion stack.";
+      return { steps, result: JSON.stringify(res), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0287 — FIND THE DUPLICATE NUMBER
+ * ================================================================ */
+NC150.register({
+  id: "0287", title: "Find the Duplicate Number", difficulty: "Medium",
+  url: "https://leetcode.com/problems/find-the-duplicate-number/",
+  tags: ["linked list", "floyd", "array"],
+  approaches: ["Approach 1 · Floyd on the implicit list (best)", "Approach 2 · Hash set of seen values"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — array untouched, no extra space" },
+    { time: "O(n)", space: "O(n)", note: "seen set" }
+  ],
+  compare: [
+    { name: "Sort", tech: "adjacent equal", time: "O(n log n)", space: "O(1)", when: "modifying allowed", best: false },
+    { name: "Hash set", tech: "first repeat wins", time: "O(n)", space: "O(n)", when: "space is cheap", best: false },
+    { name: "Floyd implicit list", tech: "chase indices, cycle entry = dup", time: "O(n)", space: "O(1)", when: "constraints demand O(1)", best: true }
+  ],
+  inputs: [
+    { name: "nums", label: "nums = (n+1 ints in [1,n])", type: "list", default: "[1,3,4,2,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,3,4,2,2]" }, result: "2" },
+    { label: "Ex 2", values: { nums: "[3,1,3,4,2]" }, result: "3" },
+    { label: "Ex 3", values: { nums: "[3,3,3,3,3]" }, result: "3" },
+    { label: "All same", values: { nums: "[2,2,2,2,2]" }, result: "2" }
+  ],
+  realLife: "<p>This is the 'two runners on an implicit graph' pattern: cycle detection WITHOUT building the graph. Real uses: <b>birthday-paradox dedup</b> in distributed hashing, detecting <b>hash-table probe cycles</b> (rehashed keys looping), and <b>IP loop detection</b> where the 'next hop' function f(i) is only computable on the fly — you cannot store all states.</p>",
+  dsDive: `<h3>Why the array IS a linked list</h3>
+<p>Define f(i) = nums[i]. Start at index 0 and chase: 0 → nums[0] → nums[nums[0]] → … Each value v ∈ [1, n] can be the image of TWO indices (that is what 'duplicate' means), so some value is pointed at twice — the walk must enter a cycle. The cycle ENTRY is the value pointed to by two different indices: EXACTLY the duplicate.</p>
+<p>Floyd's meet point is inside the cycle, not at its entry. The second phase — walking from 0 and from the meet point at equal speed — converges at the entry in ≤ n steps. The same machinery as 0141, reused with zero extra memory.</p>`,
+  code: [
+    "slow = fast = nums[0]",
+    "while True:",
+    "    slow = nums[slow]          # 1 jump",
+    "    fast = nums[nums[fast]]    # 2 jumps",
+    "    if slow == fast: break     # meet inside the cycle",
+    "slow = nums[0]",
+    "while slow != fast:            # entry hunt: both go 1 step",
+    "    slow = nums[slow]",
+    "    fast = nums[fast]",
+    "return slow                    # the duplicated value"
+  ],
+  steps: [
+    function (vals) {
+      const nums = vals.nums;
+      const n = nums.length;
+      const steps = [];
+      const walk = [0];            /* index chain 0, nums[0], … */
+      const snap = (text, code, s, f, doneIdx) => {
+        const cls = {};
+        if (s >= 0 && s < n) cls[s] = "hot";
+        if (f >= 0 && f < n) cls[f] = "done";
+        if (doneIdx >= 0) cls[doneIdx] = "done";
+        const wv = walk.map((_, i) => ({ v: walk[i], next: i < walk.length - 1 ? ADDR(i + 1) : null }));
+        steps.push({ text, code, mem: [
+          { type: "array", title: "nums · f(i) = nums[i]", data: nums, cls, showIdx: true, size: 4 },
+          { type: "list", title: "index chase (the implicit list)", nodes: wv }
+        ] });
+      };
+      if (n < 2) {
+        const last = steps[steps.length - 1] || { result: "null" };
+        steps.push({ text: "Trivial input.", code: -1, mem: [] });
+        steps[0].result = String(nums[0]);
+        steps[0].correct = true;
+        steps[0].memNote = "Time: O(1). Space: O(1).";
+        return { steps, result: String(nums[0]), correct: true, memNote: steps[0].memNote };
+      }
+      snap("Start: 0 → " + nums[0] + ". Chase with slow (1 jump) and fast (2 jumps). The chain MUST cycle because two indices share one value.", 0);
+      walk.push(nums[0]);
+      let slow = nums[0], fast = nums[0];
+      let meet = -1, guard = 0;
+      const maxGuard = n * n + 4;
+      while (guard++ < maxGuard) {
+        slow = nums[slow];
+        fast = nums[nums[fast]];
+        if (!walk.includes(slow)) walk.push(slow);
+        snap("slow → " + slow + ", fast → " + fast + ".", 2, slow, fast);
+        if (slow === fast) { meet = slow; snap("MEET at value <b>" + slow + "</b> — inside the cycle (not yet the answer!).", 4, slow, fast); break; }
+      }
+      if (meet < 0) meet = nums[0];
+      snap("Phase 2: walk from 0 AND from the meet point, both 1 jump. They converge at the cycle ENTRY = the duplicate.", 6, 0, meet);
+      let a = nums[0], b = meet, guard2 = 0;
+      while (a !== b && guard2++ < n + 2) {
+        a = nums[a]; b = nums[b];
+        snap("entry hunt: a → " + a + ", b → " + b + ".", 8, a, b);
+      }
+      snap("CONVERGED at <b>" + a + "</b> — value pointed at by two indices → the duplicate.", 10, a, a);
+      const last = steps[steps.length - 1];
+      last.result = String(a);
+      const expected = nums.find((v, i) => nums.indexOf(v) !== i);
+      last.correct = a === expected;
+      last.memNote = "Time: O(n) — chase + entry hunt are linear. Space: O(1).";
+      return { steps, result: String(a), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = vals.nums;
+      const steps = [];
+      const snap = (text, code, cur, seenVals) => {
+        const cls = {};
+        if (cur >= 0 && cur < nums.length) cls[cur] = "hot";
+        const seen = {};
+        (seenVals || []).forEach(v => { seen[v] = 1; });
+        const slots = nums.map((v, i) => seen[v] ? { k: v, v: "seen" } : null);
+        steps.push({ text, code, mem: [
+          { type: "array", title: "nums", data: nums, cls, showIdx: true, size: 4 },
+          { type: "hashmap", title: "seen set (value → present)", mode: "open", slots }
+        ] });
+      };
+      snap("Chase the same implicit list, but REMEMBER every value in a hash set. First repeated value = answer.", 0);
+      const seen = [];
+      let cur = 0, ans = -1, guard = 0;
+      while (guard++ < nums.length + 2) {
+        cur = nums[cur];
+        if (seen.includes(cur)) {
+          ans = cur;
+          snap("Value <b>" + cur + "</b> is ALREADY in the set → repeat found!", 4, cur, seen);
+          break;
+        }
+        seen.push(cur);
+        snap("Visit value " + cur + " — not seen before, add to set.", 3, cur, seen);
+      }
+      if (ans < 0) ans = nums[0];
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      const expected = nums.find((v, i) => nums.indexOf(v) !== i);
+      last.correct = ans === expected;
+      last.memNote = "Time: O(n). Space: O(n) seen set.";
+      return { steps, result: String(ans), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

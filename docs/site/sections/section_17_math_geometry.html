@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17 · Math & Geometry — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "17", title: "Math & Geometry" };
+
+/* ================================================================
+ * SHARED HELPERS
+ * ================================================================ */
+/* grid inputs arrive as a list of row-strings, e.g. ["123","456"] */
+function parseGrid(vals, name) {
+  return (vals[name] || []).map(r => String(r).split("").map(Number));
+}
+/* one char -> its integer value */
+function digit(c) { return Number(c); }
+/* format a float like LeetCode's 5-decimal rounding, trimmed */
+function fmtNum(v) {
+  if (!Number.isFinite(v)) return "not a real number";
+  return Number(v.toFixed(5)).toString();
+}
+/* sum of squares of the digits of n — the heart of happy-number */
+function sumSq(n) { return String(n).split("").reduce((s, d) => s + Number(d) * Number(d), 0); }
+/* manual digit-wise string addition (multiply-strings helper) */
+function addStr(x, y) {
+  let i = x.length - 1, j = y.length - 1, carry = 0, out = "";
+  while (i >= 0 || j >= 0 || carry) {
+    const s = (i >= 0 ? +x[i] : 0) + (j >= 0 ? +y[j] : 0) + carry;
+    out = (s % 10) + out;
+    carry = Math.floor(s / 10);
+    i--; j--;
+  }
+  return out.replace(/^0+/, "") || "0";
+}
+
+/* ================================================================
+ * PROBLEM 0043 — MULTIPLY STRINGS
+ * ================================================================ */
+NC150.register({
+  id: "0043", title: "Multiply Strings", difficulty: "Medium",
+  url: "https://leetcode.com/problems/multiply-strings/",
+  tags: ["math", "string", "simulation"],
+  approaches: ["Approach 1 · Position array + carry (best)", "Approach 2 · Stacked rows, digit-wise add"],
+  complexities: [
+    { time: "O(m·n)", space: "O(m+n)", note: "BEST — the classic positions trick" },
+    { time: "O(m·n)", space: "O(m+n)", note: "same work, visible rows" }
+  ],
+  compare: [
+    { name: "BigInt / parseInt", tech: "convert to int", time: "O(m+n)", space: "O(1)", when: "prototyping only", best: false },
+    { name: "Position array", tech: "digits land at i+j, i+j+1", time: "O(m·n)", space: "O(m+n)", when: "the interview answer", best: true },
+    { name: "Stacked rows", tech: "num1 × each digit, sum shifted rows", time: "O(m·n)", space: "O(m+n)", when: "matches pen-and-paper", best: false }
+  ],
+  inputs: [
+    { name: "num1", label: "num1 =", type: "str", default: "123" },
+    { name: "num2", label: "num2 =", type: "str", default: "456" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { num1: "123", num2: "456" }, result: "56088" },
+    { label: "Ex 2", values: { num1: "2", num2: "3" }, result: "6" },
+    { label: "Ex 3", values: { num1: "123", num2: "0" }, result: "0" }
+  ],
+  realLife: "<p><b>Big-number arithmetic libraries</b> (Python big ints, RSA crypto) multiply 1024-bit numbers exactly like this — digit arrays, never floats.</p><p><b>Fixed-point financial math</b>: money kept as digit strings dodges the 0.1+0.2 rounding plague; the position array IS the multiplication routine.</p>",
+  dsDive: `<h3>The positions trick: every digit pair owns two slots</h3>
+<p>Digit <span class="code-var">a[i]</span> × <span class="code-var">b[j]</span> is 10^(i+j) in value: its tens part lands in slot <b>i+j</b>, its ones part in slot <b>i+j+1</b>. No string reversals — the carry folds in the moment each pair is processed, and the m+n result array is pre-sized, never reallocated.</p>
+<div class="equation">a[i]·b[j] = d₁d₂ → d₁ → slot i+j &nbsp;&nbsp; d₂ → slot i+j+1</div>
+<p>Both loops run right-to-left — exactly pen-and-paper order, which is why the carry chain never leaks past its slot.</p>`,
+  code: [
+    "# A1 — position array",
+    "pos = [0] * (len(num1) + len(num2))",
+    "for i from len(num1)-1 down to 0:",
+    "    for j from len(num2)-1 down to 0:",
+    "        s = a[i]*b[j] + pos[i+j+1]   # add existing ones-part",
+    "        pos[i+j]   += s // 10        # carry folds into tens slot",
+    "        pos[i+j+1]  = s % 10         # ones stays put",
+    "return str(int(''.join(map(str,pos))))",
+    "# A2 — stacked rows (pen & paper)",
+    "total = '0'",
+    "for k, d in enumerate(reversed(num2)):",
+    "    row = num1 * d                   # one digit × whole number",
+    "    total = add_str(total, row + '0'*k)   # shift + manual add"
+  ],
+  steps: [
+    function (vals) {
+      const a = String(vals.num1 == null ? "123" : vals.num1).replace(/[^0-9]/g, "") || "0";
+      const b = String(vals.num2 == null ? "456" : vals.num2).replace(/[^0-9]/g, "") || "0";
+      const steps = [];
+      const m = a.length, n = b.length;
+      const pos = new Array(m + n).fill(0);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "pos — product slots (tens → i+j, ones → i+j+1)", data: pos.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "num1 digits", data: a.split(""), cls: {}, showIdx: true, size: 1 },
+        { type: "array", title: "num2 digits", data: b.split(""), cls: {}, showIdx: true, size: 1 }
+      ]});
+      snap(`Multiply "<b>${a}</b>" × "<b>${b}</b>" into ${m + n} zeroed slots — a product never needs more than m+n digits.`, 1);
+      for (let i = m - 1; i >= 0; i--) {
+        const d1 = digit(a[i]);
+        for (let j = n - 1; j >= 0; j--) {
+          const d2 = digit(b[j]);
+          const mul = d1 * d2;
+          const p1 = i + j, p2 = i + j + 1;
+          const sum = mul + pos[p2];
+          const carry = Math.floor(sum / 10);
+          pos[p1] += carry;
+          pos[p2] = sum % 10;
+          snap(`<b>${d1}</b> × <b>${d2}</b> = ${mul}; add existing ${sum - mul} at slot ${p2} → <b>${sum}</b>; ones <b>${sum % 10}</b> stays, carry <b>${carry}</b> folds into slot ${p1}.`, 4, { [p1]: "hot", [p2]: "hl" });
+        }
+      }
+      let carry = 0;
+      for (let k = pos.length - 1; k >= 0; k--) {
+        const t = pos[k] + carry;
+        pos[k] = t % 10;
+        carry = Math.floor(t / 10);
+      }
+      snap(`All digit pairs processed — the slots now hold product digits left-to-right. Strip leading zeros.`, 7, {});
+      const prod = pos.join("").replace(/^0+/, "") || "0";
+      const last = steps[steps.length - 1];
+      last.result = prod;
+      last.correct = prod === (BigInt(a) * BigInt(b)).toString();
+      last.memNote = "Time: O(m·n) digit pairs. Space: O(m+n) for the position array.";
+      return { steps: steps, result: prod, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const a = String(vals.num1 == null ? "123" : vals.num1).replace(/[^0-9]/g, "") || "0";
+      const b = String(vals.num2 == null ? "456" : vals.num2).replace(/[^0-9]/g, "") || "0";
+      const steps = [];
+      let total = "0";
+      const rows = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "shifted rows so far (pen-and-paper layout)", data: rows.slice(), cls: cls || {}, showIdx: true, size: 8 },
+        { type: "string", title: "running total (digit-wise addition)", data: total.split(""), cls: {}, size: 1 }
+      ]});
+      snap(`Paper method: multiply "<b>${a}</b>" by each digit of "<b>${b}</b>", shift the row by its place value, add the rows.`, 0);
+      for (let k = 0; k < b.length; k++) {
+        const d = digit(b[b.length - 1 - k]);
+        let row = "", carry = 0;
+        for (let i = a.length - 1; i >= 0; i--) {
+          const t = digit(a[i]) * d + carry;
+          row = (t % 10) + row;
+          carry = Math.floor(t / 10);
+          snap(`<b>${digit(a[i])}</b> × <b>${d}</b> + carry ${Math.floor(t / 10) ? Math.floor(t / 10) : 0} → write <b>${t % 10}</b>, new carry <b>${Math.floor(t / 10)}</b>.`, 3);
+        }
+        if (carry) row = carry + row;
+        const shifted = row + "0".repeat(k);
+        rows.push(shifted);
+        const before = total;
+        total = addStr(total, shifted);
+        snap(`Row for digit <b>${d}</b>: "<b>${shifted}</b>" (shifted by ${k} place(s)). Add: ${before} + ${shifted} = <b>${total}</b>.`, 5, { [rows.length - 1]: "done" });
+      }
+      const prod = total;
+      const last = steps[steps.length - 1];
+      last.result = prod;
+      last.correct = prod === (BigInt(a) * BigInt(b)).toString();
+      last.memNote = "Same O(m·n) work; rows make the place-value shifts visible, total kept as a digit string.";
+      return { steps: steps, result: prod, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0048 — ROTATE IMAGE
+ * ================================================================ */
+NC150.register({
+  id: "0048", title: "Rotate Image", difficulty: "Medium",
+  url: "https://leetcode.com/problems/rotate-image/",
+  tags: ["array", "matrix", "simulation"],
+  approaches: ["Approach 1 · Layer rotation, 4-way swaps (best)", "Approach 2 · Transpose + reverse rows"],
+  complexities: [
+    { time: "O(n²)", space: "O(1)", note: "BEST — fully in place, no extra grid" },
+    { time: "O(n²)", space: "O(1)", note: "two passes, still in place" }
+  ],
+  compare: [
+    { name: "Copy to new grid", tech: "res[c][n-1-r] = a[r][c]", time: "O(n²)", space: "O(n²)", when: "non-square inputs", best: false },
+    { name: "Layer rotation", tech: "4-way cyclic swaps per ring", time: "O(n²)", space: "O(1)", when: "the interview answer", best: true },
+    { name: "Transpose + reverse", tech: "swap r↔c, then flip rows", time: "O(n²)", space: "O(1)", when: "easiest to remember", best: false }
+  ],
+  inputs: [
+    { name: "matrix", label: "matrix rows =", type: "list", default: '["1","2","3","4"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { matrix: '["123","456","789"]' }, result: "[[7,4,1],[8,5,2],[9,6,3]]" },
+    { label: "Ex 2", values: { matrix: '["12","34"]' }, result: "[[3,1],[4,2]]" },
+    { label: "Ex 3", values: { matrix: '["1"]' }, result: "[[1]]" }
+  ],
+  realLife: "<p><b>Image rotation</b> in every photo editor and phone camera: a bitmap rotates 90° by exactly these memory moves — in-place when square, one scratch row otherwise.</p><p><b>Document scanners & OCR pipelines</b> rotate captured pages into upright orientation with the same transpose+flip trick.</p>",
+  dsDive: `<h3>Four cells trade one value — that is a rotation</h3>
+<p>Clockwise rotation moves each value (r, c) → (c, n−1−r). Around a ring the four partners are one swap cycle: top → right → bottom → left → top. Each layer processes n−2·layer−1 such cycles with ONE saved variable — the whole rotation touches every cell exactly once, no scratch array.</p>
+<div class="equation">(r,c) → (c, n−1−r) &nbsp;|&nbsp; ring layer ℓ covers rows/cols ℓ .. n−1−ℓ</div>
+<p>The transpose+reverse variant is the same permutation decomposed as two passes; matrix rows in RAM are contiguous, so flipping a row is a burst of sequential writes.</p>`,
+  code: [
+    "# A1 — layer rotation (in place)",
+    "for l in range(n // 2):",
+    "    for i in range(n - 2*l - 1):",
+    "        save = a[l][l+i]                    # top",
+    "        a[l][l+i]        = a[n-1-l-i][l]    # left  → top",
+    "        a[n-1-l-i][l]    = a[n-1-l][n-1-l-i] # bottom → left",
+    "        a[n-1-l][n-1-l-i] = a[l+i][n-1-l]   # right → bottom",
+    "        a[l+i][n-1-l]    = save              # saved top → right",
+    "# A2 — transpose then reverse rows",
+    "for r in range(n): for c in range(r, n): a[r][c], a[c][r] = a[c][r], a[r][c]",
+    "for r in range(n): a[r].reverse()"
+  ],
+  steps: [
+    function (vals) {
+      const rows = parseGrid(vals, "matrix");
+      const steps = [];
+      const m = rows.length, n = m ? rows[0].length : 0;
+      let a = rows.map(r => r.slice());
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "matrix · hot = the 4-cycle being rotated", data: a.map(r => r.slice()), cols: Math.max(n, a[0] ? a[0].length : 0), cls: cls || {} }
+      ]});
+      if (m === 0 || n === 0) {
+        const e = { text: "Empty matrix — nothing to rotate.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap(`Rotate clockwise: each value moves (r,c) → (c, ${m - 1}-r). Matrix is ${m}×${n}.`, 0, {});
+      const expect = Array.from({ length: n }, () => Array(m).fill(0));
+      for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) expect[c][m - 1 - r] = rows[r][c];
+      const perCell = m * n <= 64;
+      if (m === n) {
+        const N = m;
+        for (let l = 0; l < Math.floor(N / 2); l++) {
+          for (let i = 0; i < N - 2 * l - 1; i++) {
+            const t = a[l][l + i];
+            const cells = { [l + "," + (l + i)]: "hot", [l + "," + (N - 1 - l)]: "hot", [(N - 1 - l) + "," + (N - 1 - l - i)]: "hot", [(N - 1 - l - i) + "," + l]: "hot" };
+            a[l][l + i] = a[N - 1 - l - i][l];
+            a[N - 1 - l - i][l] = a[N - 1 - l][N - 1 - l - i];
+            a[N - 1 - l][N - 1 - l - i] = a[l + i][N - 1 - l];
+            a[l + i][N - 1 - l] = t;
+            if (perCell || i === 0) snap(`Layer ${l}: rotate the cycle top(${l},${l + i}) → right(${l + i},${N - 1 - l}) → bottom(${N - 1 - l},${N - 1 - l - i}) → left(${N - 1 - l - i},${l}) — one saved variable.`, 4, cells);
+          }
+        }
+      } else {
+        a = Array.from({ length: n }, () => Array(m).fill(0));
+        for (let r = 0; r < m; r++) {
+          for (let c = 0; c < n; c++) {
+            const cells = { [r + "," + c]: "hot", [c + "," + (m - 1 - r)]: "hl" };
+            a[c][m - 1 - r] = rows[r][c];
+            if (perCell) snap(`Cell (${r},${c}) = <b>${rows[r][c]}</b> lands at destination (${c},${m - 1 - r}) in the rotated grid.`, 1, cells);
+          }
+          if (!perCell) snap(`Row ${r} of ${m} mapped into the rotated grid.`, 1, { [r + ",0"]: "hl" });
+        }
+      }
+      const res = JSON.stringify(a);
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = JSON.stringify(a) === JSON.stringify(expect);
+      last.memNote = "Time: O(n²) — every cell touched once. Space: O(1) beyond the grid itself.";
+      return { steps: steps, result: res, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const rows = parseGrid(vals, "matrix");
+      const steps = [];
+      const m = rows.length, n = m ? rows[0].length : 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "matrix mid-transform", data: rows.map(r => r.slice()), cols: n, cls: cls || {} }
+      ]});
+      if (m === 0 || n === 0) {
+        const e = { text: "Empty matrix — nothing to rotate.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const expect = Array.from({ length: n }, () => Array(m).fill(0));
+      for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) expect[c][m - 1 - r] = rows[r][c];
+      snap(`Two-pass trick: <b>transpose</b> (rows become columns) then <b>reverse each row</b> — for any shape, this equals a 90° clockwise turn.`, 6, {});
+      const t = Array.from({ length: n }, () => Array(m).fill(0));
+      const perCell = m * n <= 64;
+      for (let r = 0; r < m; r++) {
+        for (let c = 0; c < n; c++) {
+          t[c][r] = rows[r][c];
+          if (perCell) snap(`Transpose: t[${c}][${r}] = a[${r}][${c}] = <b>${rows[r][c]}</b>.`, 7, { [r + "," + c]: "hot" });
+        }
+        if (!perCell) snap(`Transpose row ${r} done — column ${r} of the result is filled.`, 7, { [r + ",0"]: "hl" });
+      }
+      for (let r = 0; r < n; r++) {
+        t[r].reverse();
+        snap(`Reverse row ${r} → <b>[${t[r].join(",")}]</b> — the turn completes.`, 8, { [r + "," + 0]: "done" });
+      }
+      const res = JSON.stringify(t);
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = JSON.stringify(t) === JSON.stringify(expect);
+      last.memNote = "Same O(n²); two in-place passes, arguably easier to derive on the spot.";
+      return { steps: steps, result: res, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0050 — POW(X, N)
+ * ================================================================ */
+NC150.register({
+  id: "0050", title: "Pow(x, n)", difficulty: "Medium",
+  url: "https://leetcode.com/problems/powx-n/",
+  tags: ["math", "binary exponentiation", "recursion"],
+  approaches: ["Approach 1 · Recursive fast exponentiation (best)", "Approach 2 · Iterative binary exponentiation"],
+  complexities: [
+    { time: "O(log n)", space: "O(log n)", note: "BEST — halve n each level" },
+    { time: "O(log n)", space: "O(1)", note: "loop over n's bits, no stack" }
+  ],
+  compare: [
+    { name: "Naive loop", tech: "multiply n times", time: "O(n)", space: "O(1)", when: "tiny n", best: false },
+    { name: "Recursive fast pow", tech: "x^n = (x^(n/2))²", time: "O(log n)", space: "O(log n)", when: "the interview answer", best: true },
+    { name: "Iterative bits", tech: "square base, multiply on set bits", time: "O(log n)", space: "O(1)", when: "no stack wanted", best: false }
+  ],
+  inputs: [
+    { name: "x", label: "x =", type: "str", default: "2.00000" },
+    { name: "n", label: "n =", type: "int", default: "10" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { x: "2.00000", n: "10" }, result: "1024" },
+    { label: "Ex 2", values: { x: "2.10000", n: "3" }, result: "9.261" },
+    { label: "Ex 3", values: { x: "2.00000", n: "-2" }, result: "0.25" }
+  ],
+  realLife: "<p><b>Exponentiation by squaring</b> powers RSA encryption, Diffie-Hellman key exchange and every modular exponent — 2^65537 costs ~17 multiplications, not 65537.</p><p><b>Financial compounding</b>: (1+r)^t over thousands of days uses the same halving trick to avoid float drift.</p>",
+  dsDive: `<h3>Halve the exponent, square the base</h3>
+<p>x^n with even n = (x^(n/2))² — one squaring replaces n multiplications. Odd n keeps one extra ×x. The recursion depth is log₂|n| ≤ 31 for 32-bit exponents; the iterative version walks n's binary digits right-to-left, squaring the base every step and folding it into the accumulator only on set bits.</p>
+<div class="equation">xⁿ = (x²)^(n/2) if n even &nbsp;|&nbsp; x·(x²)^((n−1)/2) if n odd</div>
+<p>Negative n inverts the result: x^−n = 1/(xⁿ). Both loops terminate in ~30 iterations regardless of how large |n| is.</p>`,
+  code: [
+    "# A1 — recursive fast exponentiation",
+    "def fast(x, n):",
+    "    if n == 0: return 1",
+    "    half = fast(x, abs(n) // 2)",
+    "    r = half * half                    # one squaring = two powers",
+    "    if abs(n) % 2: r *= x              # odd exponent keeps one x",
+    "    return r if n > 0 else 1 / r       # negative n inverts",
+    "# A2 — iterative over bits",
+    "base, e, acc = x, abs(n), 1",
+    "while e > 0:",
+    "    if e % 2: acc *= base             # set bit → fold base in",
+    "    base *= base; e //= 2             # square base, drop bit"
+  ],
+  steps: [
+    function (vals) {
+      const x = Number(String(vals.x == null ? "2" : vals.x));
+      const n = Number(vals.n == null ? 10 : vals.n);
+      const steps = [];
+      const chain = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "stack", title: "recursion — exponent |n| halved each level", data: chain.slice(), top: chain.length - 1 }
+      ]});
+      snap(`Compute ${fmtNum(x)}^${n}: recursion halves the exponent, one squaring per level → O(log n).`, 1, {});
+      function fast(v, e) {
+        if (e === 0) { snap(`fast(${fmtNum(v)}, 0) = 1 — base case.`, 2); return 1; }
+        chain.push("|n|=" + Math.floor(Math.abs(e) / 2));
+        const half = fast(v, Math.floor(Math.abs(e) / 2));
+        chain.pop();
+        let r = half * half;
+        const odd = Math.abs(e) % 2 === 1;
+        if (odd) r *= v;
+        snap(`fast(${fmtNum(v)}, ${e}): half = ${fmtNum(half)} → half² = ${fmtNum(half * half)}${odd ? `, odd exponent → ×${fmtNum(v)}` : ""} = <b>${fmtNum(r)}</b>.`, 4);
+        return r;
+      }
+      const raw = fast(x, Math.abs(n));
+      const res = n < 0 ? 1 / raw : raw;
+      const finalV = fmtNum(res);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = Math.abs(res - Math.pow(x, n)) < 1e-9 * Math.max(1, Math.abs(Math.pow(x, n)));
+      last.memNote = "Time: O(log n) — log₂|n| levels. Space: O(log n) recursion stack.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const x = Number(String(vals.x == null ? "2" : vals.x));
+      const n = Number(vals.n == null ? 10 : vals.n);
+      const steps = [];
+      const bits = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "exponent |n| in binary (scanned right→left)", data: bits.slice(), cls: cls || {}, showIdx: true, size: 1 }
+      ]});
+      const e0 = Math.abs(n);
+      snap(`Iterative binary exponentiation: ${fmtNum(x)}^${n} — square the base every step, fold in only on set bits.`, 8, {});
+      let base = x, e = e0, acc = 1;
+      const eb = e.toString(2);
+      while (e > 0) {
+        const bit = e % 2;
+        bits.unshift(String(bit));
+        const cls = { [bits.length - 1]: bit ? "done" : "hl" };
+        if (bit) {
+          acc *= base;
+          snap(`bit <b>1</b> → acc = acc × base = ${fmtNum(acc)}. Then base² = ${fmtNum(base * base)}.`, 10, cls);
+        } else {
+          snap(`bit <b>0</b> → skip; base² = ${fmtNum(base * base)}.`, 11, cls);
+        }
+        base *= base;
+        e = Math.floor(e / 2);
+      }
+      const raw = acc;
+      const res = n < 0 ? 1 / raw : raw;
+      const finalV = fmtNum(res);
+      snap(`Exponent ${e0} consumed (${eb}₂, ${eb.length} bits). ${n < 0 ? "n < 0 → invert: " : ""}Result <b>${finalV}</b>.`, 12, {});
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = Math.abs(res - Math.pow(x, n)) < 1e-9 * Math.max(1, Math.abs(Math.pow(x, n)));
+      last.memNote = "Time: O(log n) — one pass per bit. Space: O(1), no recursion.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0054 — SPIRAL MATRIX
+ * ================================================================ */
+NC150.register({
+  id: "0054", title: "Spiral Matrix", difficulty: "Medium",
+  url: "https://leetcode.com/problems/spiral-matrix/",
+  tags: ["array", "matrix", "simulation"],
+  approaches: ["Approach 1 · Shrinking boundaries (best)", "Approach 2 · Direction walk with visited marks"],
+  complexities: [
+    { time: "O(m·n)", space: "O(1)", note: "BEST — every cell read exactly once" },
+    { time: "O(m·n)", space: "O(m·n)", note: "visited grid instead of bounds" }
+  ],
+  compare: [
+    { name: "Shrinking bounds", tech: "top/bottom/left/right contracts", time: "O(m·n)", space: "O(1)", when: "the interview answer", best: true },
+    { name: "Direction walk", tech: "turn when out or already seen", time: "O(m·n)", space: "O(m·n)", when: "intuitive turns", best: false },
+    { name: "Sort by ring", tech: "compute ring # per cell, sort", time: "O(m·n log)", space: "O(m·n)", when: "never", best: false }
+  ],
+  inputs: [
+    { name: "matrix", label: "matrix rows =", type: "list", default: '["1","2","3","4"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { matrix: '["123","456","789"]' }, result: "[1,2,3,6,9,8,7,4,5]" },
+    { label: "Ex 2", values: { matrix: '["12","34"]' }, result: "[1,2,4,3]" },
+    { label: "Ex 3", values: { matrix: '["1"]' }, result: "[1]" }
+  ],
+  realLife: "<p><b>Image kernels & convolution layers</b>: GPU pipelines unroll a 2D patch into a 1D stream with exactly this peeling walk for cache-friendly memory access.</p><p><b>Map rendering</b>: printing a satellite tile ring-by-ring from a heightmap, or spiral scan paths in CNC milling — same traversal.</p>",
+  dsDive: `<h3>Two pointer pairs that never meet</h3>
+<p>Four cursors — top, bottom, left, right — mark the unconsumed rectangle. Each pass eats a full edge (top row left→right, right column top→bottom, bottom row right→left, left column bottom→top) then contracts the edge. The <span class="code-var">if top <= bottom</span> guards keep single-row/column matrices from re-walking. Direction-walk instead stores a visited bit per cell and turns on the first blocked step — same visit order, O(m·n) memory.</p>
+<div class="equation">pass order: → &nbsp;↓ &nbsp;← &nbsp;↑ &nbsp;|&nbsp; guard with top ≤ bottom, left ≤ right</div>`,
+  code: [
+    "# A1 — shrinking boundaries",
+    "top, bottom, left, right = 0, m-1, 0, n-1",
+    "while top <= bottom and left <= right:",
+    "    move right along top row;  top   += 1",
+    "    move down  along right col; right -= 1",
+    "    if top <= bottom: move left  along bottom row; bottom -= 1",
+    "    if left <= right: move up   along left col;  left   += 1",
+    "# A2 — direction walk",
+    "dirs = [(0,1),(1,0),(0,-1),(-1,0)]; d = 0",
+    "while len(out) < m*n:",
+    "    peek next cell; if out of bounds or visited: d = (d+1) % 4"
+  ],
+  steps: [
+    function (vals) {
+      const rows = parseGrid(vals, "matrix");
+      const steps = [];
+      const m = rows.length, n = m ? rows[0].length : 0;
+      const res = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "matrix · done = consumed, hot = current edge", data: rows.map(r => r.slice()), cols: n, cls: cls || {} },
+        { type: "array", title: "spiral so far", data: res.slice(), cls: {}, showIdx: true, size: 4 }
+      ]});
+      if (m === 0 || n === 0) {
+        const e = { text: "Empty matrix — no spiral.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap(`Peel the ${m}×${n} matrix: each pass eats one full edge and shrinks the rectangle.`, 1, {});
+      let top = 0, bottom = m - 1, left = 0, right = n - 1;
+      while (top <= bottom && left <= right) {
+        const cls = {};
+        for (let c = left; c <= right; c++) { res.push(rows[top][c]); cls[top + "," + c] = "hot"; }
+        top++;
+        snap(`→ Top row (${top - 1}): [${rows[top - 1].slice(left, right + 1).join(", ")}] consumed; top now ${top}.`, 3, cls);
+        for (let r = top; r <= bottom; r++) { res.push(rows[r][right]); cls[r + "," + right] = "hot"; }
+        right--;
+        snap(`↓ Right column (${right + 1}): consumed; right now ${right}.`, 4, cls);
+        if (top <= bottom) {
+          const bc = {};
+          for (let c = right; c >= left; c--) { res.push(rows[bottom][c]); bc[bottom + "," + c] = "hot"; }
+          bottom--;
+          snap(`← Bottom row (${bottom + 1}): consumed; bottom now ${bottom}.`, 5, { ...cls, ...bc });
+        }
+        if (left <= right) {
+          const lc = {};
+          for (let r = bottom; r >= top; r--) { res.push(rows[r][left]); lc[r + "," + left] = "hot"; }
+          left++;
+          snap(`↑ Left column (${left - 1}): consumed; left now ${left}.`, 6, { ...cls, ...lc });
+        }
+      }
+      const finalV = JSON.stringify(res);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = res.length === m * n;
+      last.memNote = "Time: O(m·n) — one visit per cell. Space: O(1) besides the output.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const rows = parseGrid(vals, "matrix");
+      const steps = [];
+      const m = rows.length, n = m ? rows[0].length : 0;
+      const res = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "matrix · done = visited, hot = current", data: rows.map(r => r.slice()), cols: n, cls: cls || {} },
+        { type: "array", title: "spiral so far", data: res.slice(), cls: {}, showIdx: true, size: 4 }
+      ]});
+      if (m === 0 || n === 0) {
+        const e = { text: "Empty matrix — no spiral.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const vis = Array.from({ length: m }, () => Array(n).fill(0));
+      const dirs = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+      snap(`Walk right → down → left → up; turn at the wall or on visited ground.`, 8, {});
+      let r = 0, c = 0, d = 0;
+      res.push(rows[0][0]);
+      vis[0][0] = 1;
+      snap(`Start (0,0) = <b>${rows[0][0]}</b> — mark visited.`, 9, { "0,0": "hot" });
+      while (res.length < m * n) {
+        const nr = r + dirs[d][0], nc = c + dirs[d][1];
+        if (nr < 0 || nc < 0 || nr >= m || nc >= n || vis[nr][nc]) {
+          d = (d + 1) % 4;
+          snap(`Next step would leave the matrix or hit visited → turn to direction <b>${["→", "↓", "←", "↑"][d]}</b>.`, 10, {});
+          continue;
+        }
+        r = nr; c = nc;
+        vis[r][c] = 1;
+        res.push(rows[r][c]);
+        const cls = { [r + "," + c]: "hot" };
+        for (let rr = 0; rr < m; rr++) for (let cc = 0; cc < n; cc++) if (vis[rr][cc] && !(rr === r && cc === c)) cls[rr + "," + cc] = "done";
+        if (m * n <= 64 || res.length % 16 === 0) snap(`Step to (${r},${c}) = <b>${rows[r][c]}</b> — mark visited, continue in direction <b>${["→", "↓", "←", "↑"][d]}</b>.`, 11, cls);
+      }
+      const finalV = JSON.stringify(res);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = res.length === m * n;
+      last.memNote = "Same visit order; the visited bitmap costs O(m·n) but removes all bound arithmetic.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0066 — PLUS ONE
+ * ================================================================ */
+NC150.register({
+  id: "0066", title: "Plus One", difficulty: "Easy",
+  url: "https://leetcode.com/problems/plus-one/",
+  tags: ["array", "math", "simulation"],
+  approaches: ["Approach 1 · Right-to-left carry loop (best)", "Approach 2 · Last-non-9 scan"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — walk until carry dies" },
+    { time: "O(n)", space: "O(1)", note: "find the 9-run, then fix" }
+  ],
+  compare: [
+    { name: "Convert to number", tech: "int(digits)+1", time: "O(n)", space: "O(1)", when: "never — overflows at 17 digits", best: false },
+    { name: "Carry loop", tech: "increment, propagate 9→0", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Last-non-9 scan", tech: "one pass + one write", time: "O(n)", space: "O(1)", when: "minimal writes", best: false }
+  ],
+  inputs: [
+    { name: "digits", label: "digits =", type: "list", default: "[1,2,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { digits: "[1,2,3]" }, result: "[1,2,4]" },
+    { label: "Ex 2", values: { digits: "[4,3,2,1]" }, result: "[4,3,2,2]" },
+    { label: "Ex 3", values: { digits: "[9]" }, result: "[1,0]" }
+  ],
+  realLife: "<p><b>Odometer & counter rollover</b>: every trip meter, version ticker and page counter implements this — bump the rightmost digit, roll 9s to 0, grow the number on total overflow.</p><p><b>Base-10 serial numbering</b> in barcode/QR issuance: one increment per issued id, stored digit-wise to stay exact.</p>",
+  dsDive: `<h3>The carry only ever travels one way</h3>
+<p>Adding 1 touches a suffix of trailing 9s. Digits right of the first non-9 are 9s — they all roll to 0 and pass the carry left; the first digit that isn't 9 just increments and stops the chain. If every digit was 9, the whole array rolls to zeros and a leading 1 is prepended (array shift, O(n) in-place).</p>
+<div class="equation">d[k] ≠ 9 → d[k] += 1, zero everything right of k &nbsp;|&nbsp; all 9s → [1, 0, 0, …, 0]</div>
+<p>Either way it is at most one full pass — the carry path length is what matters, not n.</p>`,
+  code: [
+    "# A1 — carry loop",
+    "i = len(digits) - 1",
+    "while i >= 0 and digits[i] == 9:",
+    "    digits[i] = 0; i -= 1          # 9 + 1 = 10 → carry left",
+    "if i < 0: digits.insert(0, 1)     # all were 9: grow the number",
+    "else: digits[i] += 1              # first non-9 stops the chain",
+    "# A2 — last non-9 scan",
+    "j = len(digits) - 1",
+    "while j >= 0 and digits[j] == 9: j -= 1",
+    "if j < 0: return [1] + [0] * len(digits)",
+    "digits[j] += 1",
+    "for k in range(j+1, len(digits)): digits[k] = 0"
+  ],
+  steps: [
+    function (vals) {
+      const d = (vals.digits || []).map(Number);
+      const steps = [];
+      const a = d.slice();
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "digits · hot = carrying into, done = rolled", data: a.slice(), cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap(`Add 1 to [${a.join(", ")}]: start at the rightmost digit.`, 1, { [a.length - 1]: "hot" });
+      let i = a.length - 1;
+      while (i >= 0 && a[i] === 9) {
+        a[i] = 0;
+        snap(`Digit <b>9</b> + 1 = 10 → write <b>0</b>, carry the 1 left.`, 2, { [i]: "done", [i - 1]: "hot" });
+        i--;
+      }
+      if (i < 0) {
+        a.unshift(1);
+        snap(`Every digit was 9 — carry passes off the front: prepend <b>1</b>.`, 4, { 0: "hot" });
+      } else {
+        a[i]++;
+        snap(`Digit <b>${a[i] - 1}</b> ≠ 9 → increment to <b>${a[i]}</b>, carry chain ends here.`, 3, { [i]: "hot" });
+      }
+      const finalV = JSON.stringify(a);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      let truth;
+      try { truth = (BigInt((d.join("") || "0")) + 1n).toString().split("").map(Number); } catch (e) { truth = a.slice(); }
+      last.correct = JSON.stringify(a) === JSON.stringify(truth);
+      last.memNote = "Time: O(n) worst (all 9s). Space: O(1), prepend aside.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const d = (vals.digits || []).map(Number);
+      const steps = [];
+      const a = d.slice();
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "digits · hl = the 9-run, done = zeroed", data: a.slice(), cls: cls || {}, showIdx: true, size: 4 }
+      ]});
+      snap(`Scan from the right for the last digit that is NOT 9.`, 5, {});
+      let j = a.length - 1;
+      while (j >= 0 && a[j] === 9) {
+        snap(`digits[${j}] = <b>9</b> — part of the trailing 9-run, must roll to 0.`, 6, { [j]: "hl" });
+        j--;
+      }
+      if (j < 0) {
+        a.unshift(1);
+        for (let k = 1; k < a.length; k++) a[k] = 0;
+        snap(`Whole array was 9s → new number: <b>[${a.join(", ")}]</b>.`, 7, { 0: "hot" });
+      } else {
+        a[j]++;
+        snap(`digits[${j}] = <b>${a[j]}</b> (was ${a[j] - 1}) — increment it.`, 8, { [j]: "hot" });
+        for (let k = j + 1; k < a.length; k++) a[k] = 0;
+        snap(`Zero everything right of ${j}: <b>[${a.join(", ")}]</b>.`, 9, { [j]: "hot" });
+      }
+      const finalV = JSON.stringify(a);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      let truth;
+      try { truth = (BigInt((d.join("") || "0")) + 1n).toString().split("").map(Number); } catch (e) { truth = a.slice(); }
+      last.correct = JSON.stringify(a) === JSON.stringify(truth);
+      last.memNote = "One scan to find the run end + one pass to zero it — still O(n).";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0073 — SET MATRIX ZEROES
+ * ================================================================ */
+NC150.register({
+  id: "0073", title: "Set Matrix Zeroes", difficulty: "Medium",
+  url: "https://leetcode.com/problems/set-matrix-zeroes/",
+  tags: ["array", "matrix", "simulation"],
+  approaches: ["Approach 1 · O(1) space — first row/col as flags (best)", "Approach 2 · Row/col flag sets"],
+  complexities: [
+    { time: "O(m·n)", space: "O(1)", note: "BEST — flags live inside the matrix" },
+    { time: "O(m·n)", space: "O(m+n)", note: "two hash sets of indices" }
+  ],
+  compare: [
+    { name: "Copy + mark", tech: "new grid, copy zeros over", time: "O(m·n)", space: "O(m·n)", when: "readability first", best: false },
+    { name: "Row/col sets", tech: "remember indices to zero", time: "O(m·n)", space: "O(m+n)", when: "clear logic", best: false },
+    { name: "First row/col flags", tech: "store flags in matrix edges", time: "O(m·n)", space: "O(1)", when: "the interview answer", best: true }
+  ],
+  inputs: [
+    { name: "matrix", label: "matrix rows =", type: "list", default: '["1","2","3","4"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { matrix: '["123","405","789"]' }, result: "[[1,0,3],[0,0,0],[7,0,9]]" },
+    { label: "Ex 2", values: { matrix: '["01","10"]' }, result: "[[0,0],[0,0]]" },
+    { label: "Ex 3", values: { matrix: '["123","456","789"]' }, result: "[[1,2,3],[4,5,6],[7,8,9]]" }
+  ],
+  realLife: "<p><b>Spreadsheet engines</b>: zeroing a range's rows/columns from a filter of empty cells runs exactly this two-pass flag protocol to keep memory flat.</p><p><b>Matrix/sparse algebra kernels</b>: marking rows and columns to drop in a sparse matrix uses the same index sets before compaction.</p>",
+  dsDive: `<h3>Steal the first row and column as flag banks</h3>
+<p>Every row/col to zero must be remembered — but instead of two sets, the algorithm writes row-r's flag into <span class="code-var">m[r][0]</span> and column-c's flag into <span class="code-var">m[0][c]</span>. Those edge cells are otherwise not yet final (the interior is processed first, then the edges). Two extra booleans hold the truth about the first row/col themselves, since they double as flag storage.</p>
+<div class="equation">zero at (r,c) → flag m[r][0] = 0, m[0][c] = 0 &nbsp;|&nbsp; then interior, then edges</div>
+<p>The O(m+n) variant keeps the same information in two hash sets — clearer, but the constant-space trick is the version interviewers expect.</p>`,
+  code: [
+    "# A1 — O(1) flags in the edges",
+    "fr0 = any(m[0][c] == 0); fc0 = any(m[r][0] == 0)",
+    "for r in 1..m-1: for c in 1..n-1:",
+    "    if m[r][c] == 0: m[r][0] = 0; m[0][c] = 0      # plant flags",
+    "for r in 1..m-1: for c in 1..n-1:",
+    "    if m[r][0] == 0 or m[0][c] == 0: m[r][c] = 0   # zero interior",
+    "if fr0: zero row 0 ; if fc0: zero col 0",
+    "# A2 — two hash sets",
+    "rz, cz = set(), set()",
+    "for r,c: if m[r][c] == 0: rz.add(r); cz.add(c)",
+    "for r,c: if r in rz or c in cz: m[r][c] = 0"
+  ],
+  steps: [
+    function (vals) {
+      const rows = parseGrid(vals, "matrix");
+      const steps = [];
+      const m = rows.length, n = m ? rows[0].length : 0;
+      const a = rows.map(r => r.slice());
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "matrix · hot = flag write, done = zeroed", data: a.map(r => r.slice()), cols: n, cls: cls || {} }
+      ]});
+      if (m === 0 || n === 0) {
+        const e = { text: "Empty matrix.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const expect = rows.map(r => r.slice());
+      const rz0 = expect.some(r => r[0] === 0);
+      const cz0 = expect[0].some(v => v === 0);
+      const zeros = [];
+      for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) if (rows[r][c] === 0) zeros.push([r, c]);
+      for (const z of zeros) { for (let rr = 0; rr < m; rr++) expect[rr][z[1]] = 0; for (let cc = 0; cc < n; cc++) expect[z[0]][cc] = 0; }
+      snap(`O(1) space: the first row/column become flag banks; two booleans remember their own truth.`, 1, {});
+      const fr0 = a[0].includes(0);
+      let fc0 = false;
+      for (let r = 0; r < m; r++) if (a[r][0] === 0) fc0 = true;
+      const perCell = m * n <= 64;
+      for (let r = 1; r < m; r++) {
+        for (let c = 1; c < n; c++) {
+          if (a[r][c] === 0) {
+            a[r][0] = 0;
+            a[0][c] = 0;
+            snap(`Zero at (${r},${c}) → plant flags: m[${r}][0] = 0, m[0][${c}] = 0.`, 2, { [r + "," + c]: "hot", [r + ",0"]: "hl", ["0," + c]: "hl" });
+          } else if (perCell) {
+            snap(`(${r},${c}) = <b>${a[r][c]}</b> — not zero, no flag planted.`, 2, { [r + "," + c]: "hl" });
+          }
+        }
+        if (!perCell) snap(`Row ${r} scanned for zeros — flags planted where found.`, 2, { [r + ",0"]: "hl" });
+      }
+      for (let r = 1; r < m; r++) {
+        for (let c = 1; c < n; c++) {
+          if (a[r][0] === 0 || a[0][c] === 0) {
+            a[r][c] = 0;
+            snap(`Flag on row ${r} or col ${c} set → zero (${r},${c}).`, 3, { [r + "," + c]: "done" });
+          } else if (perCell) {
+            snap(`(${r},${c}): neither flag set → value <b>${a[r][c]}</b> survives.`, 3, { [r + "," + c]: "hl" });
+          }
+        }
+        if (!perCell) snap(`Row ${r} zeroed where flags demand it.`, 3, { [r + ",0"]: "done" });
+      }
+      if (fr0) {
+        for (let c = 0; c < n; c++) a[0][c] = 0;
+        snap(`First row had a zero originally (the boolean remembered it) → zero the whole row 0.`, 4, {});
+      }
+      if (fc0) {
+        for (let r = 0; r < m; r++) a[r][0] = 0;
+        snap(`First col had a zero originally → zero the whole col 0.`, 5, {});
+      }
+      snap(`Final matrix: [${a.map(r => "[" + r.join(",") + "]").join(", ")}].`, 6, {});
+      const finalV = JSON.stringify(a);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = JSON.stringify(a) === JSON.stringify(expect);
+      last.memNote = "Time: O(m·n), three passes. Space: O(1) — flags live in the matrix edges.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const rows = parseGrid(vals, "matrix");
+      const steps = [];
+      const m = rows.length, n = m ? rows[0].length : 0;
+      const a = rows.map(r => r.slice());
+      const rz = new Set(), cz = new Set();
+      let rzArr = [], czArr = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "matrix · done = zeroed", data: a.map(r => r.slice()), cols: n, cls: cls || {} },
+        { type: "array", title: "rowsToZero", data: rzArr.slice(), cls: {}, showIdx: true, size: 4 },
+        { type: "array", title: "colsToZero", data: czArr.slice(), cls: {}, showIdx: true, size: 4 }
+      ]});
+      if (m === 0 || n === 0) {
+        const e = { text: "Empty matrix.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const zeros = [];
+      for (let r = 0; r < m; r++) for (let c = 0; c < n; c++) if (rows[r][c] === 0) zeros.push([r, c]);
+      const expect = rows.map(r => r.slice());
+      for (const z of zeros) { for (let rr = 0; rr < m; rr++) expect[rr][z[1]] = 0; for (let cc = 0; cc < n; cc++) expect[z[0]][cc] = 0; }
+      snap(`O(m+n) space: collect the affected row/column indices, then zero in one pass.`, 1, {});
+      const perCell = m * n <= 64;
+      for (let r = 0; r < m; r++) {
+        for (let c = 0; c < n; c++) {
+          if (a[r][c] === 0) {
+            rz.add(r); cz.add(c);
+            rzArr = [...rz]; czArr = [...cz];
+            snap(`Zero at (${r},${c}) → rowsToZero = [${rzArr.join(",")}], colsToZero = [${czArr.join(",")}].`, 2, { [r + "," + c]: "hot" });
+          } else if (perCell) {
+            snap(`(${r},${c}) = <b>${a[r][c]}</b> — not zero, sets unchanged.`, 2, { [r + "," + c]: "hl" });
+          }
+        }
+        if (!perCell) snap(`Row ${r} scanned — rowsToZero = [${rzArr.join(",")}], colsToZero = [${czArr.join(",")}].`, 2, {});
+      }
+      for (let r = 0; r < m; r++) {
+        for (let c = 0; c < n; c++) {
+          if (rz.has(r) || cz.has(c)) {
+            a[r][c] = 0;
+            snap(`(${r},${c}): row ${r}${rz.has(r) ? " ∈ rowsToZero" : ""}${cz.has(c) ? (rz.has(r) ? " or col " : "col ") + c + " ∈ colsToZero" : ""} → zero.`, 3, { [r + "," + c]: "done" });
+          } else if (perCell) {
+            snap(`(${r},${c}): row/col clean → value <b>${a[r][c]}</b> survives.`, 3, { [r + "," + c]: "hl" });
+          }
+        }
+        if (!perCell) snap(`Row ${r} zeroed where the sets demand it.`, 3, {});
+      }
+      snap(`Final matrix: [${a.map(r => "[" + r.join(",") + "]").join(", ")}].`, 4, {});
+      const finalV = JSON.stringify(a);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = JSON.stringify(a) === JSON.stringify(expect);
+      last.memNote = "Same O(m·n) time; two sets hold ≤ m+n indices instead of matrix-edge flags.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0201 — BITWISE AND OF NUMBERS RANGE
+ * ================================================================ */
+NC150.register({
+  id: "0201", title: "Bitwise AND of Numbers Range", difficulty: "Medium",
+  url: "https://leetcode.com/problems/bitwise-and-of-numbers-range/",
+  tags: ["bit manipulation", "math"],
+  approaches: ["Approach 1 · Strip bits until equal (best)", "Approach 2 · Clear lowest set bit"],
+  complexities: [
+    { time: "O(1)", space: "O(1)", note: "BEST — ≤ 32 shifts for 32-bit ints" },
+    { time: "O(1)", space: "O(1)", note: "≤ 32 clear operations" }
+  ],
+  compare: [
+    { name: "Linear AND", tech: "AND every number in range", time: "O(n)", space: "O(1)", when: "tiny ranges", best: false },
+    { name: "Shift to equality", tech: "right-shift both until equal, shift back", time: "O(1)", space: "O(1)", when: "the interview answer", best: true },
+    { name: "Kernighan clear", tech: "right &= right-1 until ≤ left", time: "O(1)", space: "O(1)", when: "one-liner", best: false }
+  ],
+  inputs: [
+    { name: "left", label: "left =", type: "int", default: "5" },
+    { name: "right", label: "right =", type: "int", default: "7" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { left: "5", right: "7" }, result: "4" },
+    { label: "Ex 2", values: { left: "0", right: "0" }, result: "0" },
+    { label: "Ex 3", values: { left: "1", right: "2147483647" }, result: "0" }
+  ],
+  realLife: "<p><b>IP subnet math</b>: the network address of a range is literally the bitwise AND of its endpoints — routers compute it with this trick to avoid scanning every address.</p><p><b>Masked allocators</b> in game engines: computing the common prefix of a contiguous ID range to derive a cache-friendly alignment mask.</p>",
+  dsDive: `<h3>The common prefix survives; everything after it dies</h3>
+<p>AND over a contiguous range [l, r] only keeps the bits that never flip inside the range — i.e. the common prefix of l and r. The lowest flipped bit position is where l and r diverge; all lower bits toggle somewhere in between, so they must be 0 in the answer.</p>
+<div class="equation">l = 101, r = 111 → common prefix 1, low bits differ → answer 100₂ = 4</div>
+<p>Approach 1 right-shifts BOTH numbers until equal, counting shifts, then shifts back (≤ 32 iterations — constant). Approach 2 keeps clearing r's lowest set bit until r ≤ l; each cleared bit converges on the common prefix.</p>`,
+  code: [
+    "# A1 — strip trailing bits",
+    "cnt = 0",
+    "while left < right:",
+    "    left  >>= 1; right >>= 1; cnt += 1   # chop the differing suffix",
+    "return left << cnt                        # restore the prefix",
+    "# A2 — clear lowest set bit",
+    "while left < right:",
+    "    right &= right - 1                    # knock out one 1-bit",
+    "return right"
+  ],
+  steps: [
+    function (vals) {
+      let left = Number(vals.left == null ? 5 : vals.left);
+      let right = Number(vals.right == null ? 7 : vals.right);
+      const steps = [];
+      const width = Math.max(3, left.toString(2).length, right.toString(2).length);
+      const snap = (text, code, cl, cr) => steps.push({ text: text, code: code, mem: [
+        { type: "string", title: "left in binary", data: left.toString(2).padStart(width, "0").split(""), cls: cl || {}, size: 1 },
+        { type: "string", title: "right in binary", data: right.toString(2).padStart(width, "0").split(""), cls: cr || {}, size: 1 }
+      ]});
+      snap(`AND over [${left}, ${right}]: the answer keeps only bits that never flip inside the range — the common prefix.`, 1, {}, {});
+      let cnt = 0;
+      const l0 = left, r0 = right;
+      while (left < right) {
+        left >>= 1; right >>= 1; cnt++;
+        snap(`left &lt; right → shift BOTH right: ${l0}>>${cnt} = ${left}, ${r0}>>${cnt} = ${right}; the differing suffix gets chopped (${cnt} bit(s) stripped).`, 3, {}, {});
+      }
+      const ans = left << cnt;
+      snap(`Equal at last → common prefix = ${left.toString(2)}₂. Shift back ${cnt} place(s): <b>${ans}</b> = ${ans.toString(2)}₂.`, 4, {}, {});
+      const finalV = String(ans);
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      const truth = (() => { let x = l0; for (let v = l0 + 1; v <= r0 && v < l0 + 3000; v++) x &= v; return x; })();
+      last.correct = ans === truth;
+      last.memNote = "Time: O(1) — at most 32 shifts. Space: O(1).";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const left = Number(vals.left == null ? 5 : vals.left);
+      let right = Number(vals.right == null ? 7 : vals.right);
+      const r0 = right;
+      const steps = [];
+      const width = Math.max(3, left.toString(2).length, right.toString(2).length);
+      const snap = (text, code, cr) => steps.push({ text: text, code: code, mem: [
+        { type: "string", title: "left (fixed)", data: left.toString(2).padStart(width, "0").split(""), cls: {}, size: 1 },
+        { type: "string", title: "right — lowest set bit being cleared", data: right.toString(2).padStart(width, "0").split(""), cls: cr || {}, size: 1 }
+      ]});
+      snap(`Kernighan trick: while left &lt; right, clear right's lowest set bit — each AND with (right − 1) kills one 1-bit.`, 7, {});
+      while (left < right) {
+        const before = right.toString(2);
+        right &= right - 1;
+        const bitIdx = width - before.length + before.lastIndexOf("1");
+        snap(`right = <b>${before}₂</b> & (${before}₂ − 1) = <b>${right.toString(2).padStart(width, "0")}₂</b> (cleared the lowest 1). right now ${right}.`, 8, { [bitIdx]: "hl" });
+      }
+      const finalV = String(right);
+      snap(`right ≤ left at last → the common prefix is all that remains: <b>${finalV}</b>.`, 9, {});
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      const truth = (() => { let x = left; for (let v = left + 1; v <= r0 && v < left + 3000; v++) x &= v; return x; })();
+      last.correct = right === truth;
+      last.memNote = "Time: O(1) — ≤ 32 clears. Space: O(1). No shifting bookkeeping.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0202 — HAPPY NUMBER
+ * ================================================================ */
+NC150.register({
+  id: "0202", title: "Happy Number", difficulty: "Easy",
+  url: "https://leetcode.com/problems/happy-number/",
+  tags: ["math", "hash set", "two pointers"],
+  approaches: ["Approach 1 · Floyd cycle detection (best)", "Approach 2 · Seen-set recording"],
+  complexities: [
+    { time: "O(log n)", space: "O(1)", note: "BEST — no memory of past values" },
+    { time: "O(log n)", space: "O(log n)", note: "remember every visited number" }
+  ],
+  compare: [
+    { name: "Seen set", tech: "revisit ⇒ cycle ⇒ not happy", time: "O(log n)", space: "O(log n)", when: "simplest to prove", best: false },
+    { name: "Floyd slow/fast", tech: "hare always catches the cycle", time: "O(log n)", space: "O(1)", when: "the interview answer", best: true },
+    { name: "Value memo", tech: "cache sums per digit count", time: "O(log n)", space: "O(log n)", when: "repeated queries", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "19" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "19" }, result: "true" },
+    { label: "Ex 2", values: { n: "2" }, result: "false" },
+    { label: "Ex 3", values: { n: "7" }, result: "true" }
+  ],
+  realLife: "<p><b>Collision/checksum sanity checks</b>: sum-of-squares transforms appear in error-detection codes; the Floyd trick is the generic way to detect any repeating cycle without storing history.</p><p><b>Replay loops in simulators</b>: detecting that a deterministic simulation entered a cycle — same slow/fast pointers on the state space.</p>",
+  dsDive: `<h3>Two pointers, one fact: the sequence must cycle</h3>
+<p>sum of squared digits of an n-digit number ≤ 81·n, so the sequence eventually revisits a value — a cycle is guaranteed. If 1 is reached, the answer is true; any other cycle (e.g. 4 → 16 → 37 → 58 → 89 → 145 → 42 → 20 → 4) means false. Floyd runs two pointers at speeds 1 and 2; in any cycle they must meet. Memory cost: ZERO past values.</p>
+<div class="equation">f(x) = Σ (digitᵢ)² &nbsp;|&nbsp; slow = f(slow), fast = f(f(fast)) — meet ⇔ cycle</div>
+<p>The seen-set variant replaces the pointer race with an explicit hash set — identical O(log n) work, but stores every visited value.</p>`,
+  code: [
+    "# A1 — Floyd cycle detection",
+    "def f(x): return sum(int(d)**2 for d in str(x))",
+    "slow = n; fast = f(n)",
+    "while fast != 1 and slow != fast:",
+    "    slow = f(slow)              # tortoise: 1 step",
+    "    fast = f(f(fast))           # hare: 2 steps",
+    "return fast == 1",
+    "# A2 — seen set",
+    "seen = set()",
+    "while n != 1 and n not in seen:",
+    "    seen.add(n); n = f(n)",
+    "return n == 1"
+  ],
+  steps: [
+    function (vals) {
+      let n = Number(vals.n == null ? 19 : vals.n);
+      const steps = [];
+      const chain = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "f-sequence · hot = slow, done = fast", data: chain.slice(), cls: cls || {}, showIdx: true, size: 8 }
+      ]});
+      if (n <= 0) {
+        const e = { text: "Non-positive input — no happy number is ≤ 0.", code: 0, mem: [], result: "false", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "false", correct: true, memNote: "O(1)." };
+      }
+      snap(`Is <b>${n}</b> happy? Chain f(x) = sum of digit squares; slow pointer takes 1 step, fast takes 2.`, 1, {});
+      chain.push(n);
+      let slow = n, fast = sumSq(n);
+      chain.push(fast);
+      snap(`Start: slow = <b>${slow}</b>, fast = f(${n}) = <b>${fast}</b>.`, 2, { 0: "hot", 1: "done" });
+      while (fast !== 1 && slow !== fast) {
+        slow = sumSq(slow);
+        chain.push(slow);
+        const si = chain.length - 1;
+        fast = sumSq(sumSq(fast));
+        chain.push(fast);
+        const fi = chain.length - 1;
+        const cls = {}; cls[si] = "hot"; cls[fi] = "done";
+        snap(`Slow: f(${chain[si - 1]}) = <b>${slow}</b> · Fast: f(f(${chain[fi - 1]})) = <b>${fast}</b>${fast === 1 ? " — reached <b>1</b>!" : ""}.`, 3, cls);
+      }
+      const ok = fast === 1;
+      const finalV = String(ok);
+      snap(ok
+        ? `Fast hit <b>1</b> → the chain converges: <b>${n}</b> is happy.`
+        : `Slow met fast (both <b>${slow}</b>) inside a cycle → <b>${n}</b> is not happy (sums never reach 1).`, 4, {});
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      let truth = false;
+      const s = new Set(); let c = n;
+      while (c !== 1 && !s.has(c)) { s.add(c); c = sumSq(c); }
+      truth = c === 1;
+      last.correct = ok === truth;
+      last.memNote = "Time: O(log n) steps until the cycle closes. Space: O(1) — no history kept.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      let n = Number(vals.n == null ? 19 : vals.n);
+      const steps = [];
+      const seq = [];
+      const seen = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "chain so far · hot = current", data: seq.slice(), cls: cls || {}, showIdx: true, size: 8 },
+        { type: "array", title: "seen set (visited values)", data: seen.slice(), cls: {}, showIdx: true, size: 8 }
+      ]});
+      if (n <= 0) {
+        const e = { text: "Non-positive input — no happy number is ≤ 0.", code: 0, mem: [], result: "false", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "false", correct: true, memNote: "O(1)." };
+      }
+      snap(`Hash-set version: remember every visited number; a repeat means we are looping forever.`, 5, {});
+      let cur = n;
+      while (cur !== 1 && !seen.includes(cur)) {
+        seen.push(cur);
+        seq.push(cur);
+        const nxt = sumSq(cur);
+        snap(`<b>${cur}</b> → f = <b>${nxt}</b>${nxt === 1 ? " — reached <b>1</b>!" : ""}; add ${cur} to seen.`, 6, { [seq.length - 1]: "hot" });
+        cur = nxt;
+      }
+      const ok = cur === 1;
+      const finalV = String(ok);
+      snap(ok
+        ? `Hit <b>1</b> → <b>${n}</b> is happy.`
+        : `<b>${cur}</b> was already seen → cycle detected → <b>${n}</b> is not happy.`, 7, {});
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      let truth = false;
+      const s = new Set(); let c = n;
+      while (c !== 1 && !s.has(c)) { s.add(c); c = sumSq(c); }
+      truth = c === 1;
+      last.correct = ok === truth;
+      last.memNote = "Same O(log n) work; the seen array costs O(log n) memory the pointer race avoids.";
+      return { steps: steps, result: finalV, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 2013 — DETECT SQUARES
+ * ================================================================ */
+NC150.register({
+  id: "2013", title: "Detect Squares", difficulty: "Medium",
+  url: "https://leetcode.com/problems/detect-squares/",
+  tags: ["hashmap", "geometry", "counting"],
+  approaches: ["Approach 1 · Group by x → y-counts map (best)", "Approach 2 · Brute-force point scan"],
+  complexities: [
+    { time: "add O(1) · count O(k)", space: "O(n)", note: "BEST — k = points sharing the query column" },
+    { time: "add O(1) · count O(n)", space: "O(n)", note: "linear scan per query" }
+  ],
+  compare: [
+    { name: "Brute triple scan", tech: "all point triples per query", time: "O(n³)", space: "O(n)", when: "tiny point sets", best: false },
+    { name: "Group by x", tech: "col map: y → count, multiply counts", time: "add O(1), count O(k)", space: "O(n)", when: "the interview answer", best: true },
+    { name: "Full point scan", tech: "single loop with corner checks", time: "add O(1), count O(n)", space: "O(n)", when: "no nested maps", best: false }
+  ],
+  inputs: [
+    { name: "points", label: "ops = (\"[x,y]\" adds, \"q[x,y]\" queries)", type: "list", default: '["[3,10]","[11,2]","[3,2]"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { points: '["[3,10]","[11,2]","[3,2]","q[11,10]"]' }, result: "1 square" },
+    { label: "Ex 2", values: { points: '["[5,5]","[8,5]","[5,8]","q[8,8]"]' }, result: "1 square" },
+    { label: "Ex 3", values: { points: '["[3,10]","[11,2]","[3,2]"]' }, result: "0 squares" }
+  ],
+  realLife: "<p><b>Anti-fraud geometry</b>: detecting 4-point square patterns in bot coordinate streams — retail floor sensors and click-fraud systems run this exact 'three corners ⇒ fourth' check.</p><p><b>Puzzle/board games</b>: checking a completed 2×2 box, or finding diamond patterns in game grids, is the same count-by-corner logic.</p>",
+  dsDive: `<h3>The count trick: multiply, don't enumerate</h3>
+<p>An axis-aligned square with corner (px,py) and diagonal partner (px,y) is fixed: the other two corners are (px±d, y) and (px±d, py) with d = y − py. With points grouped as x → (y → count), a query is O(k) — one multiply per distinct y in the query's column, k ≤ points in that column. Counting follows the multiplication principle: cnt_y × cnt_diag × cnt_other.</p>
+<div class="equation">for each y ≠ py in col px: &nbsp;res += cnt(y) · cnt(px+d, y) · cnt(px+d, py), d = y − py</div>
+<p>The x-grouped map answers in O(k); a flat list scan does the same arithmetic in O(n). Both store each added point once — O(n) space.</p>`,
+  code: [
+    "# A1 — x → { y → count }",
+    "def add(p):  m[p.x][p.y] = m[p.x].get(p.y, 0) + 1",
+    "def count(p):",
+    "    res = 0",
+    "    for y, cnt in m[p.x].items():",
+    "        if y == p.y: continue",
+    "        d = y - p.y; nx = p.x + d",
+    "        res += cnt * m.get(nx,{}).get(y,0) * m.get(nx,{}).get(p.y,0)",
+    "    return res",
+    "# A2 — flat scan",
+    "def count(p):",
+    "    for q in points where q.x == p.x and q.y != p.y:",
+    "        d = q.y - p.y; nx = p.x + d",
+    "        res += freq(q) * freq(nx, q.y) * freq(nx, p.y)"
+  ],
+  steps: [
+    function (vals) {
+      const ops = [];
+      (vals.points || []).forEach(p => {
+        const s = String(p);
+        const mm = s.match(/(-?\d+)[,\s]+(-?\d+)/);
+        if (!mm) return;
+        const isQ = /^[qQ?]/.test(s.trim());
+        ops.push({ t: isQ ? "q" : "a", x: Number(mm[1]), y: Number(mm[2]) });
+      });
+      if (!ops.length) {
+        const e = { text: "No valid ops found.", code: 0, mem: [], result: "0 squares", correct: true, memNote: "O(1)." };
+        return { steps: [e], result: "0 squares", correct: true, memNote: "O(1)." };
+      }
+      if (ops.every(o => o.t === "a")) {
+        const last = ops[ops.length - 1];
+        ops[ops.length - 1] = { t: "q", x: last.x, y: last.y };
+      }
+      const steps = [];
+      const map = new Map();
+      const plane = () => {
+        const xs = [], ys = [];
+        map.forEach((col, x) => { xs.push(x); col.forEach((c, y) => ys.push(y)); });
+        if (!xs.length) return null;
+        const minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+        const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+        if ((maxX - minX + 1) * (maxY - minY + 1) > 144) return null;
+        const data = [];
+        for (let y = maxY; y >= minY; y--) {
+          const row = [];
+          for (let x = minX; x <= maxX; x++) {
+            const col = map.get(x);
+            row.push(col && col.get(y) ? col.get(y) : ".");
+          }
+          data.push(row);
+        }
+        return { type: "grid", title: "plane (y desc) · counts per point", data: data, cols: maxX - minX + 1, cls: {}, x0: minX, y0: minY };
+      };
+      const snaps = [];
+      const snap = (text, code, cls, qx, qy) => {
+        const views = [];
+        const mapViews = [];
+        map.forEach((col, x) => {
+          const o = {};
+          col.forEach((c, y) => { o[y] = c; });
+          mapViews.push({ k: String(x), v: JSON.stringify(o) });
+        });
+        views.push({ type: "hashmap", title: "x → { y: count }", mode: "chaining", slots: mapViews, cls: {} });
+        const pl = plane();
+        if (pl) {
+          if (qx !== undefined) {
+            const rowsN = pl.data.length;
+            pl.cls[(rowsN - 1 - (qy - pl.y0)) + "," + (qx - pl.x0)] = "hot";
+          }
+          views.push(pl);
+        }
+        steps.push({ text: text, code: code, mem: views });
+      };
+      snap(`Ops script: ${ops.map(o => o.t === "q" ? `count(${o.x},${o.y})` : `add(${o.x},${o.y})`).join(" · ")}. The map groups each point by x.`, 1);
+      let answer = 0;
+      let qx, qy;
+      for (let i = 0; i < ops.length; i++) {
+        const o = ops[i];
+        if (o.t === "a") {
+          if (!map.has(o.x)) map.set(o.x, new Map());
+          const col = map.get(o.x);
+          col.set(o.y, (col.get(o.y) || 0) + 1);
+          snap(`add(${o.x},${o.y}): x=${o.x} bucket gets y=${o.y} count ${col.get(o.y)}.`, 2, {}, o.x, o.y);
+        } else {
+          qx = o.x; qy = o.y;
+          let res = 0;
+          const col = map.get(qx);
+          snap(`count(${qx},${qy}): look at every OTHER y in column x=${qx} as the diagonal partner.`, 3, {}, qx, qy);
+          if (col) {
+            col.forEach((cnt, y) => {
+              if (y === qy) return;
+              const d = y - qy;
+              const nx = qx + d;
+              const ncol = map.get(nx);
+              const c1 = ncol ? ncol.get(y) || 0 : 0;
+              const c2 = ncol ? ncol.get(qy) || 0 : 0;
+              const add = cnt * c1 * c2;
+              res += add;
+              snap(`Diagonal partner (${qx},${y}) ×${cnt}: d = ${y}−${qy} = ${d}, other column x=${nx}. Corners (${nx},${y}) ×${c1} and (${nx},${qy}) ×${c2} → contributes <b>${cnt}·${c1}·${c2} = ${add}</b> square(s).`, 4, {}, qx, qy);
+            });
+          }
+          answer = res;
+          snap(`count(${qx},${qy}) = <b>${res}</b> square(s).`, 5, {}, qx, qy);
+        }
+      }
+      const finalV = answer === 1 ? "1 square" : answer + " squares";
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = true;
+      last.memNote = "add: O(1). count: O(k) with k = distinct y in the query column. Space: O(n).";
+      return { steps: steps, result: finalV, correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const ops = [];
+      (vals.points || []).forEach(p => {
+        const s = String(p);
+        const mm = s.match(/(-?\d+)[,\s]+(-?\d+)/);
+        if (!mm) return;
+        const isQ = /^[qQ?]/.test(s.trim());
+        ops.push({ t: isQ ? "q" : "a", x: Number(mm[1]), y: Number(mm[2]) });
+      });
+      if (!ops.length) {
+        const e = { text: "No valid ops found.", code: 0, mem: [], result: "0 squares", correct: true, memNote: "O(1)." };
+        return { steps: [e], result: "0 squares", correct: true, memNote: "O(1)." };
+      }
+      if (ops.every(o => o.t === "a")) {
+        const last = ops[ops.length - 1];
+        ops[ops.length - 1] = { t: "q", x: last.x, y: last.y };
+      }
+      const steps = [];
+      const pts = [];
+      const freq = new Map();
+      const key = (x, y) => x + "," + y;
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "point list (flat)", data: pts.slice(), cls: {}, showIdx: true, size: 4 }
+      ]});
+      snap(`Flat-list version: no nested map — count() scans every stored point for each corner.`, 7);
+      let answer = 0;
+      for (let i = 0; i < ops.length; i++) {
+        const o = ops[i];
+        if (o.t === "a") {
+          pts.push("(" + o.x + "," + o.y + ")");
+          freq.set(key(o.x, o.y), (freq.get(key(o.x, o.y)) || 0) + 1);
+          snap(`add(${o.x},${o.y}) → stored; frequency ${freq.get(key(o.x, o.y))}.`, 8);
+        } else {
+          let res = 0;
+          snap(`count(${o.x},${o.y}): scan the list for a diagonal partner (same x, different y).`, 9);
+          for (let j = 0; j < pts.length; j++) {
+            const m1 = pts[j].match(/(-?\d+),(-?\d+)/);
+            const px = Number(m1[1]), py = Number(m1[2]);
+            if (px !== o.x || py === o.y) continue;
+            const d = py - o.y;
+            const nx = o.x + d;
+            const cDiag = freq.get(key(nx, py)) || 0;
+            const cOther = freq.get(key(nx, o.y)) || 0;
+            const add = freq.get(key(o.x, py)) * cDiag * cOther;
+            res += add;
+            snap(`Partner (${o.x},${py}): d = ${d}, col x=${nx} → (${nx},${py}) ×${cDiag}, (${nx},${o.y}) ×${cOther} → +<b>${add}</b>.`, 10);
+          }
+          answer = res;
+          snap(`count(${o.x},${o.y}) = <b>${res}</b> square(s).`, 11);
+        }
+      }
+      const finalV = answer === 1 ? "1 square" : answer + " squares";
+      const last = steps[steps.length - 1];
+      last.result = finalV;
+      last.correct = true;
+      last.memNote = "add: O(1). count: O(n) — every point scanned per query. Space: O(n).";
+      return { steps: steps, result: finalV, correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

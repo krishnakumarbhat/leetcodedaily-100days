@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<!-- ============================================================
+     SECTION TEMPLATE — copy this file, replace the <script> data
+     with your section's problems. Everything else stays identical.
+     ============================================================ -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12 · Advanced Graphs — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+/* ============ SIDEBAR NAV (shared by all sections) ============ */
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "12", title: "Advanced Graphs" };
+
+/* ================================================================
+ * SHARED HELPERS — binary min-heap, disjoint-set, memory-view
+ * builders, and ground-truth reference algorithms (used by the
+ * step generators to compute the real answers inline).
+ * ================================================================ */
+
+/* binary min-heap keyed on .key — powers every Dijkstra-style run */
+class MiniHeap {
+  constructor() { this.a = []; }
+  size() { return this.a.length; }
+  push(x) {
+    this.a.push(x);
+    let i = this.a.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (this.a[p].key <= this.a[i].key) break;
+      const t = this.a[p]; this.a[p] = this.a[i]; this.a[i] = t;
+      i = p;
+    }
+  }
+  pop() {
+    const top = this.a[0];
+    const last = this.a.pop();
+    if (this.a.length) {
+      this.a[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1, r = 2 * i + 2;
+        let m = i;
+        if (l < this.a.length && this.a[l].key < this.a[m].key) m = l;
+        if (r < this.a.length && this.a[r].key < this.a[m].key) m = r;
+        if (m === i) break;
+        const t = this.a[m]; this.a[m] = this.a[i]; this.a[i] = t;
+        i = m;
+      }
+    }
+    return top;
+  }
+}
+
+/* disjoint-set with union by rank + path halving — powers Kruskal */
+class DSU {
+  constructor(n) {
+    this.p = Array.from({ length: n }, (_, i) => i);
+    this.r = new Array(n).fill(0);
+  }
+  find(x) {
+    while (this.p[x] !== x) { this.p[x] = this.p[this.p[x]]; x = this.p[x]; }
+    return x;
+  }
+  union(a, b) {
+    a = this.find(a); b = this.find(b);
+    if (a === b) return false;
+    if (this.r[a] < this.r[b]) { const t = a; a = b; b = t; }
+    this.p[b] = a;
+    if (this.r[a] === this.r[b]) this.r[a]++;
+    return true;
+  }
+}
+
+/* memory-view builders (schemas match engine.js renderers) */
+function hashView(title, slots, formula) {
+  return { type: "hashmap", title: title, slots: slots, probe: [], hit: -1, formula: formula || "", mode: "open" };
+}
+function queueView(title, data, front, rear) {
+  return { type: "queue", title: title, data: data, front: front, rear: rear };
+}
+function stackView(title, data, top) {
+  return { type: "stack", title: title, data: data, top: top };
+}
+function arrView(title, data, cls, size) {
+  return { type: "array", title: title, data: data, cls: cls || {}, showIdx: true, size: size || 4 };
+}
+function heapView(title, data) {
+  return { type: "heap", title: title, data: data, showIdx: true, size: 8 };
+}
+function infStr(v) { return v === Infinity ? "∞" : String(v); }
+
+/* ---------- ground-truth reference algorithms ---------- */
+
+/* 0269 — Kahn's algorithm (canonical order or "") */
+function refAlien(words) {
+  const chars = [], inSet = {};
+  words.forEach(w => String(w).split("").forEach(c => { if (!inSet[c]) { inSet[c] = 1; chars.push(c); } }));
+  const adj = {}, indeg = {};
+  chars.forEach(c => { adj[c] = []; indeg[c] = 0; });
+  for (let i = 0; i + 1 < words.length; i++) {
+    const a = String(words[i]), b = String(words[i + 1]);
+    const L = Math.min(a.length, b.length);
+    let j = 0;
+    while (j < L && a[j] === b[j]) j++;
+    if (j === L) { if (a.length > b.length) return ""; continue; }
+    const x = a[j], y = b[j];
+    if (x !== y && !adj[x].includes(y)) { adj[x].push(y); indeg[y]++; }
+  }
+  const q = chars.filter(c => indeg[c] === 0);
+  const order = [];
+  while (q.length) {
+    const c = q.shift();
+    order.push(c);
+    adj[c].forEach(nxt => { indeg[nxt]--; if (indeg[nxt] === 0) q.push(nxt); });
+  }
+  return order.length === chars.length ? order.join("") : "";
+}
+/* 0269 — validator: is `order` a valid topological sort of the words? */
+function validTopo(order, words) {
+  const expected = refAlien(words);
+  if (expected === "") return order === "";
+  if (order.length !== expected.length) return false;
+  const pos = {};
+  for (let i = 0; i < order.length; i++) pos[order[i]] = i;
+  for (let i = 0; i + 1 < words.length; i++) {
+    const a = String(words[i]), b = String(words[i + 1]);
+    const L = Math.min(a.length, b.length);
+    let j = 0;
+    while (j < L && a[j] === b[j]) j++;
+    if (j === L) continue;
+    const x = a[j], y = b[j];
+    if (x !== y && pos[x] > pos[y]) return false;
+  }
+  return true;
+}
+/* 0332 — Hierholzer: lexicographically smallest Eulerian path */
+function refItinerary(tickets) {
+  if (!tickets.length) return ["JFK"];
+  const adj = {};
+  tickets.forEach(t => {
+    const a = String(t[0]), b = String(t[1]);
+    (adj[a] = adj[a] || []).push(b);
+  });
+  Object.keys(adj).forEach(k => adj[k].sort((x, y) => y.localeCompare(x)));
+  if (!adj["JFK"]) return [];
+  const route = [];
+  (function dfs(u) {
+    while ((adj[u] || []).length) dfs(adj[u].pop());
+    route.push(u);
+  })("JFK");
+  return route.reverse();
+}
+/* 0743 — Dijkstra (reference for the Bellman-Ford approach) */
+function refDelay(edges, n, k) {
+  const dist = new Array(n + 1).fill(Infinity);
+  if (k >= 1 && k <= n) dist[k] = 0;
+  const settled = new Array(n + 1).fill(false);
+  const heap = new MiniHeap();
+  heap.push({ node: k, key: 0 });
+  while (heap.size()) {
+    const it = heap.pop();
+    if (settled[it.node]) continue;
+    settled[it.node] = true;
+    edges.forEach(e => {
+      const u = Number(e[0]), v = Number(e[1]), w = Number(e[2]);
+      if (u === it.node && v >= 1 && v <= n && !settled[v] && it.key + w < dist[v]) {
+        dist[v] = it.key + w;
+        heap.push({ node: v, key: dist[v] });
+      }
+    });
+  }
+  if (dist.slice(1).some(d => d === Infinity)) return -1;
+  return dist.slice(1).reduce((m, d) => Math.max(m, d), -1);
+}
+/* 0743 — Bellman-Ford (reference for the Dijkstra approach) */
+function refDelayBF(edges, n, k) {
+  const dist = new Array(n + 1).fill(Infinity);
+  if (k >= 1 && k <= n) dist[k] = 0;
+  for (let i = 1; i < n; i++) {
+    let ch = false;
+    edges.forEach(e => {
+      const u = Number(e[0]), v = Number(e[1]), w = Number(e[2]);
+      if (u >= 1 && u <= n && v >= 1 && v <= n && dist[u] !== Infinity && dist[u] + w < dist[v]) {
+        dist[v] = dist[u] + w; ch = true;
+      }
+    });
+    if (!ch) break;
+  }
+  if (dist.slice(1).some(d => d === Infinity)) return -1;
+  return dist.slice(1).reduce((m, d) => Math.max(m, d), -1);
+}
+/* 0778 — binary search + BFS feasibility */
+function refSwim(grid) {
+  const g = grid.map(r => r.map(Number));
+  const n = g.length;
+  if (n === 0) return 0;
+  function feas(T) {
+    if (g[0][0] > T) return false;
+    const seen = g.map(r => r.map(() => false));
+    const q = [[0, 0]];
+    seen[0][0] = true;
+    while (q.length) {
+      const p = q.shift();
+      if (p[0] === n - 1 && p[1] === n - 1) return true;
+      const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];
+      for (let d = 0; d < 4; d++) {
+        const nr = p[0] + dr[d], nc = p[1] + dc[d];
+        if (nr >= 0 && nc >= 0 && nr < n && nc < n && !seen[nr][nc] && g[nr][nc] <= T) {
+          seen[nr][nc] = true; q.push([nr, nc]);
+        }
+      }
+    }
+    return false;
+  }
+  let lo = 0, hi = n * n - 1, ans = hi;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (feas(mid)) { ans = mid; hi = mid - 1; } else { lo = mid + 1; }
+  }
+  return ans;
+}
+/* 0787 — Bellman-Ford capped at k stops */
+function refCheapestBF(flights, n, src, dst, k) {
+  let dist = new Array(n).fill(Infinity);
+  if (src >= 0 && src < n) dist[src] = 0;
+  const rounds = Math.max(k + 1, 0);
+  for (let i = 0; i < rounds; i++) {
+    const nd = dist.slice();
+    flights.forEach(f => {
+      const u = Number(f[0]), v = Number(f[1]), w = Number(f[2]);
+      if (u >= 0 && u < n && v >= 0 && v < n && dist[u] !== Infinity && dist[u] + w < nd[v]) nd[v] = dist[u] + w;
+    });
+    dist = nd;
+  }
+  return dist[dst] === Infinity ? -1 : dist[dst];
+}
+/* 0787 — Dijkstra keyed on price, with a stop limit */
+function refCheapestDJ(flights, n, src, dst, k) {
+  const heap = new MiniHeap();
+  heap.push({ node: src, key: 0, stops: 0 });
+  let best = Infinity;
+  let guard = 0;
+  while (heap.size() && guard++ < 500) {
+    const it = heap.pop();
+    if (it.key >= best) continue;
+    if (it.node === dst) { best = it.key; break; }
+    if (it.stops > k) continue;
+    flights.forEach(f => {
+      const u = Number(f[0]), v = Number(f[1]), w = Number(f[2]);
+      if (u === it.node && v >= 0 && v < n && it.stops + 1 <= k + 1) heap.push({ node: v, key: it.key + w, stops: it.stops + 1 });
+    });
+  }
+  return best === Infinity ? -1 : best;
+}
+/* 1584 — Prim (reference for the Kruskal approach) */
+function refMST(pts) {
+  const p = pts.map(pt => [Number(pt[0]), Number(pt[1])]);
+  const n = p.length;
+  if (n <= 1) return 0;
+  const inMST = new Array(n).fill(false);
+  const heap = new MiniHeap();
+  heap.push({ to: 0, key: 0 });
+  let cost = 0;
+  while (heap.size()) {
+    const it = heap.pop();
+    if (inMST[it.to]) continue;
+    inMST[it.to] = true;
+    cost += it.key;
+    for (let v = 0; v < n; v++) {
+      if (inMST[v]) continue;
+      heap.push({ to: v, key: Math.abs(p[it.to][0] - p[v][0]) + Math.abs(p[it.to][1] - p[v][1]) });
+    }
+  }
+  return cost;
+}
+/* 1584 — Kruskal (reference for the Prim approach) */
+function refKruskal(pts) {
+  const p = pts.map(pt => [Number(pt[0]), Number(pt[1])]);
+  const n = p.length;
+  if (n <= 1) return 0;
+  const edges = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++)
+    edges.push([i, j, Math.abs(p[i][0] - p[j][0]) + Math.abs(p[i][1] - p[j][1])]);
+  edges.sort((a, b) => a[2] - b[2]);
+  const dsu = new DSU(n);
+  let cost = 0, joined = 0;
+  for (const e of edges) {
+    if (dsu.find(e[0]) !== dsu.find(e[1])) {
+      dsu.union(e[0], e[1]);
+      cost += e[2];
+      joined++;
+      if (joined === n - 1) break;
+    }
+  }
+  return cost;
+}
+
+/* ================================================================
+ * PROBLEM 0269 — ALIEN DICTIONARY
+ * ================================================================ */
+NC150.register({
+  id: "0269", title: "Alien Dictionary", difficulty: "Hard",
+  url: "https://leetcode.com/problems/alien-dictionary/",
+  tags: ["graph", "topological sort"],
+  approaches: ["Approach 1 · Kahn BFS (indegree)", "Approach 2 · DFS postorder"],
+  complexities: [
+    { time: "O(V + E)", space: "O(V)", note: "BEST — one queue pass" },
+    { time: "O(V + E)", space: "O(V)", note: "cycle via 3-color marking" }
+  ],
+  compare: [
+    { name: "Kahn BFS", tech: "indegree + queue", time: "O(V+E)", space: "O(V)", when: "the standard, iterative", best: true },
+    { name: "DFS postorder", tech: "3-color cycle detection", time: "O(V+E)", space: "O(V)", when: "recursion allowed", best: false }
+  ],
+  inputs: [
+    { name: "words", label: "words =", type: "list", default: '["wrt","wrf","er","ett","rftt"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { words: '["wrt","wrf","er","ett","rftt"]' }, result: '"wertf"' },
+    { label: "Ex 2", values: { words: '["z","x"]' }, result: '"zx"' },
+    { label: "Ex 3", values: { words: '["z","x","z"]' }, result: '"" (cycle)' }
+  ],
+  realLife: "<p><b>Custom sort orders</b>: internationalized apps that sort a catalog in a non-Latin alphabet — the ordering is learned by diffing dictionary words, exactly like this.</p><p><b>Compiler build order</b>: resolving an import/package dependency graph is Kahn's algorithm in production.</p>",
+  dsDive: `<h3>Topological sort: two mechanical ways</h3>
+<p><b>Kahn:</b> every char with indegree 0 is safe to output first. Popping it removes its edges; chars that become indegree-0 are next. Finish with fewer chars than the alphabet ⇒ a cycle → invalid dictionary.</p>
+<div class="equation">wrt → wrf: first diff t→f | w→e, r→t, e→r ⇒ order w e r t f</div>
+<p><b>DFS:</b> the recursion stack doubles as the cycle detector — revisiting a char still in state 1 (on the stack) is a cycle. Reverse postorder IS a topological order. Both run in O(V+E); Kahn is iterative, DFS needs no extra indegree bookkeeping.</p>`,
+  code: [
+    [
+      "adj = {} ; indeg = {}",
+      "for pair (a, b) of adjacent words:",
+      "    x, y = first differing chars → edge x → y",
+      "    (if b is a prefix of a → invalid → return '')",
+      "queue ← every char with indegree 0",
+      "while queue: pop c → result += c;",
+      "    for nxt in adj[c]: indeg[nxt] -= 1",
+      "        if indeg[nxt] == 0: queue.push(nxt)",
+      "return result if len(result) == #chars else ''"
+    ],
+    [
+      "vis[c] ∈ {0, 1, 2}    # 1 = on the recursion stack",
+      "def dfs(c):",
+      "    vis[c] = 1",
+      "    for nxt in adj[c]:",
+      "        if vis[nxt] == 1: CYCLE → return ''",
+      "        if vis[nxt] == 0: dfs(nxt)",
+      "    vis[c] = 2 ; order.append(c)   # postorder",
+      "for c in chars: if vis[c] == 0: dfs(c)",
+      "return ''.join(reversed(order))"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const words = (vals.words || []).map(w => String(w));
+      const steps = [];
+      const chars = [], inSet = {};
+      words.forEach(w => w.split("").forEach(c => { if (!inSet[c]) { inSet[c] = 1; chars.push(c); } }));
+      const adj = {}, indeg = {};
+      chars.forEach(c => { adj[c] = []; indeg[c] = 0; });
+      let invalid = false;
+      const snap = (text, code, q, head, order) => steps.push({
+        text: text, code: code,
+        mem: [
+          hashView("indegree · open addressing", chars.map(c => ({ k: c, v: String(indeg[c]) })), "h(c) = code(c) mod 8"),
+          hashView("adjacency · x → later chars", chars.map(c => ({ k: c, v: adj[c].length ? "→ " + adj[c].join(",") : "—" }))),
+          queueView("queue · indegree 0", (q || []).slice(head || 0), 0, Math.max((q || []).length - (head || 0) - 1, 0)),
+          arrView("result (topological order)", order || [], {}, 1)
+        ]
+      });
+      if (!chars.length) {
+        const e = { text: "No words → empty alphabet → return empty string.", code: 8, mem: [], result: '""', correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: '""', correct: true, memNote: "O(1)." };
+      }
+      snap("Collect the alphabet: every letter appearing in any word. Then diff adjacent words to discover precedence edges.", 0, [], 0, []);
+      for (let i = 0; i + 1 < words.length; i++) {
+        const a = words[i], b = words[i + 1];
+        const L = Math.min(a.length, b.length);
+        let j = 0;
+        while (j < L && a[j] === b[j]) j++;
+        if (j === L) {
+          if (a.length > b.length) {
+            invalid = true;
+            snap('Pair "<b>' + a + '</b>", "<b>' + b + '</b>": no differing char but the first is longer → prefix rule broken → return ""', 3, [], 0, []);
+            break;
+          }
+          continue;
+        }
+        const x = a[j], y = b[j];
+        if (x !== y && !adj[x].includes(y)) {
+          adj[x].push(y);
+          indeg[y]++;
+          snap('Diff "<b>' + a + '</b>" vs "<b>' + b + '</b>" at position ' + j + ' → edge <b>' + x + ' → ' + y + '</b> (indeg[' + y + '] = ' + indeg[y] + ').', 2, [], 0, []);
+        }
+      }
+      if (invalid) {
+        const last = steps[steps.length - 1];
+        last.result = '""';
+        last.correct = refAlien(words) === "";
+        last.memNote = "Invalid input → no valid order. Time O(V+E).";
+        return { steps: steps, result: '""', correct: refAlien(words) === "", memNote: last.memNote };
+      }
+      const q = [];
+      chars.forEach(c => { if (indeg[c] === 0) q.push(c); });
+      snap("Seed the queue with every char whose indegree is 0 — <b>" + q.join(", ") + "</b> is ready to be emitted first.", 4, q, 0, []);
+      const order = [];
+      let head = 0;
+      while (head < q.length) {
+        const c = q[head++];
+        order.push(c);
+        adj[c].forEach(nxt => {
+          indeg[nxt]--;
+          if (indeg[nxt] === 0) q.push(nxt);
+        });
+        snap('Pop <b>' + c + '</b> → emit it. Decrement neighbor indegrees; newly-zero neighbors join the queue.', 5, q, head, order.slice());
+      }
+      if (order.length !== chars.length) {
+        snap('Only ' + order.length + ' of ' + chars.length + ' chars emitted → an edge points into a CYCLE → return ""', 8, q, head, order.slice());
+        const last = steps[steps.length - 1];
+        last.result = '""';
+        last.correct = refAlien(words) === "";
+        last.memNote = "Cycle detected → invalid dictionary. Time O(V+E), space O(V).";
+        return { steps: steps, result: '""', correct: refAlien(words) === "", memNote: last.memNote };
+      }
+      const res = order.join("");
+      snap('All ' + order.length + ' chars emitted → topological order <b>"' + res + '"</b>.', 8, q, head, order.slice());
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = refAlien(words) === res;
+      last.memNote = "Time O(V+E): each char popped once, each edge relaxed once. Space O(V).";
+      return { steps: steps, result: JSON.stringify(res), correct: refAlien(words) === res, memNote: last.memNote };
+    },
+    function (vals) {
+      const words = (vals.words || []).map(w => String(w));
+      const steps = [];
+      const chars = [], inSet = {};
+      words.forEach(w => w.split("").forEach(c => { if (!inSet[c]) { inSet[c] = 1; chars.push(c); } }));
+      const adj = {}, indeg = {};
+      chars.forEach(c => { adj[c] = []; indeg[c] = 0; });
+      let invalid = false;
+      for (let i = 0; i + 1 < words.length; i++) {
+        const a = words[i], b = words[i + 1];
+        const L = Math.min(a.length, b.length);
+        let j = 0;
+        while (j < L && a[j] === b[j]) j++;
+        if (j === L) { if (a.length > b.length) { invalid = true; break; } continue; }
+        const x = a[j], y = b[j];
+        if (x !== y && !adj[x].includes(y)) { adj[x].push(y); indeg[y]++; }
+      }
+      const vis = {};
+      chars.forEach(c => { vis[c] = 0; });
+      const post = [];
+      let cycle = false;
+      const snap = (text, code) => steps.push({
+        text: text, code: code,
+        mem: [
+          hashView("vis[] · 0=unseen 1=stack 2=done", chars.map(c => ({ k: c, v: vis[c] === 2 ? "done" : vis[c] === 1 ? "stack" : "—" }))),
+          hashView("adjacency · x → later chars", chars.map(c => ({ k: c, v: adj[c].length ? "→ " + adj[c].join(",") : "—" }))),
+          stackView("postorder so far (top = latest)", post.slice(), post.length - 1),
+          arrView("result (reversed postorder)", post.slice().reverse(), {}, 1)
+        ]
+      });
+      if (invalid) {
+        const e = { text: "Prefix rule violated → invalid dictionary → return \"\".", code: 6, mem: [], result: '""', correct: true, memNote: "Invalid input, O(V+E) to detect." };
+        steps.push(e);
+        return { steps: steps, result: '""', correct: true, memNote: "Invalid input, O(V+E) to detect." };
+      }
+      snap("DFS with a 3-color mark: 1 = on the recursion stack, 2 = fully processed. Postorder + reversal = topological order.", 0);
+      function dfs(c) {
+        vis[c] = 1;
+        snap('Visit <b>' + c + '</b> → mark <b>stack</b>.', 2);
+        for (const nxt of adj[c]) {
+          if (vis[nxt] === 1) {
+            cycle = true;
+            snap('Edge ' + c + ' → ' + nxt + ': <b>' + nxt + '</b> is already on the stack → CYCLE.', 4);
+            return;
+          }
+          if (vis[nxt] === 0) dfs(nxt);
+        }
+        vis[c] = 2;
+        post.push(c);
+        snap('Finish <b>' + c + '</b> → state <b>done</b>, postorder += <b>' + c + '</b>.', 5);
+      }
+      for (const c of chars) { if (vis[c] === 0 && !cycle) dfs(c); }
+      const res = cycle ? "" : post.slice().reverse().join("");
+      snap(cycle ? 'Cycle → return ""' : 'Reverse the postorder → <b>"' + res + '"</b>.', 6);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = validTopo(res, words);
+      last.memNote = "Time O(V+E). Space O(V) — vis map + recursion stack.";
+      return { steps: steps, result: JSON.stringify(res), correct: validTopo(res, words), memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0332 — RECONSTRUCT ITINERARY
+ * ================================================================ */
+NC150.register({
+  id: "0332", title: "Reconstruct Itinerary", difficulty: "Hard",
+  url: "https://leetcode.com/problems/reconstruct-itinerary/",
+  tags: ["graph", "Eulerian path"],
+  approaches: ["Approach 1 · Hierholzer (best)", "Approach 2 · Backtracking with pruning"],
+  complexities: [
+    { time: "O(E log E)", space: "O(E)", note: "BEST — sort once, walk every edge once" },
+    { time: "O(E!) worst", space: "O(E)", note: "pruned, still exponential" }
+  ],
+  compare: [
+    { name: "Hierholzer", tech: "postorder + reversal", time: "O(E log E)", space: "O(E)", when: "the standard", best: true },
+    { name: "Backtracking", tech: "try smallest ticket, unwind on dead end", time: "O(E!) worst", space: "O(E)", when: "tiny graphs", best: false }
+  ],
+  inputs: [
+    { name: "tickets", label: "tickets =", type: "list", default: '[["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { tickets: '[["JFK","SFO"],["JFK","ATL"],["SFO","ATL"],["ATL","JFK"],["ATL","SFO"]]' }, result: "[JFK,ATL,JFK,SFO,ATL,SFO]" },
+    { label: "Ex 2", values: { tickets: '[["MUC","LHR"],["JFK","MUC"],["SFO","SJC"],["LHR","SFO"]]' }, result: "[JFK,MUC,LHR,SFO,SJC]" },
+    { label: "Ex 3", values: { tickets: '[["JFK","KUL"],["JFK","NRT"],["NRT","JFK"]]' }, result: "[JFK,NRT,JFK,KUL]" }
+  ],
+  realLife: "<p><b>Flight & cargo routing</b>: chaining every ticket into one itinerary is literally this problem; the lexicographic tie-break models preferred carriers.</p><p><b>DNA assembly</b>: Eulerian paths over De Bruijn graphs reassemble genome fragments — same algorithm family.</p>",
+  dsDive: `<h3>Eulerian path: every edge exactly once</h3>
+<p>A valid itinerary uses EVERY ticket once — an Eulerian path. Hierholzer: from JFK, greedily take the smallest unused ticket and recurse. When stuck, push the airport in <b>postorder</b>; reversing the postorder yields the path. Sorting destinations <b>descending</b> makes each pop() yield the lexicographically smallest — the tie-break the problem demands.</p>
+<div class="equation">postorder [SFO, ATL, SFO, ATL, JFK, ATL, JFK] → reversed → JFK → ATL → JFK → SFO → ATL → SFO</div>
+<p>If a greedy first choice dead-ends (a ticket must be used later), the postorder push naturally defers that airport — no explicit backtracking needed.</p>`,
+  code: [
+    [
+      "adj[from] → destinations sorted DESCENDING",
+      "def dfs(u):",
+      "    while adj[u] is non-empty:",
+      "        v = adj[u].pop()      # smallest remaining ticket",
+      "        dfs(v)",
+      "    route.append(u)           # postorder push",
+      "dfs('JFK')",
+      "return route[::-1]           # reverse postorder"
+    ],
+    [
+      "path = ['JFK'] ; used = {}",
+      "def bt(u, used_count):",
+      "    if used_count == #tickets: return True",
+      "    for v in unused tickets of u, sorted:",
+      "        path.append(v); mark ticket used",
+      "        if bt(v, used_count + 1): return True",
+      "        path.pop(); unmark → BACKTRACK",
+      "return False"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const tickets = (vals.tickets || []).map(t => [String(t[0]), String(t[1])]);
+      const steps = [];
+      const adj = {};
+      tickets.forEach(t => { (adj[t[0]] = adj[t[0]] || []).push(t[1]); });
+      Object.keys(adj).forEach(k => adj[k].sort((x, y) => y.localeCompare(x)));
+      const route = [];
+      const stk = [];
+      const snap = (text, code) => steps.push({
+        text: text, code: code,
+        mem: [
+          hashView("adjacency · tickets left (next pop = first)", Object.keys(adj).map(k => ({ k: k, v: (adj[k] || []).length ? "→ " + adj[k].slice().reverse().join(" → ") : "—" }))),
+          stackView("recursion stack", stk.slice(), stk.length - 1),
+          arrView("route · postorder (reversed at the end)", route.slice(), {}, 8)
+        ]
+      });
+      if (!tickets.length) {
+        const e = { text: "No tickets → trivial itinerary [JFK].", code: 6, mem: [], result: '["JFK"]', correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: '["JFK"]', correct: true, memNote: "O(1)." };
+      }
+      if (!adj["JFK"]) {
+        const e = { text: "No ticket departs from JFK → no valid itinerary → return [].", code: 6, mem: [], result: "[]", correct: true, memNote: "O(E) to check." };
+        steps.push(e);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(E) to check." };
+      }
+      snap("Sort every airport's destinations descending — popping the END then yields the lexicographically smallest ticket.", 0);
+      function dfs(u) {
+        stk.push(u);
+        while ((adj[u] || []).length) {
+          const v = adj[u].pop();
+          snap('At <b>' + u + '</b>: take ticket to <b>' + v + '</b> (smallest available) → recurse.', 3);
+          dfs(v);
+        }
+        route.push(u);
+        stk.pop();
+        snap('No tickets left at <b>' + u + '</b> → postorder push <b>' + u + '</b>.', 4);
+      }
+      dfs("JFK");
+      route.reverse();
+      snap('Reverse the postorder → itinerary <b>' + JSON.stringify(route) + '</b> — every ticket used exactly once.', 6);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(route);
+      last.correct = JSON.stringify(route) === JSON.stringify(refItinerary(tickets));
+      last.memNote = "Time O(E log E) for sorting — each ticket popped once. Space O(E).";
+      return { steps: steps, result: JSON.stringify(route), correct: JSON.stringify(route) === JSON.stringify(refItinerary(tickets)), memNote: last.memNote };
+    },
+    function (vals) {
+      const tickets = (vals.tickets || []).map(t => [String(t[0]), String(t[1])]);
+      const steps = [];
+      const byFrom = {};
+      tickets.forEach((t, idx) => { (byFrom[t[0]] = byFrom[t[0]] || []).push({ to: t[1], idx: idx }); });
+      Object.keys(byFrom).forEach(k => byFrom[k].sort((a, b) => a.to.localeCompare(b.to)));
+      const used = new Array(tickets.length).fill(false);
+      const path = ["JFK"];
+      const snap = (text, code) => steps.push({
+        text: text, code: code,
+        mem: [
+          hashView("unused tickets per airport (sorted ↑)", Object.keys(byFrom).map(k => {
+            const left = byFrom[k].filter(t => !used[t.idx]);
+            return { k: k, v: left.length ? "→ " + left.map(t => t.to).join(", ") : "—" };
+          })),
+          stackView("path so far", path.slice(), path.length - 1)
+        ]
+      });
+      const total = tickets.length;
+      let done = false;
+      snap("Backtracking: always try the smallest unused ticket first; unwind if the branch dead-ends.", 0);
+      function bt(u, count) {
+        if (done) return true;
+        if (count === total) {
+          snap('All ' + total + ' tickets used → itinerary <b>' + JSON.stringify(path) + '</b>.', 2);
+          return true;
+        }
+        for (const t of byFrom[u] || []) {
+          if (used[t.idx]) continue;
+          used[t.idx] = true;
+          path.push(t.to);
+          snap('Try <b>' + u + ' → ' + t.to + '</b> (ticket #' + t.idx + ') → path ' + JSON.stringify(path) + '.', 4);
+          if (bt(t.to, count + 1)) return true;
+          path.pop();
+          used[t.idx] = false;
+          snap('Dead end → backtrack: unuse <b>' + u + ' → ' + t.to + '</b>, restore the path.', 6);
+        }
+        return false;
+      }
+      const ok = bt("JFK", 0);
+      if (!ok && !done) snap('Exhausted every choice from JFK without using all tickets → no valid itinerary.', 7);
+      const resStr = ok ? JSON.stringify(path) : "[]";
+      const last = steps[steps.length - 1];
+      last.result = resStr;
+      last.correct = JSON.stringify(ok ? path : []) === JSON.stringify(refItinerary(tickets));
+      last.memNote = "Time O(E!) worst, pruned by smallest-first ordering. Space O(E).";
+      return { steps: steps, result: resStr, correct: JSON.stringify(ok ? path : []) === JSON.stringify(refItinerary(tickets)), memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0743 — NETWORK DELAY TIME
+ * ================================================================ */
+NC150.register({
+  id: "0743", title: "Network Delay Time", difficulty: "Medium",
+  url: "https://leetcode.com/problems/network-delay-time/",
+  tags: ["graph", "Dijkstra"],
+  approaches: ["Approach 1 · Dijkstra + min-heap (best)", "Approach 2 · Bellman-Ford"],
+  complexities: [
+    { time: "O(E log V)", space: "O(V + E)", note: "BEST — settle each node once" },
+    { time: "O(V · E)", space: "O(V)", note: "no heap, relax n−1 rounds" }
+  ],
+  compare: [
+    { name: "Dijkstra", tech: "min-heap, settle-once", time: "O(E log V)", space: "O(V+E)", when: "non-negative weights", best: true },
+    { name: "Bellman-Ford", tech: "relax all edges n−1×", time: "O(V·E)", space: "O(V)", when: "tiny dense graphs, no heap", best: false }
+  ],
+  inputs: [
+    { name: "edges", label: "edges =", type: "list", default: "[[2,1,1],[2,3,1],[3,4,1]]" },
+    { name: "n", label: "n =", type: "int", default: "4" },
+    { name: "k", label: "k =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { edges: "[[2,1,1],[2,3,1],[3,4,1]]", n: "4", k: "2" }, result: "2" },
+    { label: "Ex 2", values: { edges: "[[1,2,1]]", n: "2", k: "1" }, result: "1" },
+    { label: "Ex 3", values: { edges: "[[1,2,1]]", n: "2", k: "2" }, result: "-1" }
+  ],
+  realLife: "<p><b>Network monitoring</b>: 'how long until every router hears this ping' is broadcast propagation time — link-state routing (OSPF) computes exactly this tree.</p><p><b>CDN rollouts</b>: estimating when a config push reaches all edge servers.</p>",
+  dsDive: `<h3>The min-heap invariant</h3>
+<p>Dijkstra pops nodes in order of settled shortest distance. The heap is a binary tree where every parent ≤ its children, so the root is always the global minimum — no scan. A node is settled exactly once; after that, any route through it is provably no better.</p>
+<div class="equation">parent(i) = ⌊(i−1)/2⌋ , children(i) = 2i+1, 2i+2 &nbsp;·&nbsp; heap[0] = cheapest dist</div>
+<p>Bellman-Ford drops the heap: n−1 full passes over every edge; pass p discovers all shortest paths using ≤ p edges. Slower, but heap-free and trivially parallel.</p>`,
+  code: [
+    [
+      "dist[1..n] = ∞ ; dist[k] = 0",
+      "heap ← (0, k)",
+      "while heap:",
+      "    (d, u) = heap.pop()        # cheapest unsettled node",
+      "    if settled[u]: continue ; settled[u] = True",
+      "    for edge u → v, w:",
+      "        if d + w < dist[v]: dist[v] = d + w ; push (dist[v], v)",
+      "return max(dist[1..]) if all finite else -1"
+    ],
+    [
+      "dist[1..n] = ∞ ; dist[k] = 0",
+      "repeat n−1 times:",
+      "    for every edge u → v, w:",
+      "        if dist[u] + w < dist[v]: dist[v] = dist[u] + w",
+      "    stop early when nothing changes",
+      "return max(dist[1..]) if all finite else -1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const edges = (vals.edges || []).map(e => [Number(e[0]), Number(e[1]), Number(e[2])]);
+      const n = Number(vals.n), k = Number(vals.k);
+      const steps = [];
+      const dist = new Array(n + 1).fill(Infinity);
+      if (k >= 1 && k <= n) dist[k] = 0;
+      const settled = new Array(n + 1).fill(false);
+      const heap = new MiniHeap();
+      heap.push({ node: k, key: 0 });
+      const snap = (text, code) => {
+        const cls = {};
+        for (let i = 1; i <= n; i++) if (settled[i]) cls[i - 1] = "done";
+        steps.push({
+          text: text, code: code,
+          mem: [
+            heapView("min-heap · (dist, node)", heap.a.map(x => x.key + "·" + x.node)),
+            arrView("dist[1..n] (∞ = unreached)", dist.slice(1).map(d => infStr(d)), cls, 4)
+          ]
+        });
+      };
+      snap("Start: dist[" + k + "] = 0, everything else ∞. Push (0," + k + ") into the min-heap.", 1);
+      while (heap.size()) {
+        const it = heap.pop();
+        if (settled[it.node]) continue;
+        settled[it.node] = true;
+        snap('Pop <b>' + it.node + '</b> at dist <b>' + it.key + '</b> → settle it: its shortest path is now final.', 4);
+        edges.forEach(e => {
+          const u = e[0], v = e[1], w = e[2];
+          if (u === it.node && v >= 1 && v <= n && !settled[v] && it.key + w < dist[v]) {
+            dist[v] = it.key + w;
+            heap.push({ node: v, key: dist[v] });
+            snap('Relax <b>' + u + ' → ' + v + '</b> (' + it.key + ' + ' + w + ' = <b>' + dist[v] + '</b> < dist[' + v + ']) → update and push.', 5);
+          }
+        });
+      }
+      const unreachable = dist.slice(1).some(d => d === Infinity);
+      const maxD = dist.slice(1).reduce((m, d) => (d === Infinity ? m : Math.max(m, d)), -1);
+      const res = unreachable ? "-1" : String(maxD);
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = refDelayBF(edges, n, k) === Number(res);
+      last.memNote = "Time O(E log V), space O(V + E). Each node settled exactly once.";
+      return { steps: steps, result: res, correct: refDelayBF(edges, n, k) === Number(res), memNote: last.memNote };
+    },
+    function (vals) {
+      const edges = (vals.edges || []).map(e => [Number(e[0]), Number(e[1]), Number(e[2])]);
+      const n = Number(vals.n), k = Number(vals.k);
+      const steps = [];
+      const dist = new Array(n + 1).fill(Infinity);
+      if (k >= 1 && k <= n) dist[k] = 0;
+      const snap = (text, code) => {
+        const cls = {};
+        dist.forEach((d, i) => { if (i >= 1 && d !== Infinity) cls[i - 1] = "hot"; });
+        steps.push({
+          text: text, code: code,
+          mem: [
+            { type: "array", title: "edges (u → v : w)", data: edges.map(e => e[0] + "→" + e[1] + " : " + e[2]), showIdx: true, size: 8 },
+            arrView("dist[1..n] (∞ = unreached)", dist.slice(1).map(d => infStr(d)), cls, 4)
+          ]
+        });
+      };
+      snap("Bellman-Ford: dist[" + k + "] = 0; each round relaxes every edge once. No heap at all.", 0);
+      for (let round = 1; round < n; round++) {
+        let ch = 0;
+        edges.forEach(e => {
+          const u = e[0], v = e[1], w = e[2];
+          if (u >= 1 && u <= n && v >= 1 && v <= n && dist[u] !== Infinity && dist[u] + w < dist[v]) { dist[v] = dist[u] + w; ch++; }
+        });
+        snap('Round <b>' + round + '</b>/' + (n - 1) + ': ' + ch + ' relaxation(s) → dist ' + JSON.stringify(dist.slice(1).map(d => infStr(d))) + '.', 3);
+        if (ch === 0) { snap('Round ' + round + ' changed nothing → stop early.', 4); break; }
+      }
+      const unreachable = dist.slice(1).some(d => d === Infinity);
+      const maxD = dist.slice(1).reduce((m, d) => (d === Infinity ? m : Math.max(m, d)), -1);
+      const res = unreachable ? "-1" : String(maxD);
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = refDelay(edges, n, k) === Number(res);
+      last.memNote = "Time O(V·E), space O(V) — no heap. Also handles negative weights.";
+      return { steps: steps, result: res, correct: refDelay(edges, n, k) === Number(res), memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0778 — SWIM IN RISING WATER
+ * ================================================================ */
+NC150.register({
+  id: "0778", title: "Swim in Rising Water", difficulty: "Hard",
+  url: "https://leetcode.com/problems/swim-in-rising-water/",
+  tags: ["graph", "heap", "Dijkstra"],
+  approaches: ["Approach 1 · Dijkstra over elevation (best)", "Approach 2 · Binary search + BFS"],
+  complexities: [
+    { time: "O(n² log n)", space: "O(n²)", note: "BEST — settle each cell once" },
+    { time: "O(n² log n)", space: "O(n²)", note: "log n feasibility BFS passes" }
+  ],
+  compare: [
+    { name: "Dijkstra on max", tech: "heap keyed by max elevation", time: "O(n² log n)", space: "O(n²)", when: "the standard", best: true },
+    { name: "Binary search + BFS", tech: "binary search the answer T, BFS-feasibility", time: "O(n² log n)", space: "O(n²)", when: "different mindset", best: false }
+  ],
+  inputs: [
+    { name: "grid", label: "grid =", type: "list", default: "[[0,2],[1,3]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { grid: "[[0,2],[1,3]]" }, result: "3" },
+    { label: "Ex 2", values: { grid: "[[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15]]" }, result: "15" },
+    { label: "Ex 3", values: { grid: "[[3,2],[0,1]]" }, result: "3" }
+  ],
+  realLife: "<p><b>Flood & hydrology models</b>: the level at which water connects two basins is the minimum over paths of the maximum elevation — a minimax path, exactly this algorithm.</p><p><b>Network capacity</b>: the widest path through a bandwidth graph is the same minimax computation.</p>",
+  dsDive: `<h3>Minimax path through Dijkstra's lens</h3>
+<p>Reaching cell (r,c) costs the max elevation along the way; the best cost is the min over all paths — a minimax objective. The heap key is that best cost, and settle-once still holds because the cost function is monotone: extending a path can only raise its max.</p>
+<div class="equation">dist(v) = min over paths P: max over cells c∈P of grid[c]</div>
+<p>The binary-search variant inverts the question: 'is the whole grid crossable at level T?' — a BFS that only steps on cells ≤ T. The answer is the smallest feasible T.</p>`,
+  code: [
+    [
+      "t[0][0] = grid[0][0] ; heap ← (t[0][0], 0, 0)",
+      "while heap:",
+      "    (level, r, c) = heap.pop()",
+      "    if (r,c) == (n−1,n−1): return level",
+      "    for neighbor (nr,nc):",
+      "        nl = max(level, grid[nr][nc])",
+      "        if nl < t[nr][nc]: t[nr][nc] = nl ; push (nl, nr, nc)"
+    ],
+    [
+      "lo, hi = 0, n²−1 ; ans = hi",
+      "while lo <= hi:",
+      "    mid = (lo + hi) // 2",
+      "    if crossable(mid):      # BFS on cells ≤ mid",
+      "        ans = mid ; hi = mid − 1",
+      "    else: lo = mid + 1",
+      "return ans"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const grid = (vals.grid || []).map(r => r.map(Number));
+      const n = grid.length;
+      const steps = [];
+      if (n === 0) {
+        const e = { text: "Empty grid → swim time 0.", code: 0, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      const t = grid.map(r => r.map(() => Infinity));
+      t[0][0] = grid[0][0];
+      const settled = grid.map(r => r.map(() => false));
+      const heap = new MiniHeap();
+      heap.push({ r: 0, c: 0, key: t[0][0] });
+      const snap = (text, code) => {
+        const cls = {};
+        settled.forEach((row, r) => row.forEach((v, c) => { if (v) cls[r + "," + c] = "done"; }));
+        steps.push({
+          text: text, code: code,
+          mem: [
+            { type: "grid", title: "t[][] · best (minimax) level per cell", data: t.map(row => row.map(v => infStr(v))), cls: cls, cols: n },
+            heapView("min-heap · (level, r, c)", heap.a.map(x => x.key + "·(" + x.r + "," + x.c + ")"))
+          ]
+        });
+      };
+      snap('Start at (0,0) = <b>' + grid[0][0] + '</b> → push onto the heap. Every other cell starts at ∞.', 0);
+      let answer = grid[0][0];
+      while (heap.size()) {
+        const it = heap.pop();
+        if (settled[it.r][it.c]) continue;
+        settled[it.r][it.c] = true;
+        snap('Pop <b>(' + it.r + ',' + it.c + ')</b> at level <b>' + it.key + '</b> → the cheapest cell left, settle it.', 2);
+        if (it.r === n - 1 && it.c === n - 1) {
+          answer = it.key;
+          snap('Target (n−1,n−1) settled → swim time = <b>' + answer + '</b>.', 3);
+          break;
+        }
+        const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];
+        for (let d = 0; d < 4; d++) {
+          const nr = it.r + dr[d], nc = it.c + dc[d];
+          if (nr < 0 || nc < 0 || nr >= n || nc >= n || settled[nr][nc]) continue;
+          const nl = Math.max(it.key, grid[nr][nc]);
+          if (nl < t[nr][nc]) {
+            t[nr][nc] = nl;
+            heap.push({ r: nr, c: nc, key: nl });
+            snap('Neighbor (' + nr + ',' + nc + ') at ' + grid[nr][nc] + ' → path max ' + it.key + ' → <b>' + nl + '</b>; push.', 4);
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(answer);
+      last.correct = refSwim(grid) === answer;
+      last.memNote = "Time O(n² log n), space O(n²). Settle-once per cell.";
+      return { steps: steps, result: String(answer), correct: refSwim(grid) === answer, memNote: last.memNote };
+    },
+    function (vals) {
+      const grid = (vals.grid || []).map(r => r.map(Number));
+      const n = grid.length;
+      const steps = [];
+      if (n === 0) {
+        const e = { text: "Empty grid → swim time 0.", code: 0, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      const snap = (text, code, cls) => steps.push({
+        text: text, code: code,
+        mem: [
+          { type: "grid", title: "grid · BFS reachability at level T (done = reached)", data: grid.map(r => r.slice()), cls: cls || {}, cols: n }
+        ]
+      });
+      function explore(T) {
+        const seen = grid.map(r => r.map(() => false));
+        const q = [];
+        if (grid[0][0] <= T) { seen[0][0] = true; q.push([0, 0]); }
+        const dr = [1, -1, 0, 0], dc = [0, 0, 1, -1];
+        while (q.length) {
+          const p = q.shift();
+          for (let d = 0; d < 4; d++) {
+            const nr = p[0] + dr[d], nc = p[1] + dc[d];
+            if (nr >= 0 && nc >= 0 && nr < n && nc < n && !seen[nr][nc] && grid[nr][nc] <= T) {
+              seen[nr][nc] = true;
+              q.push([nr, nc]);
+            }
+          }
+        }
+        return seen;
+      }
+      snap("Binary search the answer over [0, " + (n * n - 1) + "]: 'is the grid crossable at level T?'.", 0, {});
+      let lo = 0, hi = n * n - 1, ans = hi;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        const seen = explore(mid);
+        const cls = {};
+        seen.forEach((row, r) => row.forEach((v, c) => { if (v) cls[r + "," + c] = "done"; }));
+        if (seen[n - 1][n - 1]) {
+          ans = mid;
+          hi = mid - 1;
+          snap('T = <b>' + mid + '</b>: bottom-right REACHED → ans = ' + mid + ', try smaller (hi = ' + hi + ').', 3, cls);
+        } else {
+          lo = mid + 1;
+          snap('T = <b>' + mid + '</b>: bottom-right blocked → raise the floor (lo = ' + lo + ').', 5, cls);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = refSwim(grid) === ans;
+      last.memNote = "Time O(n² log n) — log n BFS passes. Space O(n²).";
+      return { steps: steps, result: String(ans), correct: refSwim(grid) === ans, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0787 — CHEAPEST FLIGHTS WITHIN K STOPS
+ * ================================================================ */
+NC150.register({
+  id: "0787", title: "Cheapest Flights Within K Stops", difficulty: "Medium",
+  url: "https://leetcode.com/problems/cheapest-flights-within-k-stops/",
+  tags: ["graph", "Bellman-Ford", "Dijkstra"],
+  approaches: ["Approach 1 · Bellman-Ford capped at k (best)", "Approach 2 · Dijkstra with stop counter"],
+  complexities: [
+    { time: "O(k · E)", space: "O(V)", note: "BEST — k+1 relaxation rounds" },
+    { time: "O(k · E log E)", space: "O(E)", note: "heap entries carry stops" }
+  ],
+  compare: [
+    { name: "Bellman-Ford capped", tech: "relax k+1 rounds on a copy", time: "O(k·E)", space: "O(V)", when: "the standard", best: true },
+    { name: "Dijkstra + stops", tech: "heap keyed by price, stops counted", time: "O(k·E log E)", space: "O(E)", when: "heap mindset", best: false }
+  ],
+  inputs: [
+    { name: "flights", label: "flights =", type: "list", default: "[[0,1,100],[1,2,100],[0,2,500]]" },
+    { name: "n", label: "n =", type: "int", default: "3" },
+    { name: "src", label: "src =", type: "int", default: "0" },
+    { name: "dst", label: "dst =", type: "int", default: "2" },
+    { name: "k", label: "k =", type: "int", default: "1" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { flights: "[[0,1,100],[1,2,100],[0,2,500]]", n: "3", src: "0", dst: "2", k: "1" }, result: "200" },
+    { label: "Ex 2", values: { flights: "[[0,1,100],[1,2,100],[0,2,500]]", n: "3", src: "0", dst: "2", k: "0" }, result: "500" },
+    { label: "Ex 3", values: { flights: "[[0,1,100],[1,2,100],[0,2,500]]", n: "3", src: "0", dst: "2", k: "-1" }, result: "-1" }
+  ],
+  realLife: "<p><b>Flight search engines</b>: price-optimal routing with a layover cap is literally the query planner behind flight metasearch sites.</p><p><b>Network routing with TTL</b>: hop limits bound how many routers a packet may traverse — a capped shortest path.</p>",
+  dsDive: `<h3>Bellman-Ford with a stop odometer</h3>
+<p>Round r discovers every path of ≤ r flights. Relaxing into a <b>copy</b> of dist — never in place — forces every new path to extend a state one round older, so no path exceeds the round count. After k+1 rounds, dist[dst] is the cheapest price with ≤ k stops.</p>
+<div class="equation">dist<sub>r+1</sub>(v) = min( dist<sub>r</sub>(v), min over (u→v,w) dist<sub>r</sub>(u) + w )</div>
+<p>The Dijkstra variant tags every heap entry with its stop count; it pops by price, so the first dst pop is globally cheapest among the ≤ k-stop paths.</p>`,
+  code: [
+    [
+      "dist[0..n−1] = ∞ ; dist[src] = 0",
+      "for stop in 0..k:",
+      "    nd = dist.copy()",
+      "    for u → v, w in flights:",
+      "        nd[v] = min(nd[v], dist[u] + w)",
+      "    dist = nd      # paths with ≤ stop+1 flights",
+      "return dist[dst] if finite else -1"
+    ],
+    [
+      "heap ← (0, src, 0)   # (price, node, stops)",
+      "while heap:",
+      "    (price, u, stops) = heap.pop()",
+      "    if u == dst: return price   # first pop = cheapest",
+      "    if stops > k: discard u",
+      "    for u → v, w in flights:",
+      "        push (price + w, v, stops + 1)"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const flights = (vals.flights || []).map(f => [Number(f[0]), Number(f[1]), Number(f[2])]);
+      const n = Number(vals.n), src = Number(vals.src), dst = Number(vals.dst), k = Number(vals.k);
+      const steps = [];
+      let dist = new Array(n).fill(Infinity);
+      if (src >= 0 && src < n) dist[src] = 0;
+      const rounds = Math.max(k + 1, 0);
+      const snap = (text, code) => {
+        const cls = {};
+        dist.forEach((d, i) => { if (d !== Infinity) cls[i] = "hot"; });
+        steps.push({
+          text: text, code: code,
+          mem: [
+            arrView("dist[0..n−1] · best price so far", dist.map(d => infStr(d)), cls, 4),
+            { type: "array", title: "flights (u → v : $w)", data: flights.map(f => f[0] + "→" + f[1] + " : $" + f[2]), showIdx: true, size: 8 }
+          ]
+        });
+      };
+      snap('dist[src] = 0. Round r finds every path with ≤ r flights; k = ' + k + ' stops → ' + rounds + ' round(s).', 0);
+      for (let r = 0; r < rounds; r++) {
+        const nd = dist.slice();
+        let ch = 0;
+        flights.forEach(f => {
+          const u = f[0], v = f[1], w = f[2];
+          if (u >= 0 && u < n && v >= 0 && v < n && dist[u] !== Infinity && dist[u] + w < nd[v]) { nd[v] = dist[u] + w; ch++; }
+        });
+        dist = nd;
+        snap('Round <b>' + (r + 1) + '</b> (' + ch + ' improvement(s)) → dist ' + JSON.stringify(dist.map(d => infStr(d))) + '.', 3);
+      }
+      const res = dist[dst] === undefined || dist[dst] === Infinity ? "-1" : String(dist[dst]);
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = refCheapestDJ(flights, n, src, dst, k) === Number(res);
+      last.memNote = "Time O(k·E), space O(V). The copy keeps every path within the flight budget.";
+      return { steps: steps, result: res, correct: refCheapestDJ(flights, n, src, dst, k) === Number(res), memNote: last.memNote };
+    },
+    function (vals) {
+      const flights = (vals.flights || []).map(f => [Number(f[0]), Number(f[1]), Number(f[2])]);
+      const n = Number(vals.n), src = Number(vals.src), dst = Number(vals.dst), k = Number(vals.k);
+      const steps = [];
+      const heap = new MiniHeap();
+      heap.push({ node: src, key: 0, stops: 0 });
+      let best = -1;
+      let guard = 0;
+      const snap = (text, code) => steps.push({
+        text: text, code: code,
+        mem: [
+          heapView("min-heap · (price, node, stops)", heap.a.map(x => x.key + "·" + x.node + "·" + x.stops + "s")),
+          arrView("cheapest arrival at dst so far", [best === -1 ? "—" : "$" + best], {}, 4)
+        ]
+      });
+      snap('Heap keyed by PRICE; every entry also carries its stop count. The first dst pop wins.', 0);
+      while (heap.size() && guard++ < 500) {
+        const it = heap.pop();
+        if (it.key >= (best === -1 ? Infinity : best)) continue;
+        if (it.node === dst) {
+          best = it.key;
+          snap('Pop dst at <b>$' + best + '</b> — cheapest arrival with ≤ ' + k + ' stops → done.', 3);
+          break;
+        }
+        if (it.stops > k) {
+          snap('Pop ' + it.node + ' with ' + it.stops + ' stops &gt; k = ' + k + ' → over budget, discard.', 4);
+          continue;
+        }
+        flights.forEach(f => {
+          const u = f[0], v = f[1], w = f[2];
+          if (u === it.node && v >= 0 && v < n && it.stops + 1 <= k + 1) {
+            heap.push({ node: v, key: it.key + w, stops: it.stops + 1 });
+            snap('From ' + u + ' fly to <b>' + v + '</b>: $' + it.key + ' + $' + w + ' = <b>$' + (it.key + w) + '</b> (' + (it.stops + 1) + ' stop(s)) → push.', 5);
+          }
+        });
+      }
+      const res = best === -1 ? "-1" : String(best);
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = refCheapestBF(flights, n, src, dst, k) === Number(res);
+      last.memNote = "Time O(k·E log E) worst-case; space O(E) heap entries.";
+      return { steps: steps, result: res, correct: refCheapestBF(flights, n, src, dst, k) === Number(res), memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 1584 — MIN COST TO CONNECT ALL POINTS
+ * ================================================================ */
+NC150.register({
+  id: "1584", title: "Min Cost to Connect All Points", difficulty: "Medium",
+  url: "https://leetcode.com/problems/min-cost-to-connect-all-points/",
+  tags: ["graph", "MST", "DSU"],
+  approaches: ["Approach 1 · Kruskal + DSU (best)", "Approach 2 · Prim with min-heap"],
+  complexities: [
+    { time: "O(E log E)", space: "O(E)", note: "BEST — sort edges, union n−1 times" },
+    { time: "O(E log V)", space: "O(V)", note: "grow one tree from point 0" }
+  ],
+  compare: [
+    { name: "Kruskal", tech: "sort edges + DSU unions", time: "O(E log E)", space: "O(E)", when: "edge list is natural", best: true },
+    { name: "Prim", tech: "min-heap, grow one tree", time: "O(E log V)", space: "O(V)", when: "dense graphs", best: false }
+  ],
+  inputs: [
+    { name: "points", label: "points =", type: "list", default: "[[0,0],[2,2],[3,10],[5,2],[7,0]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { points: "[[0,0],[2,2],[3,10],[5,2],[7,0]]" }, result: "20" },
+    { label: "Ex 2", values: { points: "[[3,12],[-2,5],[-4,1]]" }, result: "18" },
+    { label: "Ex 3", values: { points: "[[0,0],[1,1],[1,0],[-1,1]]" }, result: "4" }
+  ],
+  realLife: "<p><b>Infrastructure planning</b>: connecting cities with fiber, power lines or roads at minimum total length is the MST — this exact Kruskal/Prim machinery.</p><p><b>VLSI & PCB layout</b>: routing nets between chips with minimal total wire length.</p>",
+  dsDive: `<h3>Two MST algorithms, one invariant</h3>
+<p><b>Kruskal:</b> scan edges cheapest-first; accept an edge iff its endpoints live in different components. The disjoint-set's <span class="code-var">find</span> stays near-O(1) thanks to path halving + union by rank — rank (tree height) only grows when both roots have equal height.</p>
+<div class="equation">rank[a] &lt; rank[b] ⇒ attach a under b ; equal ranks ⇒ attach and rank++ &nbsp;·&nbsp; find: p[x] ← p[p[x]] (halving)</div>
+<p><b>Prim:</b> identical result, different perspective — one component grows through its cheapest frontier edge, no global edge sort needed.</p>`,
+  code: [
+    [
+      "edges ← all (i, j) pairs with manhattan distance d",
+      "sort edges by d",
+      "dsu ← n singleton components",
+      "for (i, j, d) in edges:",
+      "    if dsu.find(i) != dsu.find(j):",
+      "        dsu.union(i, j) ; cost += d",
+      "        if joined == n−1: break",
+      "return cost"
+    ],
+    [
+      "heap ← (0, 0)        # (edge weight, point)",
+      "while heap:",
+      "    (w, u) = heap.pop()",
+      "    if u already in MST: continue",
+      "    add u to MST ; cost += w",
+      "    for v not in MST: push (dist(u,v), v)",
+      "return cost"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const pts = (vals.points || []).map(p => [Number(p[0]), Number(p[1])]);
+      const n = pts.length;
+      const steps = [];
+      if (n <= 1) {
+        const e = { text: n + " point(s) → nothing to connect → cost 0.", code: 0, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      const edges = [];
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++)
+        edges.push([i, j, Math.abs(pts[i][0] - pts[j][0]) + Math.abs(pts[i][1] - pts[j][1])]);
+      edges.sort((a, b) => a[2] - b[2]);
+      const dsu = new DSU(n);
+      let cost = 0, joined = 0, skipped = 0;
+      const snap = (text, code, cls) => steps.push({
+        text: text, code: code,
+        mem: [
+          arrView("DSU parent[] (path halving)", dsu.p.slice(), cls || {}, 4),
+          { type: "array", title: "edges sorted by distance (i—j : d)", data: edges.map(e => e[0] + "—" + e[1] + " : " + e[2]), showIdx: true, size: 8 }
+        ]
+      });
+      snap('All ' + edges.length + ' manhattan edges sorted ascending. Kruskal: take the cheapest SAFE edge each time.', 0, {});
+      for (let e = 0; e < edges.length; e++) {
+        const i = edges[e][0], j = edges[e][1], d = edges[e][2];
+        if (dsu.find(i) !== dsu.find(j)) {
+          dsu.union(i, j);
+          cost += d;
+          joined++;
+          snap('Edge <b>' + i + '—' + j + '</b> (d=' + d + '): endpoints in DIFFERENT components → union, cost += ' + d + ' = <b>' + cost + '</b>.', 4, { [i]: "hot", [j]: "hot" });
+          if (joined === n - 1) { snap(n - 1 + ' unions done → spanning tree complete → cost <b>' + cost + '</b>.', 6, {}); break; }
+        } else {
+          skipped++;
+          if (skipped % 3 === 1) snap('Edge ' + i + '—' + j + ' (d=' + d + '): endpoints ALREADY connected → skip (would cycle).', 5, { [i]: "done", [j]: "done" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(cost);
+      last.correct = refMST(pts) === cost;
+      last.memNote = "Time O(E log E) sort + near-O(1) unions. Space O(E).";
+      return { steps: steps, result: String(cost), correct: refMST(pts) === cost, memNote: last.memNote };
+    },
+    function (vals) {
+      const pts = (vals.points || []).map(p => [Number(p[0]), Number(p[1])]);
+      const n = pts.length;
+      const steps = [];
+      if (n <= 1) {
+        const e = { text: n + " point(s) → cost 0.", code: 0, mem: [], result: "0", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      const inMST = new Array(n).fill(false);
+      const heap = new MiniHeap();
+      heap.push({ to: 0, key: 0 });
+      let cost = 0;
+      const snap = (text, code) => {
+        const cls = {};
+        inMST.forEach((v, i) => { if (v) cls[i] = "done"; });
+        steps.push({
+          text: text, code: code,
+          mem: [
+            heapView("min-heap · (weight, point)", heap.a.map(x => x.key + "·" + x.to)),
+            arrView("inMST[] (1 = connected)", inMST.map(v => (v ? 1 : 0)), cls, 4)
+          ]
+        });
+      };
+      snap('Prim: start from point 0 with a phantom edge of weight 0; grow ONE tree through its cheapest frontier edge.', 0);
+      while (heap.size()) {
+        const it = heap.pop();
+        if (inMST[it.to]) continue;
+        inMST[it.to] = true;
+        cost += it.key;
+        snap('Pop point <b>' + it.to + '</b> via edge weight <b>' + it.key + '</b> → add to MST, cost = <b>' + cost + '</b>.', 3);
+        for (let v = 0; v < n; v++) {
+          if (inMST[v]) continue;
+          heap.push({ to: v, key: Math.abs(pts[it.to][0] - pts[v][0]) + Math.abs(pts[it.to][1] - pts[v][1]) });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(cost);
+      last.correct = refKruskal(pts) === cost;
+      last.memNote = "Time O(E log V), space O(V). Same MST, different growth strategy.";
+      return { steps: steps, result: String(cost), correct: refKruskal(pts) === cost, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

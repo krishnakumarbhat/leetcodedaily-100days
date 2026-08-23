@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>13 · 1D DP — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "13", title: "1D DP" };
+
+/* ================================================================
+ * SHARED HELPERS — input clamping keeps every animation small
+ * ================================================================ */
+function capStr(s, n) {
+  s = String(s === null || s === undefined ? "" : s);
+  return s.length > n ? s.slice(0, n) : s;
+}
+function capList(a, n, mx) {
+  a = (a || []).map(function (x) { return Number(x); });
+  if (mx !== undefined) a = a.map(function (x) { return Math.max(-mx, Math.min(mx, Math.round(x))); });
+  return a.length > n ? a.slice(0, n) : a;
+}
+function capInt(v, lo, hi) {
+  v = Number(v);
+  if (!Number.isFinite(v)) return lo;
+  return Math.max(lo, Math.min(hi, Math.round(v)));
+}
+function arrView(title, data, cls, size) {
+  return { type: "array", title: title, data: data, cls: cls || {}, showIdx: true, size: size || 4 };
+}
+function gridView(title, data, cols, cls) {
+  return { type: "grid", title: title, data: data, cols: cols, cls: cls || {} };
+}
+
+/* ================================================================
+ * PROBLEM 0005 — LONGEST PALINDROMIC SUBSTRING
+ * ================================================================ */
+NC150.register({
+  id: "0005", title: "Longest Palindromic Substring", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-palindromic-substring/",
+  tags: ["dp", "string", "two pointers"],
+  approaches: ["Approach 1 · Expand around center (best)", "Approach 2 · Bottom-up DP table"],
+  complexities: [
+    { time: "O(n²)", space: "O(1)", note: "BEST — no extra memory" },
+    { time: "O(n²)", space: "O(n²)", note: "full palindrome table" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "check every substring", time: "O(n³)", space: "O(1)", when: "tiny strings only", best: false },
+    { name: "Expand around center", tech: "2n−1 centers, walk out", time: "O(n²)", space: "O(1)", when: "general case", best: true },
+    { name: "Bottom-up DP table", tech: "dp[i][j] = s[i]==s[j] ∧ inner", time: "O(n²)", space: "O(n²)", when: "need all palindromes", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "babad" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "babad" }, result: '"bab"' },
+    { label: "Ex 2", values: { s: "cbbd" }, result: '"bb"' },
+    { label: "Ex 3", values: { s: "a" }, result: '"a"' }
+  ],
+  realLife: "<p><b>Genomics</b>: palindromic motifs in DNA (e.g. restriction-enzyme cut sites) are found by exactly this expansion trick — scan every base as a center and extend while the flanks mirror.</p><p><b>Spell-check / autocorrect</b>: detecting mirror phrases in text mines, and <b>compression</b>: LZ-family algorithms look for the longest matching (often palindromic-ish) block backwards. O(n²) center expansion beats O(n³) naive substring checks on real inputs.</p>",
+  dsDive: `<h3>Why centers instead of substrings?</h3>
+<p>Every palindrome has a <b>mirror axis</b>: a single character (odd length) or the gap between two characters (even length). There are exactly <b>2n−1</b> axes, so expanding each axis until the mirrors disagree touches each substring at most once.</p>
+<div class="equation">expand(l, r): while s[l] == s[r]: l−1, r+1 → palindrome s[l+1 .. r−1]</div>
+<p>In memory this is pure cache-friendly pointer walking — two indices, no table. The DP variant instead stores <b>dp[i][j]</b> = 's[i..j] is a palindrome' where a cell depends on the cell <b>down-left</b>: dp[i][j] = s[i]==s[j] and dp[i+1][j−1]. The table wastes half its cells (j &lt; i) and O(n²) RAM, which is why the center method is the interview answer.</p>`,
+  code: [
+    [
+      "def longest_pal(s):",
+      "    best = ''",
+      "    for i in range(len(s)):",
+      "        l = r = i                      # odd center: single char",
+      "        while l >= 0 and r < len(s) and s[l] == s[r]:",
+      "            if r - l + 1 > len(best): best = s[l:r+1]",
+      "            l -= 1; r += 1             # expand both flanks",
+      "        l, r = i, i + 1                # even center: gap",
+      "        while l >= 0 and r < len(s) and s[l] == s[r]:",
+      "            if r - l + 1 > len(best): best = s[l:r+1]",
+      "            l -= 1; r += 1",
+      "    return best"
+    ],
+    [
+      "def longest_pal(s):",
+      "    n = len(s); start, max_len = 0, 1",
+      "    dp = [[False]*n for _ in range(n)]",
+      "    for i in range(n): dp[i][i] = True       # single chars",
+      "    for length in range(2, n + 1):          # grow by length",
+      "        for i in range(n - length + 1):",
+      "            j = i + length - 1",
+      "            if s[i] == s[j] and (length <= 2 or dp[i+1][j-1]):",
+      "                dp[i][j] = True",
+      "                if length > max_len: start, max_len = i, length",
+      "    return s[start:start+max_len]"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const s = capStr(vals.s, 6);
+      const n = s.length;
+      const steps = [];
+      let best = "";
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "string", title: "s", data: s.split(""), cls: cls || {}, size: 1 },
+        { type: "array", title: "best palindrome so far", data: best ? best.split("") : [], cls: {}, showIdx: true, size: 1 }
+      ] });
+      if (n === 0) {
+        snap("Empty string → nothing to expand; answer is the empty string.", 1, {});
+        const last = steps[steps.length - 1];
+        last.result = '""'; last.correct = true;
+        last.memNote = "Time O(n²), space O(1).";
+        return { steps: steps, result: '""', correct: true, memNote: last.memNote };
+      }
+      snap("Scan every mirror axis — 2n−1 of them: one per char (odd) plus one per gap (even).", 1, {});
+      function expand(l, r) {
+        while (l >= 0 && r < n && s[l] === s[r]) { l--; r++; }
+        return [l + 1, r - 1];
+      }
+      for (let c = 0; c < n; c++) {
+        const p1 = expand(c, c);
+        const len1 = p1[1] - p1[0] + 1;
+        if (len1 > best.length) best = s.slice(p1[0], p1[1] + 1);
+        snap(`Axis ${c} (odd, char "${s[c]}"): expand → "${s.slice(p1[0], p1[1] + 1)}" (len ${len1})${len1 > best.length ? " — new best!" : " — not longer"}.`, 4, { [p1[0]]: "hot", [p1[1]]: "done" });
+        if (c + 1 < n) {
+          const p2 = expand(c, c + 1);
+          const len2 = p2[1] - p2[0] + 1;
+          if (len2 > best.length) best = s.slice(p2[0], p2[1] + 1);
+          snap(`Axis ${c}|${c + 1} (even, gap): expand → "${s.slice(p2[0], p2[1] + 1)}" (len ${len2})${len2 > best.length ? " — new best!" : " — not longer"}.`, 5, { [p2[0]]: "hot", [p2[1]]: "done" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = '"' + best + '"';
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(1) — n centers, each expands at most n.";
+      return { steps: steps, result: '"' + best + '"', correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = capStr(vals.s, 6);
+      const n = s.length;
+      const steps = [];
+      if (n === 0) {
+        const last = { text: "Empty string → no substrings; answer is the empty string.", code: 0, mem: [gridView("dp — palindrome table", [[]], 1, {})] };
+        last.result = '""'; last.correct = true; last.memNote = "Time O(n²), space O(n²).";
+        steps.push(last);
+        return { steps: steps, result: '""', correct: true, memNote: last.memNote };
+      }
+      const dp = [];
+      for (let i = 0; i < n; i++) dp.push(new Array(n).fill("·"));
+      let start = 0, maxLen = 1;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [gridView("dp[i][j] = s[i..j] palindrome?", dp.map(r => r.slice()), n, cls)] });
+      snap("Base case: every single character is a palindrome (diagonal).", 1, {});
+      for (let i = 0; i < n; i++) { dp[i][i] = "✓"; snap(`dp[${i}][${i}] = ✓ — "${s[i]}" alone is a palindrome.`, 2, { [i + "," + i]: "done" }); }
+      for (let len = 2; len <= n; len++) {
+        for (let i = 0; i + len - 1 < n; i++) {
+          const j = i + len - 1;
+          const ok = s[i] === s[j] && (len === 2 || dp[i + 1][j - 1] === "✓");
+          dp[i][j] = ok ? "✓" : "✗";
+          if (ok && len > maxLen) { maxLen = len; start = i; }
+          const inner = len === 2 ? "no inner substring" : "inner dp[" + (i + 1) + "][" + (j - 1) + "] = " + dp[i + 1][j - 1];
+          snap(`"${s.slice(i, j + 1)}" (len ${len}): ends ${s[i]} vs ${s[j]} ${s[i] === s[j] ? "match ✓, " + inner + " → palindrome ✓" : "differ ✗ → not a palindrome"}.`, 4, { [i + "," + j]: "done", ...(len > 2 && s[i] === s[j] ? { [(i + 1) + "," + (j - 1)]: "hl" } : {}) });
+        }
+      }
+      const res = s.slice(start, start + maxLen);
+      const last = steps[steps.length - 1];
+      last.result = '"' + res + '"';
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(n²) — table filled by substring length, longest ✓ tracked.";
+      return { steps: steps, result: '"' + res + '"', correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0070 — CLIMBING STAIRS
+ * ================================================================ */
+NC150.register({
+  id: "0070", title: "Climbing Stairs", difficulty: "Easy",
+  url: "https://leetcode.com/problems/climbing-stairs/",
+  tags: ["dp", "fibonacci"],
+  approaches: ["Approach 1 · DP array (bottom-up)", "Approach 2 · Two-variable rolling"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "full dp array" },
+    { time: "O(n)", space: "O(1)", note: "BEST — only last two matter" }
+  ],
+  compare: [
+    { name: "Recursion (naive)", tech: "ways(n) = ways(n−1)+ways(n−2)", time: "O(2ⁿ)", space: "O(n)", when: "never — recomputes everything", best: false },
+    { name: "DP array", tech: "dp[i] = dp[i−1] + dp[i−2]", time: "O(n)", space: "O(n)", when: "want full table", best: false },
+    { name: "Rolling variables", tech: "two vars shift each step", time: "O(n)", space: "O(1)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "5" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "2" }, result: "2" },
+    { label: "Ex 2", values: { n: "3" }, result: "3" },
+    { label: "Ex 3", values: { n: "5" }, result: "8" }
+  ],
+  realLife: "<p><b>Fibonacci in disguise</b>: this exact recurrence powers <b>CPU branch prediction</b> (how many ways to arrange pipeline stages), <b>rabbit-population models</b>, and <b>counting paths in state machines</b> — any system where the next state depends on the previous two.</p><p><b>UI layouts</b>: number of ways to tile a 2×n wall with 1×1 and 2×1 bricks (Domino tiling) is the same DP — a favorite in graphics shader packing algorithms.</p>",
+  dsDive: `<h3>The recurrence that only needs a window</h3>
+<p>ways(i) = ways(i−1) + ways(i−2): the last step into stair i came from stair i−1 (one step) or stair i−2 (a 2-step).</p>
+<div class="equation">dp[i] = dp[i−1] + dp[i−2] → Fₙ₊₁ (Fibonacci)</div>
+<p>The full dp array is O(n) RAM for a recurrence whose <b>dependency depth is 2</b>. Once dp[i−2] is used, it is never read again — so two rolling variables hold the whole future. This 'shrink the window to the dependency width' trick is the single most common 1D-DP space optimization; the same idea gives the rolling rows in LCS and the two pointers in house robber.</p>`,
+  code: [
+    [
+      "def climb_stairs(n):",
+      "    dp = [0] * (n + 1)",
+      "    dp[0] = 1; dp[1] = 1        # 0 stairs: 1 way; 1 stair: 1 way",
+      "    for i in range(2, n + 1):",
+      "        dp[i] = dp[i - 1] + dp[i - 2]   # from one step or two",
+      "    return dp[n]"
+    ],
+    [
+      "def climb_stairs(n):",
+      "    prev2, prev1 = 1, 1         # ways(0), ways(1)",
+      "    for i in range(2, n + 1):",
+      "        cur = prev1 + prev2",
+      "        prev2, prev1 = prev1, cur    # slide the window",
+      "    return prev1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const n = capInt(vals.n, 1, 25);
+      const steps = [];
+      const dp = new Array(n + 1).fill(0);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("dp[i] = ways to reach stair i", dp.slice(), cls || {}),
+        { type: "array", title: "stairs", data: Array.from({ length: n }, (_, i) => i + 1), cls: {}, showIdx: true, size: 4 }
+      ] });
+      dp[0] = 1; dp[1] = 1;
+      snap("Base cases: dp[0] = 1 (start, do nothing), dp[1] = 1 (one 1-step).", 2, { 0: "done", 1: "done" });
+      for (let i = 2; i <= n; i++) {
+        dp[i] = dp[i - 1] + dp[i - 2];
+        snap(`Stair ${i}: last move came from stair ${i - 1} (${dp[i - 1]} ways) or stair ${i - 2} (${dp[i - 2]} ways) → dp[${i}] = ${dp[i - 1]} + ${dp[i - 2]} = <b>${dp[i]}</b>.`, 4, { [i]: "hot", [i - 1]: "done", [i - 2]: "done" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(dp[n]);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) — the full table, one cell per stair.";
+      return { steps: steps, result: String(dp[n]), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = capInt(vals.n, 1, 25);
+      const steps = [];
+      let prev2 = 1, prev1 = 1;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("rolling window · [ways(i−2), ways(i−1)]", [prev2, prev1], cls || {}, 8)
+      ] });
+      snap("Only the last two values are ever needed — keep them in two variables (O(1) memory).", 1, { 0: "done", 1: "done" });
+      for (let i = 2; i <= n; i++) {
+        const cur = prev1 + prev2;
+        snap(`Step ${i}: ways(${i}) = ways(${i - 1}) + ways(${i - 2}) = ${prev1} + ${prev2} = <b>${cur}</b> — shift the window right.`, 4, { 0: "done", 1: "hot" });
+        prev2 = prev1; prev1 = cur;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(prev1);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two variables slide like a window of width 2.";
+      return { steps: steps, result: String(prev1), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0091 — DECODE WAYS
+ * ================================================================ */
+NC150.register({
+  id: "0091", title: "Decode Ways", difficulty: "Medium",
+  url: "https://leetcode.com/problems/decode-ways/",
+  tags: ["dp", "string"],
+  approaches: ["Approach 1 · DP array (bottom-up)", "Approach 2 · Two-variable rolling"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "dp[i] = ways for first i chars" },
+    { time: "O(n)", space: "O(1)", note: "BEST — dependency depth 2" }
+  ],
+  compare: [
+    { name: "Brute recursion", tech: "try 1 and 2-digit takes", time: "O(2ⁿ)", space: "O(n)", when: "never — exponential", best: false },
+    { name: "DP array", tech: "dp[i] = take1 + take2", time: "O(n)", space: "O(n)", when: "want full table", best: false },
+    { name: "Rolling variables", tech: "window of two dp values", time: "O(n)", space: "O(1)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "226" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "12" }, result: "2" },
+    { label: "Ex 2", values: { s: "226" }, result: "3" },
+    { label: "Ex 3", values: { s: "06" }, result: "0" }
+  ],
+  realLife: "<p><b>Message protocols</b>: any codec that maps symbols to variable-length tokens (QR alphanumeric modes, UTF-8 continuation bytes, base64 groupings) must count how many ways a byte stream can be split into valid tokens — exactly this DP.</p><p><b>Autocomplete parsers</b>: counting segmentations of a string against a dictionary of valid tokens (e.g. 'illness' → 'ill' + 'ness') is the same recurrence, with a dictionary lookup replacing the 10..26 range check.</p>",
+  dsDive: `<h3>Decision at each digit: take 1 or take 2?</h3>
+<p>When you stand at prefix s[0..i], the last decoded letter used either <b>one digit</b> (s[i−1], must be 1..9) or <b>two digits</b> (s[i−2..i−1], must be 10..26). These branches are disjoint, so ways add.</p>
+<div class="equation">dp[i] = dp[i−1]·[s[i−1]≠'0'] + dp[i−2]·[10 ≤ s[i−2:i] ≤ 26]</div>
+<p>The Iverson brackets (0 or 1) are the legality gates. Like climbing stairs, cell i only reads i−1 and i−2 — the classic <b>dependency width 2</b> recurrence, so two rolling variables replace the array. A leading '0' kills the first digit branch and a '30' kills the two-digit branch, which is how '06' scores 0.</p>`,
+  code: [
+    [
+      "def num_decodings(s):",
+      "    dp = [0] * (len(s) + 1)",
+      "    dp[0] = 1                       # empty prefix: 1 way",
+      "    dp[1] = 0 if s[0] == '0' else 1",
+      "    for i in range(2, len(s) + 1):",
+      "        if s[i-1] != '0': dp[i] += dp[i-1]      # take 1 digit",
+      "        two = int(s[i-2:i])",
+      "        if 10 <= two <= 26: dp[i] += dp[i-2]    # take 2 digits",
+      "    return dp[len(s)]"
+    ],
+    [
+      "def num_decodings(s):",
+      "    dp0, dp1 = 1, 0 if s[0] == '0' else 1   # ways(i-2), ways(i-1)",
+      "    for i in range(2, len(s) + 1):",
+      "        cur = 0",
+      "        if s[i-1] != '0': cur += dp1",
+      "        if 10 <= int(s[i-2:i]) <= 26: cur += dp0",
+      "        dp0, dp1 = dp1, cur",
+      "    return dp1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const s = capStr(vals.s, 10);
+      const n = s.length;
+      const steps = [];
+      const dp = new Array(n + 1).fill(0);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("dp[i] = ways to decode first i chars", dp.slice(), cls || {}),
+        { type: "string", title: "s", data: s.split(""), cls: {}, size: 1 }
+      ] });
+      if (n === 0) {
+        snap("Empty string → no digits to decode → 0 ways.", 0, {});
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      dp[0] = 1;
+      snap("dp[0] = 1 — the empty prefix is one valid segmentation.", 2, { 0: "done" });
+      dp[1] = s[0] === "0" ? 0 : 1;
+      snap(`dp[1] = ${dp[1]} — "${s[0]}" ${s[0] === "0" ? "is '0', which maps to nothing → 0 ways" : "maps to a letter (1..9) → 1 way"}.`, 3, { 0: "done", 1: "done" });
+      for (let i = 2; i <= n; i++) {
+        let v = 0;
+        let why = "";
+        if (s[i - 1] !== "0") { v += dp[i - 1]; why = `1-digit "${s[i - 1]}" → +dp[${i - 1}] = ${dp[i - 1]}`; }
+        else why = `1-digit "${s[i - 1]}" is '0' → blocked`;
+        const two = Number(s.slice(i - 2, i));
+        const twoOk = two >= 10 && two <= 26;
+        if (twoOk) { v += dp[i - 2]; why += `; 2-digit "${s.slice(i - 2, i)}" (${two}) → +dp[${i - 2}] = ${dp[i - 2]}`; }
+        else why += `; 2-digit "${s.slice(i - 2, i)}" (${two}) ${twoOk ? "" : two < 10 ? "&lt; 10 → blocked" : "&gt; 26 → blocked"}`;
+        dp[i] = v;
+        snap(`Prefix "${s.slice(0, i)}": ${why}. → <b>dp[${i}] = ${v}</b>.`, 4, { [i]: "hot", [i - 1]: "done", [i - 2]: "done" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(dp[n]);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) — each cell sums two legal branches.";
+      return { steps: steps, result: String(dp[n]), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = capStr(vals.s, 10);
+      const n = s.length;
+      const steps = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("rolling window · [ways(i−2), ways(i−1)]", [], cls || {}, 8)
+      ] });
+      if (n === 0) {
+        snap("Empty string → 0 ways.", 0, { 0: "done", 1: "done" });
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(1).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      let dp0 = 1, dp1 = s[0] === "0" ? 0 : 1;
+      snap(`Seed window: ways(i−2) = 1, ways(i−1) = ${dp1} ("${s[0]}" ${s[0] === "0" ? "blocked" : "decodes"}).`, 1, { 0: "done", 1: "done" });
+      for (let i = 2; i <= n; i++) {
+        let cur = 0;
+        const one = s[i - 1] !== "0";
+        const two = Number(s.slice(i - 2, i));
+        const twoOk = two >= 10 && two <= 26;
+        if (one) cur += dp1;
+        if (twoOk) cur += dp0;
+        const why = (one ? `1-digit "${s[i - 1]}" ✓ +${dp1}` : `1-digit "${s[i - 1]}" ✗`) + (twoOk ? `; 2-digit "${s.slice(i - 2, i)}" ✓ +${dp0}` : `; 2-digit "${s.slice(i - 2, i)}" ${two < 10 ? "&lt;10" : "&gt;26"} ✗`);
+        snap(`Prefix "${s.slice(0, i)}": ${why} → cur = ${cur}. Slide window.`, 5, { 0: "done", 1: "hot" });
+        dp0 = dp1; dp1 = cur;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(dp1);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two cells hold the whole recurrence.";
+      return { steps: steps, result: String(dp1), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0139 — WORD BREAK
+ * ================================================================ */
+NC150.register({
+  id: "0139", title: "Word Break", difficulty: "Medium",
+  url: "https://leetcode.com/problems/word-break/",
+  tags: ["dp", "string", "hashmap", "bfs"],
+  approaches: ["Approach 1 · Bottom-up DP with set", "Approach 2 · BFS over reachable indices"],
+  complexities: [
+    { time: "O(n²)", space: "O(n)", note: "BEST — n prefixes × n splits" },
+    { time: "O(n²)", space: "O(n)", note: "same, level-order view" }
+  ],
+  compare: [
+    { name: "DFS without memo", tech: "try every word at every index", time: "O(2ⁿ)", space: "O(n)", when: "never — re-explores suffixes", best: false },
+    { name: "Bottom-up DP", tech: "dp[i] = any dp[j] ∧ s[j:i] ∈ dict", time: "O(n²)", space: "O(n)", when: "general case", best: true },
+    { name: "BFS reachable", tech: "frontier of reachable ends", time: "O(n²)", space: "O(n)", when: "graph intuition preferred", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "leetcode" },
+    { name: "wordDict", label: "wordDict =", type: "list", default: '["leet","code"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "leetcode", wordDict: '["leet","code"]' }, result: "true" },
+    { label: "Ex 2", values: { s: "applepenapple", wordDict: '["apple","pen"]' }, result: "true" },
+    { label: "Ex 3", values: { s: "catsandog", wordDict: '["cats","dog","sand","and","cat"]' }, result: "false" }
+  ],
+  realLife: "<p><b>Tokenizers</b> (Python's re.split, ICU word segmentation, NLP tokenizers): deciding whether a string can be fully segmented against a lexicon is this DP — every search engine and spell-checker runs it on every query.</p><p><b>Autocomplete keyboards</b>: when you type without spaces, the phone's engine segments your input against its dictionary the same way; the reachable-indices BFS is literally how it animates the word-boundary guesses.</p>",
+  dsDive: `<h3>The dictionary as a hash-set gate</h3>
+<p>The DP marks which prefix lengths are reachable: dp[i] = true if some dp[j] is true and s[j..i) is a dictionary word. Each word lookup is an O(1) hash-set probe.</p>
+<div class="equation">dp[i] = ∨ { dp[j] ∧ s[j:i] ∈ dict } for j &lt; i</div>
+<p>Hash sets (Python <span class="code-var">set</span>, C++ <span class="code-cpp">unordered_set</span>) give O(1) membership with open addressing or chaining; a sorted-array + binary-search dict would push each probe to O(log m). The same problem becomes a <b>graph</b>: index i connects to index j if s[i:j] is a word — then word-break is just 'is the end reachable from 0?' (BFS). Both views share O(n²) time because a word can start at any index and end at any index.</p>`,
+  code: [
+    [
+      "def word_break(s, word_dict):",
+      "    words = set(word_dict)",
+      "    dp = [False] * (len(s) + 1)",
+      "    dp[0] = True                       # empty prefix segmented",
+      "    for i in range(1, len(s) + 1):",
+      "        for j in range(i):",
+      "            if dp[j] and s[j:i] in words:",
+      "                dp[i] = True; break     # found one valid split",
+      "    return dp[len(s)]"
+    ],
+    [
+      "def word_break(s, word_dict):",
+      "    words = set(word_dict)",
+      "    q = deque([0]); seen = {0}",
+      "    while q:",
+      "        start = q.popleft()",
+      "        for end in range(start + 1, len(s) + 1):",
+      "            if s[start:end] in words and end not in seen:",
+      "                if end == len(s): return True",
+      "                seen.add(end); q.append(end)",
+      "    return False"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const s = capStr(vals.s, 12);
+      const n = s.length;
+      const dict = (vals.wordDict || []).map(function (x) { return String(x).trim(); }).filter(function (x) { return x !== ""; }).slice(0, 8);
+      const set = new Set(dict);
+      const steps = [];
+      const dp = new Array(n + 1).fill(false);
+      const disp = () => dp.map(function (v) { return v ? "✓" : "·"; });
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("dp[i] = is prefix s[0..i) segmentable?", disp(), cls || {}),
+        { type: "string", title: "s", data: s.split(""), cls: {}, size: 1 },
+        arrView("wordDict (hash set)", dict.length ? dict : ["∅"], {}, 8)
+      ] });
+      dp[0] = true;
+      snap("dp[0] = ✓ — the empty prefix is trivially segmented. dict = {" + dict.join(", ") + "}.", 2, { 0: "done" });
+      for (let i = 1; i <= n; i++) {
+        let via = -1;
+        for (let j = 0; j < i; j++) {
+          if (dp[j] && set.has(s.slice(j, i))) { via = j; break; }
+        }
+        dp[i] = via !== -1;
+        const cls = { [i]: "hot" };
+        if (via !== -1) cls[via] = "done";
+        snap(`Prefix "${s.slice(0, i)}": ${via !== -1 ? `split at ${via} — "${s.slice(via, i)}" ∈ dict and dp[${via}] = ✓ → dp[${i}] = ✓` : `no split j &lt; ${i} has dp[j] = ✓ with "${s.slice(0, i)}" → dp[${i}] = ·`}.`, 4, cls);
+      }
+      const res = dp[n] ? "true" : "false";
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(n + dict). Each cell scans ≤ n splits.";
+      return { steps: steps, result: res, correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = capStr(vals.s, 12);
+      const n = s.length;
+      const dict = (vals.wordDict || []).map(function (x) { return String(x).trim(); }).filter(function (x) { return x !== ""; }).slice(0, 8);
+      const set = new Set(dict);
+      const steps = [];
+      const snap = (text, code, cls, q) => steps.push({ text: text, code: code, mem: [
+        { type: "string", title: "s", data: s.split(""), cls: cls || {}, size: 1 },
+        { type: "queue", title: "reachable start indices (BFS frontier)", data: q.slice(), front: 0, rear: q.length - 1 },
+        arrView("wordDict (hash set)", dict.length ? dict : ["∅"], {}, 8)
+      ] });
+      if (n === 0) {
+        snap("Empty string → trivially segmentable → true.", 0, {}, []);
+        const last = steps[steps.length - 1];
+        last.result = "true"; last.correct = true; last.memNote = "Time O(n²), space O(n).";
+        return { steps: steps, result: "true", correct: true, memNote: last.memNote };
+      }
+      const q = [0], seen = new Set([0]);
+      let found = false;
+      snap("Model as a graph: index i → index j if s[i:j] is a word. Start at 0; goal is index " + n + ".", 1, { 0: "hot" }, q);
+      while (q.length && !found) {
+        const st = q.shift();
+        let added = 0;
+        for (let e = st + 1; e <= n; e++) {
+          const w = s.slice(st, e);
+          if (set.has(w) && !seen.has(e)) {
+            seen.add(e);
+            if (e === n) found = true;
+            q.push(e);
+            snap(`From index ${st}: word "${w}" → index ${e} reachable${e === n ? " — that's the end! Segmentable ✓" : ""}.`, 5, { [st]: "done", [e]: "hot" }, q.slice());
+            added++;
+          }
+        }
+        if (!added) snap(`From index ${st}: no dictionary word extends the prefix → dead end.`, 5, { [st]: "done" }, q.slice());
+      }
+      const res = found ? "true" : "false";
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(n) — each index visited once, each edge O(1) set probe.";
+      return { steps: steps, result: res, correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0152 — MAXIMUM PRODUCT SUBARRAY
+ * ================================================================ */
+NC150.register({
+  id: "0152", title: "Maximum Product Subarray", difficulty: "Medium",
+  url: "https://leetcode.com/problems/maximum-product-subarray/",
+  tags: ["dp", "array"],
+  approaches: ["Approach 1 · Kadane with min tracking (best)", "Approach 2 · Prefix × suffix scan"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — two running products" },
+    { time: "O(n)", space: "O(1)", note: "two passes, zero-reset" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "every subarray product", time: "O(n²)", space: "O(1)", when: "tiny arrays only", best: false },
+    { name: "Kadane + min", tech: "track max AND min product", time: "O(n)", space: "O(1)", when: "general case", best: true },
+    { name: "Prefix × suffix", tech: "two sweeps, reset at 0", time: "O(n)", space: "O(1)", when: "no extra state wanted", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[2,3,-2,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,3,-2,4]" }, result: "6" },
+    { label: "Ex 2", values: { nums: "[-2,0,-1]" }, result: "0" },
+    { label: "Ex 3", values: { nums: "[-2,3,-4]" }, result: "24" }
+  ],
+  realLife: "<p><b>Finance</b>: the best compound-growth window in a time series of daily returns is a max-product subarray — fund managers find the stretch of days whose cumulative multiplier is largest (sign flips included).</p><p><b>Signal processing / ML</b>: when multiplying probabilities along a chain (HMM forward passes), overflows force log-space — but detecting the max-|product| window before logging is this exact DP with a min-tracking twin.</p>",
+  dsDive: `<h3>Why two running products?</h3>
+<p>In a sum, only the max matters. In a product, a negative × negative flips sign — so the <b>most negative</b> running product is the seed for the next maximum. Kadane's trick: keep both extremes.</p>
+<div class="equation">curMax = max(x, curMax·x, curMin·x)&nbsp;&nbsp;curMin = min(x, curMax·x, curMin·x)</div>
+<p>When x &lt; 0, swap curMax/curMin first — multiplying by a negative exchanges the extremes. The prefix×suffix scan exploits symmetry: any subarray product appears as some <b>prefix product divided out</b>, and zeros just reset the sweep — a neat zero-copy alternative that avoids the swap logic.</p>`,
+  code: [
+    [
+      "def max_product(nums):",
+      "    cur_max = cur_min = best = nums[0]",
+      "    for x in nums[1:]:",
+      "        if x < 0: cur_max, cur_min = cur_min, cur_max  # flip extremes",
+      "        cur_max = max(x, cur_max * x)",
+      "        cur_min = min(x, cur_min * x)",
+      "        best = max(best, cur_max)",
+      "    return best"
+    ],
+    [
+      "def max_product(nums):",
+      "    best = -inf; pref = suf = 1",
+      "    for x in nums:                    # forward sweep",
+      "        pref *= x; best = max(best, pref)",
+      "        if x == 0: pref = 1           # zero resets the product",
+      "    for x in reversed(nums):          # backward sweep",
+      "        suf *= x; best = max(best, suf)",
+      "        if x == 0: suf = 1",
+      "    return best"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      let nums = capList(vals.nums, 10, 30);
+      if (!nums.length) nums = [0];
+      const steps = [];
+      let curMax = nums[0], curMin = nums[0], best = nums[0];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("nums", nums, cls || {}),
+        arrView("window · [curMax, curMin, best]", [curMax, curMin, best], { 0: "hot" }, 8)
+      ] });
+      snap("Start: curMax = curMin = best = nums[0] = " + nums[0] + ".", 1, { 0: "hot" });
+      for (let i = 1; i < nums.length; i++) {
+        const x = nums[i];
+        const oldMax = curMax, oldMin = curMin;
+        if (x < 0) { curMax = oldMin; curMin = oldMax; }
+        const cMax = Math.max(x, curMax * x);
+        const cMin = Math.min(x, curMin * x);
+        const wasBest = best;
+        best = Math.max(best, cMax);
+        const flip = x < 0 ? " (x &lt; 0 → swap extremes first)" : "";
+        snap(`x = ${x}${flip}: curMax = max(${x}, ${curMax}·${x}) = ${cMax}; curMin = min(${x}, ${curMin}·${x}) = ${cMin}. best: ${wasBest} → <b>${best}</b>.`, 3, { [i]: "hot", [i - 1]: "done" });
+        curMax = cMax; curMin = cMin;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two running extremes + best.";
+      return { steps: steps, result: String(best), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      let nums = capList(vals.nums, 10, 30);
+      if (!nums.length) nums = [0];
+      const steps = [];
+      let best = -Infinity;
+      const snap = (text, code, cls, p, pass) => steps.push({ text: text, code: code, mem: [
+        arrView("nums (" + pass + " sweep)", nums, cls || {}),
+        arrView("running product p · best", [p, best === -Infinity ? "−∞" : best], { 0: "hot" }, 8)
+      ] });
+      let p = 1;
+      snap("Forward sweep: multiply left→right; a zero resets the product to 1.", 2, { 0: "hot" }, p, "prefix");
+      for (let i = 0; i < nums.length; i++) {
+        p *= nums[i];
+        best = Math.max(best, p);
+        snap(`prefix: p = ${p} after ×${nums[i]} → best = ${best}.`, 3, { [i]: "hot", [i - 1]: "done" }, p, "prefix");
+        if (nums[i] === 0) { p = 1; snap(`Encountered 0 → product resets to 1 (any subarray crossing 0 is 0).`, 4, { [i]: "done" }, p, "prefix"); }
+      }
+      p = 1;
+      snap("Backward sweep: same logic, right→left.", 2, { [nums.length - 1]: "hot" }, p, "suffix");
+      for (let i = nums.length - 1; i >= 0; i--) {
+        p *= nums[i];
+        best = Math.max(best, p);
+        const prev = i + 1 < nums.length ? i + 1 : i;
+        snap(`suffix: p = ${p} after ×${nums[i]} → best = ${best}.`, 3, { [i]: "hot", [prev]: "done" }, p, "suffix");
+        if (nums[i] === 0) { p = 1; snap(`Encountered 0 → product resets to 1.`, 4, { [i]: "done" }, p, "suffix"); }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two linear sweeps, zero-reset.";
+      return { steps: steps, result: String(best), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0198 — HOUSE ROBBER
+ * ================================================================ */
+NC150.register({
+  id: "0198", title: "House Robber", difficulty: "Medium",
+  url: "https://leetcode.com/problems/house-robber/",
+  tags: ["dp", "array"],
+  approaches: ["Approach 1 · DP array (bottom-up)", "Approach 2 · Two-variable rolling (best)"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "full dp table of best loot" },
+    { time: "O(n)", space: "O(1)", note: "BEST — dependency width 2" }
+  ],
+  compare: [
+    { name: "Brute recursion", tech: "rob / skip branches", time: "O(2ⁿ)", space: "O(n)", when: "never — exponential", best: false },
+    { name: "DP array", tech: "dp[i] = max(dp[i−1], dp[i−2]+x)", time: "O(n)", space: "O(n)", when: "want full table", best: false },
+    { name: "Rolling variables", tech: "rob1, rob2 slide", time: "O(n)", space: "O(1)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,2,3,1]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,2,3,1]" }, result: "4" },
+    { label: "Ex 2", values: { nums: "[2,7,9,3,1]" }, result: "12" },
+    { label: "Ex 3", values: { nums: "[5,1,1,5]" }, result: "10" }
+  ],
+  realLife: "<p><b>Resource scheduling</b>: picking jobs so no two adjacent jobs collide (packet scheduling on a single NIC, server task slots, lecture-room booking) is literally this DP — 'maximize value, no adjacent picks'.</p><p><b>Portfolio construction</b>: picking trades where consecutive positions can't both be held — same recurrence, same O(1)-memory sweep.</p>",
+  dsDive: `<h3>The binary choice at every house</h3>
+<p>At house i you either <b>skip</b> it (carry dp[i−1]) or <b>rob</b> it (nums[i] + dp[i−2], since house i−1 becomes untouchable). The max of the two is the state.</p>
+<div class="equation">dp[i] = max(dp[i−1], dp[i−2] + nums[i])</div>
+<p>Again a dependency width of 2 — dp[i] touches only the two previous cells, so two rolling integers reproduce the whole table. This 'decide skip-or-take by comparing the two lagging states' pattern reappears verbatim in House Robber II (just run it twice on two ranges) and in stock problems where 'holding vs. sold' states alternate.</p>`,
+  code: [
+    [
+      "def rob(nums):",
+      "    n = len(nums)",
+      "    if n == 0: return 0",
+      "    if n == 1: return nums[0]",
+      "    dp = [0] * n",
+      "    dp[0] = nums[0]; dp[1] = max(nums[0], nums[1])",
+      "    for i in range(2, n):",
+      "        dp[i] = max(dp[i-1], dp[i-2] + nums[i])",
+      "    return dp[-1]"
+    ],
+    [
+      "def rob(nums):",
+      "    rob1 = rob2 = 0        # loot two houses back / one back",
+      "    for x in nums:",
+      "        new_rob = max(rob1 + x, rob2)",
+      "        rob1, rob2 = rob2, new_rob",
+      "    return rob2"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = capList(vals.nums, 10, 100);
+      const n = nums.length;
+      const steps = [];
+      const dp = new Array(n).fill(0);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("nums (house loot)", nums, {}, 4),
+        arrView("dp[i] = best loot through house i", dp.slice(), cls || {})
+      ] });
+      if (n === 0) {
+        snap("No houses → best loot is 0.", 0, {});
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      dp[0] = nums[0];
+      snap("dp[0] = " + nums[0] + " — only house 0; rob it.", 2, { 0: "done" });
+      if (n === 1) {
+        const last = steps[steps.length - 1];
+        last.result = String(nums[0]); last.correct = true;
+        last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: String(nums[0]), correct: true, memNote: last.memNote };
+      }
+      dp[1] = Math.max(nums[0], nums[1]);
+      snap("dp[1] = max(" + nums[0] + ", " + nums[1] + ") = " + dp[1] + " — rob the richer of the first two.", 3, { 1: "done", 0: "done" });
+      for (let i = 2; i < n; i++) {
+        const skip = dp[i - 1], take = dp[i - 2] + nums[i];
+        dp[i] = Math.max(skip, take);
+        snap(`House ${i} ($${nums[i]}): skip → dp[${i - 1}] = ${skip}; rob → dp[${i - 2}] + ${nums[i]} = ${take}. → dp[${i}] = <b>${dp[i]}</b>.`, 4, { [i]: "hot", [i - 1]: "done", [i - 2]: "done" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(dp[n - 1]);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) — max of skip/rob per house.";
+      return { steps: steps, result: String(dp[n - 1]), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = capList(vals.nums, 10, 100);
+      const steps = [];
+      let rob1 = 0, rob2 = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("nums (house loot)", nums, cls || {}, 4),
+        arrView("rolling · [rob1 (2 back), rob2 (1 back)]", [rob1, rob2], { 1: "hot" }, 8)
+      ] });
+      snap("Two rolling vars: rob1 = loot through house i−2, rob2 = through house i−1.", 1, {});
+      for (let i = 0; i < nums.length; i++) {
+        const x = nums[i];
+        const nv = Math.max(rob1 + x, rob2);
+        const prev = i - 1 >= 0 ? i - 1 : i;
+        snap(`House ${i} ($${x}): rob it → rob1 + ${x} = ${rob1 + x}; skip → rob2 = ${rob2}. → new = <b>${nv}</b>; slide window.`, 3, { [i]: "hot", [prev]: "done" });
+        rob1 = rob2; rob2 = nv;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(rob2);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two integers slide across the street.";
+      return { steps: steps, result: String(rob2), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0213 — HOUSE ROBBER II
+ * ================================================================ */
+NC150.register({
+  id: "0213", title: "House Robber II", difficulty: "Medium",
+  url: "https://leetcode.com/problems/house-robber-ii/",
+  tags: ["dp", "array"],
+  approaches: ["Approach 1 · DP on two ranges", "Approach 2 · Rolling vars on two ranges (best)"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "House Robber run twice" },
+    { time: "O(n)", space: "O(1)", note: "BEST — rolling, two runs" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "try every house as excluded", time: "O(n²)", space: "O(1)", when: "small circles only", best: false },
+    { name: "Two-range DP", tech: "rob [0..n−2] or [1..n−1]", time: "O(n)", space: "O(n)", when: "want tables", best: false },
+    { name: "Rolling two ranges", tech: "same split, O(1) memory", time: "O(n)", space: "O(1)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[2,3,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,3,2]" }, result: "3" },
+    { label: "Ex 2", values: { nums: "[1,2,3,1]" }, result: "4" },
+    { label: "Ex 3", values: { nums: "[1,2,3]" }, result: "3" }
+  ],
+  realLife: "<p><b>Ring networks</b>: token-ring and RPR networks schedule traffic on a circular topology where the first and last node are adjacent — the 'circle breaks into two linear ranges' trick is the standard fix.</p><p><b>Circular seat assignment</b>: picking an independent set on a cycle (no two adjacent seats, first and last also adjacent) is this exact two-range DP.</p>",
+  dsDive: `<h3>Breaking the circle into two streets</h3>
+<p>House 0 and house n−1 are neighbors on the ring, so robbing both is illegal. But any valid solution either <b>skips house 0</b> (free to take n−1) or <b>skips house n−1</b> (free to take 0). So the answer is the max of two linear House-Robber runs on the two ranges that each exclude one end.</p>
+<div class="equation">answer = max(robRange(0, n−2), robRange(1, n−1))</div>
+<p>Each range is a plain street: the same skip/take recurrence applies, so the O(1)-memory rolling version of House Robber is simply invoked twice — one range, then the other — with the window sliding along each. Total work stays O(n) because the two ranges overlap by n−2 houses.</p>`,
+  code: [
+    [
+      "def rob(nums):",
+      "    n = len(nums)",
+      "    if n == 1: return nums[0]",
+      "    def rob_range(l, r):          # linear House Robber",
+      "        dp0 = nums[l]; dp1 = max(nums[l], nums[l+1] if l+1 <= r else 0)",
+      "        for i in range(l + 2, r + 1):",
+      "            dp0, dp1 = dp1, max(dp1, dp0 + nums[i])",
+      "        return dp1 if l < r else nums[l]",
+      "    return max(rob_range(0, n - 2), rob_range(1, n - 1))"
+    ],
+    [
+      "def rob(nums):",
+      "    n = len(nums)",
+      "    if n == 1: return nums[0]",
+      "    def run(l, r):               # rolling House Robber",
+      "        a = b = 0",
+      "        for i in range(l, r + 1):",
+      "            a, b = b, max(b, a + nums[i])",
+      "        return b",
+      "    return max(run(0, n - 2), run(1, n - 1))"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = capList(vals.nums, 10, 100);
+      const n = nums.length;
+      const steps = [];
+      const snap = (text, code, cls, dp, title) => steps.push({ text: text, code: code, mem: [
+        arrView("nums (circular street)", nums, cls || {}, 4),
+        arrView(title, dp.slice(), {}, 4)
+      ] });
+      if (n === 0) {
+        snap("No houses → 0.", 0, {}, [], "dp");
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      if (n === 1) {
+        snap("Single house: the ring has no second neighbor → rob it: " + nums[0] + ".", 1, {}, [nums[0]], "dp");
+        const last = steps[steps.length - 1];
+        last.result = String(nums[0]); last.correct = true;
+        last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: String(nums[0]), correct: true, memNote: last.memNote };
+      }
+      snap("Ring alert: house 0 and house " + (n - 1) + " are neighbors. Split: range A = [0.." + (n - 2) + "] (skip last), range B = [1.." + (n - 1) + "] (skip first).", 1, {}, [], "dp range A");
+      const results = [];
+      function rangeRun(l, r, name) {
+        const dp = new Array(r - l + 1).fill(0);
+        dp[0] = nums[l];
+        snap(`Range ${name} [${l}..${r}]: dp[0] = nums[${l}] = ${dp[0]}.`, 3, { [l]: "hot" }, dp, "dp " + name);
+        if (r - l >= 1) {
+          dp[1] = Math.max(nums[l], nums[l + 1]);
+          snap(`Range ${name}: dp[1] = max(${nums[l]}, ${nums[l + 1]}) = ${dp[1]}.`, 3, { [l]: "done", [l + 1]: "done" }, dp, "dp " + name);
+          for (let i = l + 2; i <= r; i++) {
+            const k = i - l;
+            const skip = dp[k - 1], take = dp[k - 2] + nums[i];
+            dp[k] = Math.max(skip, take);
+            snap(`Range ${name} house ${i} ($${nums[i]}): skip → ${skip}; rob → ${take} → dp = ${dp[k]}.`, 4, { [i]: "hot", [i - 1]: "done", [i - 2]: "done" }, dp, "dp " + name);
+          }
+        }
+        results.push(dp[dp.length - 1]);
+      }
+      rangeRun(0, n - 2, "A");
+      rangeRun(1, n - 1, "B");
+      const res = Math.max(results[0], results[1]);
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) — two linear runs, max combined.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = capList(vals.nums, 10, 100);
+      const n = nums.length;
+      const steps = [];
+      const snap = (text, code, cls, a, b, title) => steps.push({ text: text, code: code, mem: [
+        arrView("nums (circular street)", nums, cls || {}, 4),
+        arrView(title + " · [a, b]", [a, b], { 1: "hot" }, 8)
+      ] });
+      if (n === 0) {
+        snap("No houses → 0.", 0, {}, 0, 0, "run");
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(1).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      if (n === 1) {
+        snap("Single house → rob it: " + nums[0] + ".", 1, {}, 0, nums[0], "run");
+        const last = steps[steps.length - 1];
+        last.result = String(nums[0]); last.correct = true;
+        last.memNote = "Time O(n), space O(1).";
+        return { steps: steps, result: String(nums[0]), correct: true, memNote: last.memNote };
+      }
+      snap("Circle → two linear runs: A = [0.." + (n - 2) + "] skips the last house, B = [1.." + (n - 1) + "] skips the first. Answer = max of both.", 1, {}, 0, 0, "run A");
+      const runs = [];
+      function runRange(l, r, name) {
+        let a = 0, b = 0;
+        for (let i = l; i <= r; i++) {
+          const nv = Math.max(b, a + nums[i]);
+          snap(`Run ${name} house ${i} ($${nums[i]}): max(skip=${b}, rob=${a} + ${nums[i]} = ${a + nums[i]}) = ${nv}.`, 4, { [i]: "hot" }, a, b, "run " + name);
+          a = b; b = nv;
+        }
+        runs.push(b);
+      }
+      runRange(0, n - 2, "A");
+      runRange(1, n - 1, "B");
+      const res = Math.max(runs[0], runs[1]);
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two rolling sweeps, max combined.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0300 — LONGEST INCREASING SUBSEQUENCE
+ * ================================================================ */
+NC150.register({
+  id: "0300", title: "Longest Increasing Subsequence", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-increasing-subsequence/",
+  tags: ["dp", "binary search", "array"],
+  approaches: ["Approach 1 · O(n²) DP", "Approach 2 · Patience sorting + binary search (best)"],
+  complexities: [
+    { time: "O(n²)", space: "O(n)", note: "dp[i] = LIS ending at i" },
+    { time: "O(n log n)", space: "O(n)", note: "BEST — tails + bisect" }
+  ],
+  compare: [
+    { name: "Brute subsets", tech: "check every subsequence", time: "O(2ⁿ)", space: "O(n)", when: "never", best: false },
+    { name: "O(n²) DP", tech: "dp[i] = 1 + max dp[j] (j<i, a[j]<a[i])", time: "O(n²)", space: "O(n)", when: "small n, simple proof", best: false },
+    { name: "Patience sorting", tech: "tails[] + binary search", time: "O(n log n)", space: "O(n)", when: "large n", best: true }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[10,9,2,5,3,7,101,18]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[10,9,2,5,3,7,101,18]" }, result: "4" },
+    { label: "Ex 2", values: { nums: "[0,1,0,3,2,3]" }, result: "4" },
+    { label: "Ex 3", values: { nums: "[7,7,7,7,7,7,7]" }, result: "1" }
+  ],
+  realLife: "<p><b>Diff tools</b> (git diff): the longest common subsequence is LCS; the longest <i>increasing</i> subsequence sorts the deck in patience-based games and finds the fewest 'runs' to organize tasks by priority.</p><p><b>Networking</b>: packet reordering — the longest run of in-order packets is an LIS over sequence numbers; <b>finance</b>: the longest uptrend in a price series is an LIS over daily closes, and the tails[] trick gives it in O(n log n) even on years of ticks.</p>",
+  dsDive: `<h3>tails[] — the patience game</h3>
+<p>Patience sorting deals cards into piles: each card goes on the <b>leftmost pile whose top is ≥ the card</b>. Pile k's top is then the smallest possible tail of an increasing subsequence of length k+1 — and pile tops are always sorted, so 'which pile?' is a binary search.</p>
+<div class="equation">tails[pos] = x where pos = lower_bound(tails, x); LIS = tails.length</div>
+<p>tails is <b>not</b> the LIS itself, only its lengths' fingerprints — that's why the O(n²) DP is still needed to reconstruct the actual sequence. The array lives in one contiguous buffer (good cache behavior), and each element is written at most once per position via the binary-search probe.</p>`,
+  code: [
+    [
+      "def lis(nums):",
+      "    n = len(nums)",
+      "    if n == 0: return 0",
+      "    dp = [1] * n",
+      "    for i in range(n):",
+      "        for j in range(i):",
+      "            if nums[j] < nums[i]:",
+      "                dp[i] = max(dp[i], dp[j] + 1)",
+      "    return max(dp)"
+    ],
+    [
+      "def lis(nums):",
+      "    tails = []                    # tails[k] = min tail of length k+1",
+      "    for x in nums:",
+      "        pos = bisect_left(tails, x)",
+      "        if pos == len(tails): tails.append(x)",
+      "        else: tails[pos] = x",
+      "    return len(tails)"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = capList(vals.nums, 10, 50);
+      const n = nums.length;
+      const steps = [];
+      const dp = new Array(n).fill(1);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("nums", nums, {}, 4),
+        arrView("dp[i] = LIS ending at i", dp.slice(), cls || {})
+      ] });
+      if (n === 0) {
+        snap("Empty array → LIS = 0.", 0, {});
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n²), space O(n).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      snap("Every element alone is an LIS of length 1 → dp all 1.", 1, {});
+      for (let i = 0; i < n; i++) {
+        let bestJ = -1;
+        for (let j = 0; j < i; j++) {
+          if (nums[j] < nums[i] && dp[j] + 1 > dp[i]) { dp[i] = dp[j] + 1; bestJ = j; }
+        }
+        snap(`${nums[i]} at i=${i}: ${bestJ === -1 ? `no smaller element before it → dp[${i}] stays 1` : `best predecessor nums[${bestJ}] = ${nums[bestJ]} (dp ${dp[bestJ]}) → dp[${i}] = ${dp[bestJ]} + 1 = <b>${dp[i]}</b>`}.`, 4, { [i]: "hot", ...(bestJ !== -1 ? { [bestJ]: "hl" } : {}) });
+      }
+      let best = 1;
+      for (let i = 0; i < n; i++) best = Math.max(best, dp[i]);
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(n) — each i scans all j < i.";
+      return { steps: steps, result: String(best), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = capList(vals.nums, 10, 50);
+      const steps = [];
+      const tails = [];
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("nums", nums, cls || {}, 4),
+        arrView("tails[k] = smallest tail of length k+1", tails.slice(), {})
+      ] });
+      if (!nums.length) {
+        snap("Empty array → LIS = 0.", 0, {});
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n log n), space O(n).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      snap("Patience game: place x on the leftmost pile whose top ≥ x; position found by binary search on sorted tails.", 1, { 0: "hot" });
+      for (let i = 0; i < nums.length; i++) {
+        const x = nums[i];
+        let lo = 0, hi = tails.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (tails[mid] < x) lo = mid + 1; else hi = mid;
+        }
+        const pos = lo;
+        const grows = pos === tails.length;
+        if (grows) tails.push(x); else tails[pos] = x;
+        snap(`x = ${x}: lower_bound finds position ${pos}${grows ? " = end → appends, LIS length grows to " + tails.length : " → replaces tails[" + pos + "] = " + x} → tails = [${tails.join(", ")}].`, 4, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(tails.length);
+      last.correct = true;
+      last.memNote = "Time O(n log n), space O(n) — log n binary search per element.";
+      return { steps: steps, result: String(tails.length), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0322 — COIN CHANGE
+ * ================================================================ */
+NC150.register({
+  id: "0322", title: "Coin Change", difficulty: "Medium",
+  url: "https://leetcode.com/problems/coin-change/",
+  tags: ["dp", "bfs", "array"],
+  approaches: ["Approach 1 · Bottom-up DP (best)", "Approach 2 · BFS over amounts"],
+  complexities: [
+    { time: "O(amount·coins)", space: "O(amount)", note: "BEST — one pass per coin" },
+    { time: "O(amount·coins)", space: "O(amount)", note: "level-order frontier" }
+  ],
+  compare: [
+    { name: "Greedy", tech: "always take biggest coin", time: "O(coins)", space: "O(1)", when: "canonical systems only (US cents)", best: false },
+    { name: "Bottom-up DP", tech: "dp[a] = 1 + min dp[a−c]", time: "O(amount·coins)", space: "O(amount)", when: "general case", best: true },
+    { name: "BFS on amounts", tech: "levels of reachable sums", time: "O(amount·coins)", space: "O(amount)", when: "few coins needed", best: false }
+  ],
+  inputs: [
+    { name: "coins", label: "coins =", type: "list", default: "[1,2,5]" },
+    { name: "amount", label: "amount =", type: "int", default: "11" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { coins: "[1,2,5]", amount: "11" }, result: "3" },
+    { label: "Ex 2", values: { coins: "[2]", amount: "3" }, result: "-1" },
+    { label: "Ex 3", values: { coins: "[1]", amount: "0" }, result: "0" }
+  ],
+  realLife: "<p><b>ATM / POS change machines</b>: issuing the fewest bills and coins for a cash amount is this DP when denominations aren't canonical (e.g. 1, 5, 20, 25) — the greedy fails, the DP table doesn't.</p><p><b>Packet scheduling</b>: building a total of 'amount' bandwidth from discrete chunk sizes minimizes the number of chunks — the identical recurrence, run on every billing cycle.</p>",
+  dsDive: `<h3>Shortest path in an amount graph</h3>
+<p>Think of amounts 0..amount as nodes; from a you can jump to a+c for each coin c (cost 1). Fewest coins to reach 'amount' is the <b>shortest path</b> — DP and BFS are two faces of that same graph.</p>
+<div class="equation">dp[a] = 1 + min{ dp[a−c] : c ≤ a, coin c }&nbsp;&nbsp;with dp[0] = 0, dp[a] = ∞ if unreachable</div>
+<p>The DP fills the dp array as a contiguous O(amount) buffer, iterating coins in the outer loop (each coin's pass is cache-friendly). Unreachable sums stay ∞ — the array is never truly 'filled', and the final answer dp[amount] is read straight out. BFS instead keeps only the current frontier set, so unreachable sums are never allocated — better when the answer is small.</p>`,
+  code: [
+    [
+      "def coin_change(coins, amount):",
+      "    dp = [amount + 1] * (amount + 1)   # sentinel = impossible",
+      "    dp[0] = 0",
+      "    for coin in coins:",
+      "        for a in range(coin, amount + 1):",
+      "            dp[a] = min(dp[a], dp[a - coin] + 1)",
+      "    return -1 if dp[amount] == amount + 1 else dp[amount]"
+    ],
+    [
+      "def coin_change(coins, amount):",
+      "    if amount == 0: return 0",
+      "    frontier = {0}; level = 0; seen = {0}",
+      "    while frontier:",
+      "        level += 1; nxt = set()",
+      "        for cur in frontier:",
+      "            for c in coins:",
+      "                if cur + c == amount: return level",
+      "                if cur + c < amount and cur + c not in seen:",
+      "                    seen.add(cur + c); nxt.add(cur + c)",
+      "        frontier = nxt",
+      "    return -1"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const coins = capList(vals.coins, 4, 30).map(function (x) { return Math.max(1, Math.round(x)); });
+      const amount = capInt(vals.amount, 0, 12);
+      const steps = [];
+      const dp = new Array(amount + 1).fill("∞");
+      const disp = () => dp.slice();
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("dp[a] = fewest coins for sum a", disp(), cls || {}),
+        arrView("coins", coins, {}, 8)
+      ] });
+      if (amount === 0) {
+        dp[0] = 0;
+        snap("Amount 0 needs zero coins → answer 0.", 1, { 0: "done" });
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(amount·coins), space O(amount).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      dp[0] = 0;
+      snap("dp[0] = 0 (sum 0 costs nothing); every other sum starts as ∞ (unreachable yet).", 1, { 0: "done" });
+      for (let ci = 0; ci < coins.length; ci++) {
+        const coin = coins[ci];
+        let changed = false;
+        for (let a = coin; a <= amount; a++) {
+          const via = dp[a - coin];
+          if (via !== "∞") {
+            const cand = via + 1;
+            const cur = dp[a];
+            if (cur === "∞" || cand < cur) {
+              dp[a] = cand;
+              changed = true;
+              snap(`Coin ${coin}: dp[${a}] = dp[${a - coin}] + 1 = ${via} + 1 = <b>${cand}</b> — fewer coins than before${cur === "∞" ? " (was ∞)" : " (was " + cur + ")"}.`, 4, { [a]: "hot", [a - coin]: "done" });
+            }
+          }
+        }
+        if (!changed) snap(`Coin ${coin}: no sum improves → skip.`, 4, {});
+      }
+      const res = dp[amount] === "∞" ? -1 : dp[amount];
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(amount·coins), space O(amount) — unreachable sums stay ∞.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const coins = capList(vals.coins, 4, 30).map(function (x) { return Math.max(1, Math.round(x)); });
+      const amount = capInt(vals.amount, 0, 12);
+      const steps = [];
+      const snap = (text, code, cls, fr) => steps.push({ text: text, code: code, mem: [
+        arrView("BFS frontier — amounts reachable at this level", fr.slice().sort(function (a, b) { return a - b; }), cls || {}, 8),
+        arrView("coins", coins, {}, 8)
+      ] });
+      if (amount === 0) {
+        snap("Amount 0 → zero coins.", 0, {}, [0]);
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(amount·coins), space O(amount).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      let frontier = [0], level = 0, res = -1;
+      const seen = new Set([0]);
+      snap("BFS: level 0 = {0}. Each level adds one coin; the first level that hits 'amount' is the answer.", 1, { 0: "hot" }, frontier);
+      while (frontier.length && res === -1) {
+        level++;
+        const nxt = [];
+        for (let f = 0; f < frontier.length && res === -1; f++) {
+          const cur = frontier[f];
+          for (let c = 0; c < coins.length; c++) {
+            const nv = cur + coins[c];
+            if (nv === amount) { res = level; break; }
+            if (nv < amount && !seen.has(nv)) { seen.add(nv); nxt.push(nv); }
+          }
+        }
+        snap(`Level ${level}: from {${frontier.join(", ")}} → reachable {${nxt.length ? nxt.slice(0, 8).join(", ") : "∅"}}${res !== -1 ? " — amount hit! Answer: " + level : ""}.`, 4, {}, nxt);
+        frontier = nxt;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(amount·coins), space O(amount) — shortest-path levels.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0416 — PARTITION EQUAL SUBSET SUM
+ * ================================================================ */
+NC150.register({
+  id: "0416", title: "Partition Equal Subset Sum", difficulty: "Medium",
+  url: "https://leetcode.com/problems/partition-equal-subset-sum/",
+  tags: ["dp", "array"],
+  approaches: ["Approach 1 · Rolling subset-sum DP (best)", "Approach 2 · 2D subset-sum table"],
+  complexities: [
+    { time: "O(n·half)", space: "O(half)", note: "BEST — one rolling bool row" },
+    { time: "O(n·half)", space: "O(n·half)", note: "full reachability table" }
+  ],
+  compare: [
+    { name: "Brute subsets", tech: "try every subset", time: "O(2ⁿ)", space: "O(n)", when: "never", best: false },
+    { name: "Rolling subset-sum", tech: "dp[s] |= dp[s−x], reverse scan", time: "O(n·half)", space: "O(half)", when: "general case", best: true },
+    { name: "2D table", tech: "dp[i][s] reachable after item i", time: "O(n·half)", space: "O(n·half)", when: "reconstruction needed", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,5,11,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,5,11,5]" }, result: "true" },
+    { label: "Ex 2", values: { nums: "[1,2,3,5]" }, result: "false" },
+    { label: "Ex 3", values: { nums: "[1,2,5]" }, result: "false" }
+  ],
+  realLife: "<p><b>Load balancing</b>: splitting jobs between two identical servers so each gets the same total load is partition — solve it with subset-sum DP and you get the exact split feasibility.</p><p><b>Cloud storage</b>: deciding whether a set of backups can be spread over two equal-capacity volumes; <b>crypto mining pools</b> split hash power into two equal halves the same way.</p>",
+  dsDive: `<h3>Subset sum as a boolean reachability row</h3>
+<p>If total sum is odd, two equal halves are impossible immediately. Otherwise the target is half = sum/2 and the question is: can some subset sum to half?</p>
+<div class="equation">dp[s] = dp[s] ∨ dp[s − x]&nbsp;&nbsp;scanning s from half down to x (each item used once)</div>
+<p>dp is a contiguous boolean array over sums 0..half. The <b>reverse scan</b> is the critical detail: going downward means dp[s−x] still reflects states <i>before</i> item x was added, so each number is used at most once (a forward scan would reuse it, like an unbounded knapsack). The 2D table version materializes one row per item — clearer, at n×half memory.</p>`,
+  code: [
+    [
+      "def can_partition(nums):",
+      "    total = sum(nums)",
+      "    if total % 2: return False",
+      "    half = total // 2",
+      "    dp = [False] * (half + 1); dp[0] = True",
+      "    for x in nums:",
+      "        for s in range(half, x - 1, -1):   # reverse scan!",
+      "            if dp[s - x]: dp[s] = True",
+      "    return dp[half]"
+    ],
+    [
+      "def can_partition(nums):",
+      "    total = sum(nums)",
+      "    if total % 2: return False",
+      "    half = total // 2",
+      "    dp = [[False]*(half+1) for _ in range(len(nums)+1)]",
+      "    dp[0][0] = True",
+      "    for i, x in enumerate(nums, 1):",
+      "        for s in range(half + 1):",
+      "            dp[i][s] = dp[i-1][s] or (s >= x and dp[i-1][s-x])",
+      "    return dp[len(nums)][half]"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = capList(vals.nums, 6, 11).map(function (x) { return Math.max(0, Math.round(x)); });
+      const total = nums.reduce(function (a, b) { return a + b; }, 0);
+      const steps = [];
+      const snap = (text, code, cls, disp) => steps.push({ text: text, code: code, mem: [
+        arrView("dp[s] = sum s reachable with items so far", disp, cls || {}),
+        arrView("nums", nums, {}, 4)
+      ] });
+      if (total % 2 === 1) {
+        snap("Total sum = " + total + " is odd → two equal halves are impossible → false.", 1, {}, []);
+        const last = steps[steps.length - 1];
+        last.result = "false"; last.correct = true;
+        last.memNote = "Time O(n·half), space O(half).";
+        return { steps: steps, result: "false", correct: true, memNote: last.memNote };
+      }
+      const half = total / 2;
+      const dp = new Array(half + 1).fill(false);
+      const disp = () => dp.map(function (v) { return v ? "✓" : "·"; });
+      dp[0] = true;
+      snap("Total = " + total + ", target half = " + half + ". dp[0] = ✓ (empty subset sums to 0).", 1, { 0: "done" }, disp());
+      for (let i = 0; i < nums.length; i++) {
+        const x = nums[i];
+        const changed = [];
+        for (let s = half; s >= x; s--) {
+          if (dp[s - x] && !dp[s]) { dp[s] = true; changed.push(s); }
+        }
+        const cls = { [i]: "hot" };
+        changed.forEach(function (s) { cls[s] = "hot"; });
+        snap(`Item ${x}: ${changed.length ? "newly reachable sums {" + changed.join(", ") + "} — reverse scan so " + x + " is used at most once" : "no new sums (all already reachable or too large)"}.`, 3, cls, disp());
+      }
+      const res = dp[half] ? "true" : "false";
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = true;
+      last.memNote = "Time O(n·half), space O(half) — one rolling bool row, reverse scan.";
+      return { steps: steps, result: res, correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = capList(vals.nums, 6, 11).map(function (x) { return Math.max(0, Math.round(x)); });
+      const total = nums.reduce(function (a, b) { return a + b; }, 0);
+      const steps = [];
+      const snap = (text, code, cls, table) => steps.push({ text: text, code: code, mem: [
+        gridView("dp[i][s] = reachable using first i items", table.map(r => r.slice()), table[0] ? table[0].length : 1, cls || {}),
+        arrView("nums", nums, {}, 4)
+      ] });
+      if (total % 2 === 1) {
+        snap("Total sum = " + total + " is odd → false.", 1, {}, [[]]);
+        const last = steps[steps.length - 1];
+        last.result = "false"; last.correct = true;
+        last.memNote = "Time O(n·half), space O(n·half).";
+        return { steps: steps, result: "false", correct: true, memNote: last.memNote };
+      }
+      const half = total / 2;
+      const table = [];
+      for (let i = 0; i <= nums.length; i++) table.push(new Array(half + 1).fill("·"));
+      table[0][0] = "✓";
+      snap("Row 0: only sum 0 reachable with zero items → dp[0][0] = ✓. Columns = sums 0.." + half + ".", 1, { "0,0": "done" }, table);
+      for (let i = 1; i <= nums.length; i++) {
+        const x = nums[i - 1];
+        for (let s = 0; s <= half; s++) {
+          const prev = table[i - 1][s] === "✓";
+          const via = s >= x && table[i - 1][s - x] === "✓";
+          if (prev || via) table[i][s] = "✓";
+        }
+        const cls = { [i + "," + half]: "hot" };
+        snap(`Row ${i}: with item ${x} — copy reachability from row ${i - 1}, and mark s reachable if s−${x} was reachable.`, 3, cls, table);
+      }
+      const res = table[nums.length][half] === "✓" ? "true" : "false";
+      const last = steps[steps.length - 1];
+      last.result = res;
+      last.correct = true;
+      last.memNote = "Time O(n·half), space O(n·half) — one row per item.";
+      return { steps: steps, result: res, correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0647 — PALINDROMIC SUBSTRINGS
+ * ================================================================ */
+NC150.register({
+  id: "0647", title: "Palindromic Substrings", difficulty: "Medium",
+  url: "https://leetcode.com/problems/palindromic-substrings/",
+  tags: ["dp", "string", "two pointers"],
+  approaches: ["Approach 1 · Expand around center (best)", "Approach 2 · Bottom-up DP table"],
+  complexities: [
+    { time: "O(n²)", space: "O(1)", note: "BEST — count as you expand" },
+    { time: "O(n²)", space: "O(n²)", note: "table + count of ✓" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "check each substring", time: "O(n³)", space: "O(1)", when: "tiny strings", best: false },
+    { name: "Expand around center", tech: "2n−1 axes, count expansions", time: "O(n²)", space: "O(1)", when: "general case", best: true },
+    { name: "DP table", tech: "dp[i][j], count ✓ cells", time: "O(n²)", space: "O(n²)", when: "want the table too", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "abc" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "abc" }, result: "3" },
+    { label: "Ex 2", values: { s: "aaa" }, result: "6" },
+    { label: "Ex 3", values: { s: "ababa" }, result: "9" }
+  ],
+  realLife: "<p><b>Genomics</b>: counting palindromic motifs of every length in a genome (inverted repeats that form hairpins in RNA) is this exact count — expand around each base pair and tally.</p><p><b>Text analytics</b>: counting mirror strings in logs or chat corpora; the center-expansion count runs in O(n²) with zero extra memory, so it scales to megabyte strings where an O(n²)-space table would not.</p>",
+  dsDive: `<h3>Counting while expanding</h3>
+<p>Each mirror axis contributes exactly the number of expansions that stay palindromic — expand until the flanks disagree, count the steps. Odd axes (n) plus even axes (n−1) cover every substring exactly once, so summing expansion counts over all 2n−1 axes counts all palindromic substrings.</p>
+<div class="equation">count += expand(l, r) for every axis&nbsp;&nbsp;→&nbsp;&nbsp;Σ axis expansions = #palindromes</div>
+<p>No table, no storage: the whole algorithm is two moving indices. The DP alternative fills the upper triangle dp[i][j] = s[i]==s[j] ∧ (j−i&lt;2 ∨ dp[i+1][j−1]) and counts the ✓ cells — same O(n²) time but O(n²) RAM, justified only when you also need to query arbitrary substrings later.</p>`,
+  code: [
+    [
+      "def count_substrings(s):",
+      "    count = 0",
+      "    for i in range(len(s)):",
+      "        l = r = i                       # odd axis",
+      "        while l >= 0 and r < len(s) and s[l] == s[r]:",
+      "            count += 1; l -= 1; r += 1",
+      "        l, r = i, i + 1                 # even axis",
+      "        while l >= 0 and r < len(s) and s[l] == s[r]:",
+      "            count += 1; l -= 1; r += 1",
+      "    return count"
+    ],
+    [
+      "def count_substrings(s):",
+      "    n = len(s); count = 0",
+      "    dp = [[False]*n for _ in range(n)]",
+      "    for i in range(n - 1, -1, -1):",
+      "        for j in range(i, n):",
+      "            if s[i] == s[j] and (j - i < 2 or dp[i+1][j-1]):",
+      "                dp[i][j] = True; count += 1",
+      "    return count"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const s = capStr(vals.s, 6);
+      const n = s.length;
+      const steps = [];
+      let count = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "string", title: "s", data: s.split(""), cls: cls || {}, size: 1 },
+        arrView("palindrome count", [count], { 0: "hot" }, 8)
+      ] });
+      if (n === 0) {
+        snap("Empty string → 0 palindromic substrings.", 0, {});
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n²), space O(1).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      snap("Expand from every mirror axis and count the successful expansions — odd axes (per char) + even axes (per gap).", 1, {});
+      for (let c = 0; c < n; c++) {
+        let l = c, r = c, add = 0;
+        while (l >= 0 && r < n && s[l] === s[r]) { add++; l--; r++; }
+        count += add;
+        snap(`Odd axis at "${s[c]}": ${add} palindrome(s) — "${s[c]}", "${s.slice(c - add + 1, c + add)}"... → total ${count}.`, 3, { [c]: "hot" });
+        if (c + 1 < n) {
+          l = c; r = c + 1; add = 0;
+          while (l >= 0 && r < n && s[l] === s[r]) { add++; l--; r++; }
+          count += add;
+          snap(`Even axis at gap ${c}|${c + 1}: ${add} palindrome(s) → total ${count}.`, 4, { [c]: "done", [c + 1]: "hot" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(count);
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(1) — expansion counter per axis.";
+      return { steps: steps, result: String(count), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = capStr(vals.s, 6);
+      const n = s.length;
+      const steps = [];
+      const dp = [];
+      for (let i = 0; i < n; i++) dp.push(new Array(n).fill("·"));
+      let count = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        gridView("dp[i][j] = s[i..j] palindrome? (upper triangle)", dp.map(r => r.slice()), n, cls || {}),
+        arrView("palindrome count", [count], { 0: "hot" }, 8)
+      ] });
+      if (n === 0) {
+        snap("Empty string → 0 palindromic substrings.", 0, {}, [[]], 1);
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n²), space O(n²).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      snap("Fill the upper triangle bottom-up: each ✓ cell is one palindromic substring.", 1, {});
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = i; j < n; j++) {
+          const ok = s[i] === s[j] && (j - i < 2 || dp[i + 1][j - 1] === "✓");
+          dp[i][j] = ok ? "✓" : "✗";
+          if (ok) count++;
+          const why = s[i] === s[j] ? (j - i < 2 ? "no inner needed" : "inner dp[" + (i + 1) + "][" + (j - 1) + "] = ✓") : "ends differ";
+          snap(`"${s.slice(i, j + 1)}": ${s[i]} vs ${s[j]} ${s[i] === s[j] ? "match ✓, " + why + " → ✓ counted" : "differ → ✗"}. Count = ${count}.`, 4, { [i + "," + j]: "done", ...(ok && j - i >= 2 ? { [(i + 1) + "," + (j - 1)]: "hl" } : {}) });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(count);
+      last.correct = true;
+      last.memNote = "Time O(n²), space O(n²) — ✓ cells counted as filled.";
+      return { steps: steps, result: String(count), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0746 — MIN COST CLIMBING STAIRS
+ * ================================================================ */
+NC150.register({
+  id: "0746", title: "Min Cost Climbing Stairs", difficulty: "Easy",
+  url: "https://leetcode.com/problems/min-cost-climbing-stairs/",
+  tags: ["dp", "array"],
+  approaches: ["Approach 1 · DP array (bottom-up)", "Approach 2 · Two-variable rolling (best)"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "full dp cost table" },
+    { time: "O(n)", space: "O(1)", note: "BEST — dependency width 2" }
+  ],
+  compare: [
+    { name: "Brute recursion", tech: "try both starts, both steps", time: "O(2ⁿ)", space: "O(n)", when: "never", best: false },
+    { name: "DP array", tech: "dp[i] = cost[i] + min(dp[i−1], dp[i−2])", time: "O(n)", space: "O(n)", when: "want full table", best: false },
+    { name: "Rolling variables", tech: "two totals slide", time: "O(n)", space: "O(1)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "cost", label: "cost =", type: "list", default: "[10,15,20]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { cost: "[10,15,20]" }, result: "15" },
+    { label: "Ex 2", values: { cost: "[1,100,1,1,1,100,1,1,100,1]" }, result: "6" },
+    { label: "Ex 3", values: { cost: "[5,10]" }, result: "5" }
+  ],
+  realLife: "<p><b>Dynamic pricing routes</b>: paying a toll to enter each node and choosing the cheapest two-step path to the exit is this recurrence — telecom routing and EV range planners run it on every node chain.</p><p><b>Game level design</b>: cost-to-stand-on-tile maps where you move 1 or 2 tiles forward; the minimal paid path is exactly dp[i] = cost[i] + min(two previous).</p>",
+  dsDive: `<h3>Pay when you land, start for free</h3>
+<p>You may start on stair 0 or 1 free of charge; landing on stair i pays cost[i]; you leave from beyond the top. So the paid cost to reach stair i is cost[i] plus the cheaper way of arriving from i−1 or i−2.</p>
+<div class="equation">dp[i] = cost[i] + min(dp[i−1], dp[i−2]);&nbsp;&nbsp;answer = min(dp[n−1], dp[n−2])</div>
+<p>The recurrence again has dependency width 2, so a two-variable rolling window (prev2, prev1) reproduces the whole table in O(1) RAM. The 'start free' subtlety is the only twist vs. Climbing Stairs — there you count ways, here you add costs, and the final step leaves the array instead of landing on it.</p>`,
+  code: [
+    [
+      "def min_cost(cost):",
+      "    n = len(cost)",
+      "    if n == 1: return cost[0]",
+      "    dp = [0] * n",
+      "    dp[0] = cost[0]; dp[1] = cost[1]",
+      "    for i in range(2, n):",
+      "        dp[i] = cost[i] + min(dp[i-1], dp[i-2])",
+      "    return min(dp[n-1], dp[n-2])"
+    ],
+    [
+      "def min_cost(cost):",
+      "    prev2 = cost[0]              # paid to stand on stair 0",
+      "    prev1 = cost[1]              # paid to stand on stair 1",
+      "    for i in range(2, len(cost)):",
+      "        cur = cost[i] + min(prev1, prev2)",
+      "        prev2, prev1 = prev1, cur",
+      "    return min(prev1, prev2)"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const cost = capList(vals.cost, 10, 100);
+      const n = cost.length;
+      const steps = [];
+      const dp = new Array(n).fill(0);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        arrView("cost (paid when you land)", cost, {}, 4),
+        arrView("dp[i] = min paid cost to stand on stair i", dp.slice(), cls || {})
+      ] });
+      if (n === 0) {
+        snap("No stairs → cost 0.", 0, {});
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      dp[0] = cost[0];
+      snap("Start free on stair 0 → pay its cost only: dp[0] = " + cost[0] + ".", 1, { 0: "done" });
+      if (n === 1) {
+        const last = steps[steps.length - 1];
+        last.result = String(cost[0]); last.correct = true;
+        last.memNote = "Time O(n), space O(n).";
+        return { steps: steps, result: String(cost[0]), correct: true, memNote: last.memNote };
+      }
+      dp[1] = cost[1];
+      snap("Start free on stair 1 instead → dp[1] = " + cost[1] + ".", 1, { 1: "done" });
+      for (let i = 2; i < n; i++) {
+        const via = Math.min(dp[i - 1], dp[i - 2]);
+        dp[i] = cost[i] + via;
+        snap(`Stair ${i} (cost ${cost[i]}): arrive from stair ${i - 1} (${dp[i - 1]}) or ${i - 2} (${dp[i - 2]}) → pay ${cost[i]} + ${via} = <b>${dp[i]}</b>.`, 3, { [i]: "hot", [i - 1]: "done", [i - 2]: "done" });
+      }
+      const res = Math.min(dp[n - 1], dp[n - 2]);
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) — exit from the top stair or the one below it.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const cost = capList(vals.cost, 10, 100);
+      const n = cost.length;
+      const steps = [];
+      const snap = (text, code, cls, p2, p1) => steps.push({ text: text, code: code, mem: [
+        arrView("cost (paid when you land)", cost, cls || {}, 4),
+        arrView("rolling · [prev2 (2 back), prev1 (1 back)]", [p2, p1], { 1: "hot" }, 8)
+      ] });
+      if (n === 0) {
+        snap("No stairs → cost 0.", 0, {}, 0, 0);
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "Time O(n), space O(1).";
+        return { steps: steps, result: "0", correct: true, memNote: last.memNote };
+      }
+      if (n === 1) {
+        snap("Single stair: pay " + cost[0] + " and leave.", 0, {}, 0, cost[0]);
+        const last = steps[steps.length - 1];
+        last.result = String(cost[0]); last.correct = true;
+        last.memNote = "Time O(n), space O(1).";
+        return { steps: steps, result: String(cost[0]), correct: true, memNote: last.memNote };
+      }
+      let prev2 = cost[0], prev1 = cost[1];
+      snap("Free starts: prev2 = " + prev2 + " (stair 0), prev1 = " + prev1 + " (stair 1).", 1, { 0: "done", 1: "done" }, prev2, prev1);
+      for (let i = 2; i < n; i++) {
+        const cur = cost[i] + Math.min(prev1, prev2);
+        snap(`Stair ${i} (cost ${cost[i]}): min(${prev1}, ${prev2}) + ${cost[i]} = <b>${cur}</b> — slide window.`, 3, { [i]: "hot" }, prev2, prev1);
+        prev2 = prev1; prev1 = cur;
+      }
+      const res = Math.min(prev1, prev2);
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(1) — two totals slide up the stairs.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 1143 — LONGEST COMMON SUBSEQUENCE
+ * ================================================================ */
+NC150.register({
+  id: "1143", title: "Longest Common Subsequence", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-common-subsequence/",
+  tags: ["dp", "string"],
+  approaches: ["Approach 1 · 2D DP table (best)", "Approach 2 · Rolling two rows"],
+  complexities: [
+    { time: "O(m·n)", space: "O(m·n)", note: "BEST clarity — full table" },
+    { time: "O(m·n)", space: "O(n)", note: "rolling rows, same answer" }
+  ],
+  compare: [
+    { name: "Brute subsets", tech: "every subsequence of text1", time: "O(2ᵐ·n)", space: "O(m)", when: "never", best: false },
+    { name: "2D DP table", tech: "dp[i][j] = match ? 1+diag : max(up,left)", time: "O(m·n)", space: "O(m·n)", when: "want the table / backtracking", best: true },
+    { name: "Rolling rows", tech: "prev + cur rows only", time: "O(m·n)", space: "O(n)", when: "memory-tight", best: false }
+  ],
+  inputs: [
+    { name: "text1", label: "text1 =", type: "str", default: "abcde" },
+    { name: "text2", label: "text2 =", type: "str", default: "ace" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { text1: "abcde", text2: "ace" }, result: "3" },
+    { label: "Ex 2", values: { text1: "abc", text2: "abc" }, result: "3" },
+    { label: "Ex 3", values: { text1: "abc", text2: "def" }, result: "0" }
+  ],
+  realLife: "<p><b>git diff</b>: the longest common subsequence of two file versions IS the unchanged core — diff prints everything else as insertions/deletions. This DP runs on every merge request.</p><p><b>DNA sequence alignment</b>: matching two genomes minimizes edit cost via LCS-style tables; <b>plagiarism checkers</b> and <b>code-clone detectors</b> compare token streams with the same recurrence.</p>",
+  dsDive: `<h3>Reading the table as two recurrences</h3>
+<p>Compare text1[i−1] vs text2[j−1]: if they match, both get consumed and the length grows diagonally; if not, drop one character from either string and keep the better.</p>
+<div class="equation">dp[i][j] = dp[i−1][j−1] + 1 if match, else max(dp[i−1][j], dp[i][j−1])</div>
+<p>Row-major fill reads left and up — both already computed — so the table is a single cache-friendly sweep. The rolling variant notices cell (i, j) only touches row i−1: keep <b>prev</b> and <b>cur</b> rows and swap, cutting space from O(m·n) to O(n) with identical values. Reconstructing the actual subsequence (not just its length) still requires the full table or parent pointers.</p>`,
+  code: [
+    [
+      "def lcs(text1, text2):",
+      "    m, n = len(text1), len(text2)",
+      "    dp = [[0]*(n+1) for _ in range(m+1)]",
+      "    for i in range(1, m + 1):",
+      "        for j in range(1, n + 1):",
+      "            if text1[i-1] == text2[j-1]:",
+      "                dp[i][j] = dp[i-1][j-1] + 1",
+      "            else:",
+      "                dp[i][j] = max(dp[i-1][j], dp[i][j-1])",
+      "    return dp[m][n]"
+    ],
+    [
+      "def lcs(text1, text2):",
+      "    m, n = len(text1), len(text2)",
+      "    prev = [0] * (n + 1)",
+      "    for i in range(1, m + 1):",
+      "        cur = [0] * (n + 1)",
+      "        for j in range(1, n + 1):",
+      "            if text1[i-1] == text2[j-1]:",
+      "                cur[j] = prev[j-1] + 1",
+      "            else:",
+      "                cur[j] = max(prev[j], cur[j-1])",
+      "        prev = cur",
+      "    return prev[n]"
+    ]
+  ],
+  steps: [
+    function (vals) {
+      const a = capStr(vals.text1, 6), b = capStr(vals.text2, 6);
+      const m = a.length, n = b.length;
+      const steps = [];
+      const dp = [];
+      for (let i = 0; i <= m; i++) dp.push(new Array(n + 1).fill(0));
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        gridView("dp[i][j] = LCS of " + a + "[:i] and " + b + "[:j]", dp.map(r => r.slice()), n + 1, cls || {})
+      ] });
+      snap("Row 0 and column 0 are 0 — an empty prefix shares nothing.", 1, {});
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const match = a[i - 1] === b[j - 1];
+          if (match) {
+            dp[i][j] = dp[i - 1][j - 1] + 1;
+            snap(`'${a[i - 1]}' = '${b[j - 1]}' → match! dp[${i}][${j}] = dp[${i - 1}][${j - 1}] + 1 = <b>${dp[i][j]}</b> (diagonal).`, 3, { [i + "," + j]: "hot", [(i - 1) + "," + (j - 1)]: "hl" });
+          } else {
+            dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            snap(`'${a[i - 1]}' ≠ '${b[j - 1]}' → drop one: max(up=${dp[i - 1][j]}, left=${dp[i][j - 1]}) = <b>${dp[i][j]}</b>.`, 4, { [i + "," + j]: "hot", [(i - 1) + "," + j]: "hl" });
+          }
+        }
+      }
+      const res = dp[m][n];
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(m·n) — every cell from top, left, or diagonal.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const a = capStr(vals.text1, 6), b = capStr(vals.text2, 6);
+      const m = a.length, n = b.length;
+      const steps = [];
+      let prev = new Array(n + 1).fill(0);
+      const snap = (text, code, cls, prevRow, curRow) => steps.push({ text: text, code: code, mem: [
+        arrView("prev row (i−1)", prevRow.slice(), {}, 4),
+        arrView("cur row (i)", curRow.slice(), cls || {}, 4)
+      ] });
+      snap("Only the previous row matters → keep two rows and swap (O(n) space).", 1, {}, prev, new Array(n + 1).fill(0));
+      for (let i = 1; i <= m; i++) {
+        const cur = new Array(n + 1).fill(0);
+        for (let j = 1; j <= n; j++) {
+          if (a[i - 1] === b[j - 1]) cur[j] = prev[j - 1] + 1;
+          else cur[j] = Math.max(prev[j], cur[j - 1]);
+        }
+        snap(`Row ${i} ('${a[i - 1]}' vs "${b}"): built from prev row + left cell. Swap rows.`, 4, { n: "hot" }, prev, cur);
+        prev = cur;
+      }
+      const res = prev[n];
+      const last = steps[steps.length - 1];
+      last.result = String(res);
+      last.correct = true;
+      last.memNote = "Time O(m·n), space O(n) — two rows swapped each pass.";
+      return { steps: steps, result: String(res), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+
+NC150.init(SECTION);
+</script>
+</body>
+</html>

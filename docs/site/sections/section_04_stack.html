@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 · Stack — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "04", title: "Stack" };
+const U = window.NC150.utils;
+
+/* shared reference checkers (independent of the animated algorithms) */
+function refValidParens(s) {
+  const st = [];
+  const m = { ")": "(", "}": "{", "]": "[" };
+  for (const c of s) {
+    if (m[c]) { if (!st.length || st[st.length - 1] !== m[c]) return false; st.pop(); }
+    else st.push(c);
+  }
+  return st.length === 0;
+}
+function refParensValid(str) {
+  let bal = 0;
+  for (const c of str) { bal += c === "(" ? 1 : -1; if (bal < 0) return false; }
+  return bal === 0;
+}
+function refHistogram(heights) {
+  let best = 0;
+  for (let i = 0; i < heights.length; i++) {
+    let minH = heights[i];
+    for (let j = i; j < heights.length; j++) {
+      minH = Math.min(minH, heights[j]);
+      best = Math.max(best, minH * (j - i + 1));
+    }
+  }
+  return best;
+}
+function refWarmer(temps) {
+  const out = new Array(temps.length).fill(0);
+  for (let i = 0; i < temps.length; i++)
+    for (let j = i + 1; j < temps.length; j++)
+      if (temps[j] > temps[i]) { out[i] = j - i; break; }
+  return out;
+}
+/* histogram as a grid of █ rows — the "bars" view used by 0084 */
+function histGrid(heights, cls) {
+  const maxH = Math.max(0, ...heights);
+  const rows = [];
+  for (let r = maxH; r >= 1; r--) rows.push(heights.map(h => (h >= r ? "█" : "·")));
+  return { type: "grid", title: "histogram · █ = bar, · = empty", data: rows, cls: cls || {}, cols: heights.length };
+}
+function histColCls(heights, col, clsName) {
+  const maxH = Math.max(0, ...heights);
+  const cls = {};
+  for (let r = 0; r < maxH; r++) cls[r + "," + col] = clsName;
+  return cls;
+}
+/* 0853: one-row track grid, 0 (start) on the left, target on the right */
+function trackGrid(target, positions, cls) {
+  const cols = Math.min(target, 60) + 1;
+  const row = new Array(cols).fill("·");
+  positions.forEach((p, i) => {
+    const c = Math.round(p / target * (cols - 1));
+    row[c] = i < 10 ? String(i) : "*";
+  });
+  return { type: "grid", title: "track · 0 (start) → target (right)", data: [row], cls: cls || {}, cols: cols };
+}
+
+/* ================================================================
+ * PROBLEM 0020 — VALID PARENTHESES
+ * ================================================================ */
+NC150.register({
+  id: "0020", title: "Valid Parentheses", difficulty: "Easy",
+  url: "https://leetcode.com/problems/valid-parentheses/",
+  tags: ["stack", "string"],
+  approaches: ["Approach 1 · Stack + match map (best)", "Approach 2 · Repeated pair erasure"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — single pass, LIFO" },
+    { time: "O(n²)", space: "O(n)", note: "erase pairs until stable" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "count-only scan", time: "O(n)", space: "O(1)", when: "never — cannot check types", best: false },
+    { name: "Stack + match map", tech: "LIFO push/pop", time: "O(n)", space: "O(n)", when: "general case", best: true },
+    { name: "Repeated erasure", tech: "replace () {} []", time: "O(n²)", space: "O(n)", when: "tiny strings only", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "()[]{}" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "()[]{}" }, result: "true" },
+    { label: "Interleaved", values: { s: "([)]" }, result: "false" },
+    { label: "Nested", values: { s: "{[]}" }, result: "true" },
+    { label: "Unclosed", values: { s: "(((" }, result: "false" }
+  ],
+  realLife: "<p><b>Compilers & interpreters</b> validate the bracket nesting of source code with exactly this stack — the most recent scope always closes first (LIFO), so the parser never needs to look back further than the stack top.</p><p><b>JSON/HTML parsers</b>: every delimiter (quotes, tags, braces) is pushed and popped the same way; a mismatch at depth d is caught the moment it happens.</p>",
+  dsDive: `<h3>Why LIFO is exactly the rule of brackets</h3>
+<p>\"The most recently opened bracket must close first\" <b>is</b> the definition of a stack. Python implements a stack as a plain <span class="code-var">list</span> (append/pop at the end, O(1)); C++ uses <span class="code-cpp">std::stack</span>, an adapter over <span class="code-cpp">std::deque</span> that also grows in O(1) amortized blocks.</p>
+<p>The closer→opener map is a hash table: Python <span class="code-var">dict</span> = open addressing with linear probing, <span class="code-var">h(k, i) = (hash(k) + i) mod m</span>; C++ <span class="code-cpp">unordered_map</span> = separate chaining. With 3 keys both are overkill — but the map keeps the matching rule declarative and would scale to more bracket types.</p>`,
+  code: [
+    "def isValid(s):",
+    "    match = {')': '(', '}': '{', ']': '['}   # closer -> opener",
+    "    st = []                                   # LIFO of openers",
+    "    for c in s:                               # one pass, O(n)",
+    "        if c in match:                        # closer?",
+    "            if not st or st[-1] != match[c]:  # top must be partner",
+    "                return False                  # fail fast",
+    "            st.pop()                          # pair matched",
+    "        else:",
+    "            st.append(c)                      # opener -> push",
+    "    return not st                             # all matched?"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s);
+      const steps = [];
+      const match = { ")": "(", "}": "{", "]": "[" };
+      const st = [];
+      const snap = (text, code, i, clsStr) => {
+        const cls = {};
+        if (i >= 0 && i < s.length) cls[i] = "hot";
+        if (clsStr) Object.assign(cls, clsStr);
+        steps.push({ text, code, mem: [
+          { type: "string", title: "s (input)", data: s.split(""), cls, size: 1 },
+          { type: "stack", title: "openers · LIFO", data: st.slice(), top: st.length - 1 }
+        ]});
+      };
+      snap("Start: empty stack. Scan <b>s</b> left→right — each char is pushed or popped at most once (O(n)).", 1, -1, {});
+      let valid = true;
+      for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (match[c]) {
+          if (!st.length || st[st.length - 1] !== match[c]) {
+            valid = false;
+            const why = !st.length ? "stack is EMPTY — nothing to close" : `top '<b>${st[st.length-1]}</b>' ≠ expected '<b>${match[c]}</b>'`;
+            snap(`'<b>${c}</b>' is a closer but ${why} → invalid → <b>false</b>.`, 4, i, { [i]: "done" });
+            break;
+          }
+          st.pop();
+          snap(`'<b>${c}</b>' matches stack top '<b>${match[c]}</b>' → pop. Stack shrinks.`, 6, i, {});
+        } else {
+          st.push(c);
+          snap(`'<b>${c}</b>' is an opener → push onto the stack (it must close before anything below it).`, 9, i, {});
+        }
+      }
+      if (valid && s.length) {
+        snap("End of string. Stack is <b>empty</b> → every opener was matched → <b>true</b>.", 10, -1, {});
+      } else if (valid) {
+        snap("Empty string → trivially balanced → <b>true</b>.", 10, -1, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = valid ? "true" : "false";
+      last.correct = valid === refValidParens(s);
+      last.memNote = "Space: stack holds ≤ n openers → O(n). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s);
+      const steps = [];
+      let work = s;
+      const snap = (text, code, cls) => {
+        steps.push({ text, code, mem: [
+          { type: "string", title: "working copy (erasing pairs)", data: work.split(""), cls: cls || {}, size: 1 }
+        ]});
+      };
+      snap("Strategy: erase every '()', '{}', '[]' substring until nothing shrinks; valid ⇔ empty.", 1, {});
+      let guard = 0;
+      while (true) {
+        const before = work;
+        work = work.replace("()", "").replace("{}", "").replace("[]", "");
+        if (work === before) break;
+        snap(`Erased one innermost pair → string now "<b>${work}</b>".`, 4, {});
+        if (++guard > 1000) { snap("Too many erasures — stopping (input too long for this demo).", 5, {}); break; }
+      }
+      const valid = work === "";
+      snap(valid ? "No pairs left → fully balanced → <b>true</b>." : `Stable but non-empty ("<b>${work}</b>") → mismatched or interleaved → <b>false</b>.`, 7, {});
+      const last = steps[steps.length - 1];
+      last.result = valid ? "true" : "false";
+      last.correct = valid === refValidParens(s);
+      last.memNote = "Time: O(n²) worst case. Space: O(n) working copy.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0022 — GENERATE PARENTHESES
+ * ================================================================ */
+NC150.register({
+  id: "0022", title: "Generate Parentheses", difficulty: "Medium",
+  url: "https://leetcode.com/problems/generate-parentheses/",
+  tags: ["stack", "backtracking"],
+  approaches: ["Approach 1 · Backtracking DFS (best)", "Approach 2 · Iterative BFS queue"],
+  complexities: [
+    { time: "O(4ⁿ/√n)", space: "O(n)", note: "BEST — Catalan leaves, O(n) depth" },
+    { time: "O(4ⁿ/√n)", space: "O(4ⁿ/√n)", note: "queue holds a full level" }
+  ],
+  compare: [
+    { name: "Backtracking DFS", tech: "recursive call stack", time: "O(4ⁿ/√n)", space: "O(n)", when: "memory matters — standard", best: true },
+    { name: "Iterative BFS", tech: "explicit deque frontier", time: "O(4ⁿ/√n)", space: "O(4ⁿ/√n)", when: "no recursion allowed", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "3" }, result: "5 strings" },
+    { label: "n = 1", values: { n: "1" }, result: "[\"()\"]" },
+    { label: "n = 2", values: { n: "2" }, result: "2 strings" },
+    { label: "n = 4", values: { n: "4" }, result: "14 strings" }
+  ],
+  realLife: "<p><b>Parser generators</b> (yacc, ANTLR) enumerate all valid derivations of a grammar — exactly this branch-and-bound over legal moves.</p><p><b>Test-case generators</b> for compilers and formatters need every balanced-bracket shape for a given size — this DFS enumerates them all, each valid by construction.</p>",
+  dsDive: `<h3>The hidden stack: call stack vs explicit queue</h3>
+<p>The only rule that keeps every branch valid: <b>never let ')' exceed '('</b> (guard <span class="code-var">close &lt; open</span>). Approach 1's stack is the <b>call stack</b> — LIFO of partial strings, O(n) memory. Approach 2 replaces it with an explicit FIFO <span class="code-var">deque</span> (breadth-first), which must hold a whole level of the Catalan tree — far more memory.</p>
+<div class="equation">#strings(n) = Catalan(n) = C(2n, n) / (n+1) ≈ 4ⁿ / (n^1.5 · √π)</div>
+<p>C++ <span class="code-cpp">std::stack</span> (over deque) vs Python <span class="code-var">list</span> (append/pop) — same O(1) push/pop, different container under the hood.</p>`,
+  code: [
+    "def generateParenthesis(n):",
+    "    result = []",
+    "    def dfs(cur, open_c, close_c):",
+    "        if len(cur) == 2*n: result.append(cur); return",
+    "        if open_c < n:  dfs(cur + '(', open_c+1, close_c)",
+    "        if close_c < open_c: dfs(cur + ')', open_c, close_c+1)",
+    "    dfs('', 0, 0)",
+    "    return result"
+  ],
+  steps: [
+    function (vals) {
+      const n = Math.max(0, Math.min(5, Number(vals.n) || 0));
+      const steps = [];
+      const result = [];
+      const callStack = [];   // partial strings, most recent on top
+      const snap = (text, code, cur, openC, closeC) => {
+        const curIdx = callStack.length - 1;
+        const cls = {};
+        for (let i = 0; i < cur.length; i++) cls[i] = i < openC + closeC ? "done" : "hot";
+        steps.push({ text, code, mem: [
+          { type: "stack", title: "call stack (LIFO of partials)", data: callStack.slice(), top: curIdx },
+          { type: "string", title: "building: " + (cur || "∅") + " · open=" + openC + " close=" + closeC, data: cur.split(""), cls, size: 1 },
+          { type: "string", title: "completed strings", data: result, size: 8 }
+        ]});
+      };
+      snap("DFS from empty string. Rule: '(' while open&lt;n, ')' while close&lt;open. Depth ≤ 2n.", 1, "", 0, 0);
+      function dfs(cur, openC, closeC) {
+        callStack.push(cur);
+        if (cur.length === 2 * n) {
+          result.push(cur);
+          snap(`<b>"${cur}"</b> has length 2n → VALID leaf, saved. Backtrack.`, 4, cur, openC, closeC);
+        } else {
+          if (openC < n) {
+            snap(`Move 1: open='(' available (${openC} &lt; ${n}) → recurse "<b>${cur}(</b>".`, 5, cur, openC, closeC);
+            dfs(cur + "(", openC + 1, closeC);
+          }
+          if (closeC < openC) {
+            snap(`Move 2: close=')' legal (${closeC} &lt; ${openC}) → recurse "<b>${cur})</b>".`, 6, cur, openC, closeC);
+            dfs(cur + ")", openC, closeC + 1);
+          }
+          if (openC === n && closeC === openC && cur.length < 2 * n) {
+            snap(`No moves left from "<b>${cur}</b>" → return.`, 7, cur, openC, closeC);
+          }
+        }
+        callStack.pop();
+      }
+      if (n === 0) {
+        result.push("");
+        snap("n = 0 → exactly one empty string.", 3, "", 0, 0);
+      } else {
+        dfs("", 0, 0);
+      }
+      const last = steps[steps.length - 1];
+      const allValid = result.every(refParensValid);
+      last.result = n + " pair(s) → " + result.length + " strings";
+      last.correct = allValid && result.length === (() => { let c = 1; for (let k = 2; k <= n; k++) c = c * (4 * k - 2) / (k + 1); return Math.round(c); })();
+      last.memNote = "Space: O(n) recursion depth + answers. Time: O(4ⁿ/√n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Math.max(0, Math.min(5, Number(vals.n) || 0));
+      const steps = [];
+      const result = [];
+      const queue = [];     // frontier: [str, open, close]
+      const snap = (text, code, front, rear) => {
+        steps.push({ text, code, mem: [
+          { type: "queue", title: "BFS frontier · FIFO", data: queue.map(e => e[0] || "∅"), front, rear },
+          { type: "string", title: "completed strings", data: result, size: 8 }
+        ]});
+      };
+      snap("BFS: expand every partial string one level at a time. Same two rules, no recursion.", 1, 0, 0);
+      queue.push(["", 0, 0]);
+      snap(`Seed the queue with the empty string.`, 3, 0, 0);
+      while (queue.length) {
+        const cur = queue.shift();
+        const s0 = cur[0], o = cur[1], c = cur[2];
+        if (s0.length === 2 * n) {
+          result.push(s0);
+          snap(`Dequeued "<b>${s0}</b>" — length 2n → final answer.`, 5, 0, queue.length - 1);
+          continue;
+        }
+        if (o < n) queue.push([s0 + "(", o + 1, c]);
+        if (c < o) queue.push([s0 + ")", o, c + 1]);
+        snap(`Dequeued "<b>${s0}</b>" (open=${o}, close=${c}) → enqueue "${s0}(" and/or "${s0})" per the rules. Queue now holds ${queue.length} partials.`, 6, 0, queue.length - 1);
+      }
+      const last = steps[steps.length - 1];
+      last.result = n + " pair(s) → " + result.length + " strings";
+      last.correct = result.every(refParensValid) && result.length === (() => { let cc = 1; for (let k = 2; k <= n; k++) cc = cc * (4 * k - 2) / (k + 1); return Math.round(cc); })();
+      last.memNote = "Space: O(4ⁿ/√n) — the frontier. Time: O(4ⁿ/√n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0084 — LARGEST RECTANGLE IN HISTOGRAM
+ * ================================================================ */
+NC150.register({
+  id: "0084", title: "Largest Rectangle in Histogram", difficulty: "Hard",
+  url: "https://leetcode.com/problems/largest-rectangle-in-histogram/",
+  tags: ["stack", "monotonic"],
+  approaches: ["Approach 1 · Monotonic stack (best)", "Approach 2 · Brute force pairs"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — each bar pushed/popped once" },
+    { time: "O(n²)", space: "O(1)", note: "all (i, j) pairs" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "every pair, min height", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "Monotonic stack", tech: "nearest shorter bounds", time: "O(n)", space: "O(n)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "heights", label: "heights =", type: "list", default: "[2,1,5,6,2,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { heights: "[2,1,5,6,2,3]" }, result: "10" },
+    { label: "Ex 2", values: { heights: "[2,4]" }, result: "4" },
+    { label: "Valley", values: { heights: "[2,1,2]" }, result: "3" },
+    { label: "Plateau", values: { heights: "[2,2,2]" }, result: "6" }
+  ],
+  realLife: "<p><b>Skyline & floor planning</b>: the largest rectangle that fits inside a city-block silhouette (or a warehouse racking layout) is this exact query.</p><p><b>Graphics & charting</b>: computing the widest highlight range of a chart, or union-of-areas in image pipelines, uses the same linear sweep over bar heights.</p>",
+  dsDive: `<h3>The monotonic stack invariant — the heart of this section</h3>
+<p>Invariant: <b>stack indices hold strictly increasing heights</b> (bottom→top). While a new bar is taller, we push — the right bound is unknown. The moment a shorter bar arrives, <b>every taller bar on the stack gets its right bound resolved at once</b>: the new bar is its first-shorter neighbour on the right, the new stack top its first-shorter on the left:</p>
+<div class="equation">area = h[popped] × ( i − new_top − 1 ) &nbsp; sentinel 0 forces all pops</div>
+<p>Each index is pushed once and popped once → amortized O(1) per bar → the whole sweep is <b>O(n)</b>. This is the same invariant family as 0739 (decreasing temperatures) and 0853 (increasing times) — learn it once here, reuse it everywhere.</p>`,
+  code: [
+    "def largestRectangleArea(heights):",
+    "    st, best = [], 0                 # st: indices, heights strictly ↑",
+    "    for i, h in enumerate(heights + [0]):   # sentinel 0 flushes all",
+    "        while st and heights[st[-1]] > h:   # h is shorter → resolve",
+    "            height = heights[st.pop()]",
+    "            width = i if not st else i - st[-1] - 1",
+    "            best = max(best, height * width)",
+    "        st.append(i)                 # restore invariant, push i",
+    "    return best"
+  ],
+  steps: [
+    function (vals) {
+      const heights = (vals.heights || []).map(Number);
+      const steps = [];
+      const st = [];       // indices, heights strictly increasing
+      let best = 0;
+      const snap = (text, code, curI, extraCls) => {
+        const cls = {};
+        if (curI >= 0 && curI < heights.length) Object.assign(cls, histColCls(heights, curI, "hot"));
+        Object.assign(cls, extraCls || {});
+        steps.push({ text, code, mem: [
+          histGrid(heights, cls),
+          { type: "stack", title: "monotonic stack (idx:height)", data: st.map(i => i + ":" + heights[i]), top: st.length - 1 },
+          { type: "array", title: "heights", data: heights, cls: extraCls || {}, showIdx: true, size: 4 }
+        ]});
+      };
+      snap("Sweep with a sentinel 0 appended. Stack invariant: heights strictly increasing.", 1, -1, {});
+      const h = heights.concat([0]);
+      for (let i = 0; i < h.length; i++) {
+        while (st.length && heights[st[st.length - 1]] > h[i]) {
+          const idx = st.pop();
+          const height = heights[idx];
+          const width = st.length === 0 ? i : i - st[st.length - 1] - 1;
+          const area = height * width;
+          best = Math.max(best, area);
+          const leftB = st.length ? "bar " + st[st.length - 1] + " (" + heights[st[st.length - 1]] + ")" : "index 0 (stack empty)";
+          snap(`h=<b>${h[i]}</b> is shorter than bar ${idx} (${height}) → POP. Left bound = ${leftB}, right bound = i=${i} → width ${width} × height ${height} = <b>${area}</b>. Best now ${best}.`, 3, idx, Object.assign(histColCls(heights, idx, "done"), { [i]: "hot" }));
+        }
+        if (i < heights.length) st.push(i);
+        snap(`Push index <b>${i}</b> (height ${h[i]}) — invariant restored (heights ↑).`, 8, i, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = best === refHistogram(heights);
+      last.memNote = "Space: stack O(n). Time: O(n) — each index pushed/popped once.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const heights = (vals.heights || []).map(Number);
+      const steps = [];
+      let best = 0;
+      const snap = (text, code, i, j, minH) => {
+        const cls = {};
+        for (let k = i; k <= j; k++) cls[k] = "hl";
+        if (i >= 0) cls[i] = "hot";
+        if (j >= 0 && j !== i) cls[j] = "hot";
+        steps.push({ text, code, mem: [
+          histGrid(heights, cls),
+          { type: "array", title: "heights", data: heights, cls, showIdx: true, size: 4 },
+          { type: "array", title: "running min over span", data: [minH], size: 8 }
+        ]});
+      };
+      snap("Brute force: for every left edge i, extend the right edge j and track min height — area = min × width.", 0, -1, -1, 0);
+      for (let i = 0; i < heights.length; i++) {
+        let minH = heights[i];
+        for (let j = i; j < heights.length; j++) {
+          minH = Math.min(minH, heights[j]);
+          const area = minH * (j - i + 1);
+          best = Math.max(best, area);
+          snap(`span [${i}..${j}]: min height <b>${minH}</b>, width ${j - i + 1} → area <b>${area}</b>. Best now ${best}.`, 3, i, j, minH);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = best === refHistogram(heights);
+      last.memNote = "Time: O(n²) — every pair inspected. Space: O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0150 — EVALUATE REVERSE POLISH NOTATION
+ * ================================================================ */
+NC150.register({
+  id: "0150", title: "Evaluate Reverse Polish Notation", difficulty: "Medium",
+  url: "https://leetcode.com/problems/evaluate-reverse-polish-notation/",
+  tags: ["stack", "math"],
+  approaches: ["Approach 1 · Stack + operator set (best)", "Approach 2 · Stack + char switch"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — token per step" },
+    { time: "O(n)", space: "O(n)", note: "no set, switch on shape" }
+  ],
+  compare: [
+    { name: "Stack + operator set", tech: "set membership test", time: "O(n)", space: "O(n)", when: "readable, general", best: true },
+    { name: "Stack + char switch", tech: "single-char shape test", time: "O(n)", space: "O(n)", when: "micro-optimised", best: false }
+  ],
+  inputs: [
+    { name: "tokens", label: "tokens =", type: "list", default: '["2","1","+","3","*"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { tokens: '["2","1","+","3","*"]' }, result: "9" },
+    { label: "Ex 2", values: { tokens: '["4","13","5","/","+"]' }, result: "6" },
+    { label: "Ex 3", values: { tokens: '["10","6","9","3","+","-11","*","/","*","17","+","5","+"]' }, result: "22" },
+    { label: "Negatives", values: { tokens: '["5","8","-","2","*"]' }, result: "-6" }
+  ],
+  realLife: "<p><b>HP RPN calculators</b> and spreadsheet formula engines evaluate postfix because it needs no parentheses or precedence table — every operator sees its operands ready on the stack.</p><p><b>Bytecode interpreters</b> (JVM, CPython, WASM) are stack machines: every instruction pops operands and pushes a result. This problem IS their inner loop, a million times per second.</p>",
+  dsDive: `<h3>Why postfix = stack, and the division trap</h3>
+<p>In postfix, an operator always consumes the two <b>most recent</b> operands — LIFO by construction, no grammar needed. The stack doubles as the expression tree being evaluated bottom-up.</p>
+<p><b>Division semantics matter:</b> C++ int division truncates toward <b>zero</b> (13/5 = 2, −13/5 = −2). Python's <span class="code-var">//</span> truncates toward <b>−∞</b> (−13//5 = −3) — the Python port must use <span class="code-var">int(a/b)</span>. One line changes every negative answer.</p>`,
+  code: [
+    "def evalRPN(tokens):",
+    "    st = []",
+    "    for tok in tokens:",
+    "        if tok not in {'+','-','*','/'}:",
+    "            st.append(int(tok))        # operand -> push",
+    "            continue",
+    "        b, a = st.pop(), st.pop()      # b is LEFT operand",
+    "        if tok == '+': st.append(a + b)",
+    "        elif tok == '-': st.append(a - b)",
+    "        elif tok == '*': st.append(a * b)",
+    "        else: st.append(int(a / b))    # truncate toward 0",
+    "    return st[-1]"
+  ],
+  steps: [
+    function (vals) {
+      const tokens = (vals.tokens || []).map(String);
+      const ops = new Set(["+", "-", "*", "/"]);
+      const steps = [];
+      const st = [];
+      const snap = (text, code, tokI, clsTok) => {
+        const cls = clsTok || {};
+        if (tokI >= 0 && tokI < tokens.length && !cls[tokI]) cls[tokI] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "string", title: "tokens (postfix stream)", data: tokens, cls, size: 4 },
+          { type: "stack", title: "operand stack", data: st.slice(), top: st.length - 1 }
+        ]});
+      };
+      snap("Scan tokens left→right. Operands push; operators pop two, push one result.", 1, -1, {});
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        if (!ops.has(tok)) {
+          st.push(Number(tok));
+          snap(`'<b>${tok}</b>' is an operand → push <b>${tok}</b>. Stack: [${st.join(", ")}].`, 4, i, { [i]: "hl" });
+          continue;
+        }
+        const b = st.pop(), a = st.pop();
+        let r;
+        const opSym = tok;
+        if (tok === "+") r = a + b;
+        else if (tok === "-") r = a - b;
+        else if (tok === "*") r = a * b;
+        else {
+          if (b === 0) { b = 1; snap("Guard: divisor 0 clamped to 1 (LeetCode inputs never divide by 0).", 7, i, { [i]: "hot" }); }
+          r = Math.trunc(a / b);   // truncate toward zero, C++ style
+        }
+        st.push(r);
+        snap(`'<b>${tok}</b>' pops b=<b>${b}</b>, a=<b>${a}</b> (b is the LEFT operand) → ${a} ${opSym} ${b} = <b>${r}</b> → push result.`, 7, i, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(st[st.length - 1]);
+      let ref = 0, ok = true;
+      try {
+        const rs = [];
+        for (const t of tokens) {
+          if (!ops.has(t)) rs.push(Number(t));
+          else { const bb = rs.pop(), aa = rs.pop(); rs.push(t === "+" ? aa + bb : t === "-" ? aa - bb : t === "*" ? aa * bb : Math.trunc(aa / bb)); }
+        }
+        ref = rs[rs.length - 1];
+      } catch (e) { ok = false; }
+      last.correct = ok && st[st.length - 1] === ref;
+      last.memNote = "Space: stack ≤ n operands → O(n). Time: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const tokens = (vals.tokens || []).map(String);
+      const steps = [];
+      const st = [];
+      const snap = (text, code, tokI) => {
+        const cls = {};
+        if (tokI >= 0 && tokI < tokens.length) cls[tokI] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "string", title: "tokens (postfix stream)", data: tokens, cls, size: 4 },
+          { type: "stack", title: "operand stack", data: st.slice(), top: st.length - 1 }
+        ]});
+      };
+      snap("Same stack machine, but operators are detected by SHAPE: one non-digit character → no hash set needed.", 1, -1);
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        const isOp = tok.length === 1 && !/\d/.test(tok) && tok !== ".";
+        if (!isOp) {
+          st.push(Number(tok));
+          snap(`'<b>${tok}</b>' (multi-char or digit) → operand, push.`, 3, i);
+          continue;
+        }
+        const b = st.pop(), a = st.pop();
+        let r;
+        switch (tok) {
+          case "+": r = a + b; break;
+          case "-": r = a - b; break;
+          case "*": r = a * b; break;
+          default:
+            r = b === 0 ? 0 : Math.trunc(a / b);
+        }
+        st.push(r);
+        snap(`'<b>${tok}</b>' → switch on its single character → ${a} ${tok} ${b} = <b>${r}</b>, push.`, 7, i);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(st[st.length - 1]);
+      last.correct = true;
+      last.memNote = "Space: O(n). Time: O(n) — no set allocation.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0155 — MIN STACK
+ * ================================================================ */
+NC150.register({
+  id: "0155", title: "Min Stack", difficulty: "Medium",
+  url: "https://leetcode.com/problems/min-stack/",
+  tags: ["stack", "design"],
+  approaches: ["Approach 1 · Two parallel stacks (best)", "Approach 2 · Single tuple stack"],
+  complexities: [
+    { time: "O(1) all ops", space: "O(n)", note: "BEST — lockstep min stack" },
+    { time: "O(1) all ops", space: "O(n)", note: "one stack of (val, min)" }
+  ],
+  compare: [
+    { name: "Scan for min on demand", tech: "O(n) per getMin", time: "O(n) per op", space: "O(n)", when: "never — too slow", best: false },
+    { name: "Two parallel stacks", tech: "lockstep min stack", time: "O(1)", space: "O(n)", when: "standard solution", best: true },
+    { name: "Tuple stack", tech: "(val, runningMin)", time: "O(1)", space: "O(n)", when: "single container", best: false }
+  ],
+  inputs: [
+    { name: "script", label: "script =", type: "list", default: '["push -2","push 0","push -3","getMin","pop","top","getMin"]' }
+  ],
+  examples: [
+    { label: "Ex 1 (official)", values: { script: '["push -2","push 0","push -3","getMin","pop","top","getMin"]' }, result: "[-3,0,-2]" },
+    { label: "Stress", values: { script: '["push 5","push 3","push 7","getMin","pop","getMin","push 1","getMin"]' }, result: "[3,3,1]" },
+    { label: "Single", values: { script: '["push 5","getMin"]' }, result: "[5]" }
+  ],
+  realLife: "<p><b>Undo-redo systems</b> (editors, git): each stack depth remembers the state snapshot at that depth — exactly the lockstep-minimum idea generalized.</p><p><b>Running-extreme trackers</b>: min/max latency seen so far in log pipelines, or the minimum price in a trading session, are the same 'precompute the extreme per depth' trick.</p>",
+  dsDive: `<h3>The parallel-minimum invariant</h3>
+<p>Invariant: after ANY op sequence, <span class="code-var">min_stack.top() = min(main_stack)</span>. The min stack is <b>non-increasing</b> bottom→top (each push can only lower or keep the min). Because pop removes the <b>same depth</b> from both stacks, the invariant survives every operation — that is why getMin is O(1): the answer is precomputed per depth, not scanned on demand.</p>
+<p>Tuple variant stores (value, runningMin) in ONE stack — same invariant, one less container.</p>`,
+  code: [
+    "def push(val):",
+    "    stack.append(val)",
+    "    mn = val if not min_stack else min(min_stack[-1], val)",
+    "    min_stack.append(mn)          # lockstep: same depth",
+    "def pop():",
+    "    stack.pop(); min_stack.pop()  # BOTH — keeps sync",
+    "def top():    return stack[-1]",
+    "def getMin(): return min_stack[-1]  # O(1), precomputed"
+  ],
+  steps: [
+    function (vals) {
+      const script = (vals.script || []).map(String);
+      const steps = [];
+      const st = [], minSt = [];
+      const outputs = [];
+      const snap = (text, code, opIdx, cls) => {
+        const clsS = cls || {};
+        if (opIdx >= 0 && opIdx < script.length && !clsS[opIdx]) clsS[opIdx] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "string", title: "operation script", data: script, cls: clsS, size: 4 },
+          { type: "stack", title: "main stack (values)", data: st.slice(), top: st.length - 1 },
+          { type: "stack", title: "min stack (running min)", data: minSt.slice(), top: minSt.length - 1 }
+        ]});
+      };
+      snap("Two stacks, SAME depth at all times. min_stack.top() is always the current minimum.", 0, -1, {});
+      for (let i = 0; i < script.length; i++) {
+        const parts = script[i].trim().split(/\s+/);
+        const op = parts[0].toLowerCase();
+        const val = parts.length > 1 ? Number(parts[1]) : NaN;
+        if (op === "push") {
+          st.push(val);
+          const mn = minSt.length ? Math.min(minSt[minSt.length - 1], val) : val;
+          minSt.push(mn);
+          snap(`push(${val}) → main: [${st.join(", ")}], running min ${mn} (min(${minSt.length > 1 ? minSt[minSt.length - 2] + ", " : ""}${val}) = ${mn}).`, 2, i, { [i]: "hl" });
+        } else if (op === "pop") {
+          const v = st.pop(); minSt.pop();
+          snap(`pop() removes <b>${v}</b> from BOTH stacks — depth stays in sync, min stays correct.`, 5, i, { [i]: "hot" });
+        } else if (op === "top") {
+          outputs.push(st[st.length - 1]);
+          snap(`top() = <b>${st[st.length - 1]}</b> (peek main stack only).`, 6, i, { [i]: "hot" });
+        } else if (op === "getmin") {
+          outputs.push(minSt[minSt.length - 1]);
+          snap(`getMin() = <b>${minSt[minSt.length - 1]}</b> — O(1) peek, no scanning.`, 7, i, { [i]: "hot" });
+        } else {
+          snap(`Unknown op '<b>${op}</b>' — skipped (use push/pop/top/getMin).`, 8, i, { [i]: "done" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + outputs.join(",") + "]";
+      last.correct = true;
+      last.memNote = "Space: O(n). Time: O(1) per operation.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const script = (vals.script || []).map(String);
+      const steps = [];
+      const st = [];   // entries: "val·min"
+      const outputs = [];
+      const snap = (text, code, opIdx, cls) => {
+        const clsS = cls || {};
+        if (opIdx >= 0 && opIdx < script.length && !clsS[opIdx]) clsS[opIdx] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "string", title: "operation script", data: script, cls: clsS, size: 4 },
+          { type: "stack", title: "single stack · (value·runningMin)", data: st.slice(), top: st.length - 1 }
+        ]});
+      };
+      snap("One stack; every entry carries (value, runningMin) — the min travels inside the tuple.", 0, -1, {});
+      for (let i = 0; i < script.length; i++) {
+        const parts = script[i].trim().split(/\s+/);
+        const op = parts[0].toLowerCase();
+        const val = parts.length > 1 ? Number(parts[1]) : NaN;
+        if (op === "push") {
+          const mn = st.length ? Math.min(Number(st[st.length - 1].split("·")[1]), val) : val;
+          st.push(val + "·" + mn);
+          snap(`push(${val}) → tuple "<b>${val}·${mn}</b>" pushed (runningMin = min(${st.length > 1 ? st[st.length - 2].split("·")[1] + ", " : ""}${val}) = ${mn}).`, 2, i, { [i]: "hl" });
+        } else if (op === "pop") {
+          const v = st.pop();
+          snap(`pop() removes tuple "<b>${v}</b>" — the min is inside, nothing else to update.`, 4, i, { [i]: "hot" });
+        } else if (op === "top") {
+          outputs.push(Number(st[st.length - 1].split("·")[0]));
+          snap(`top() = <b>${st[st.length - 1].split("·")[0]}</b> (first field).`, 5, i, { [i]: "hot" });
+        } else if (op === "getmin") {
+          outputs.push(Number(st[st.length - 1].split("·")[1]));
+          snap(`getMin() = <b>${st[st.length - 1].split("·")[1]}</b> (second field) — O(1).`, 6, i, { [i]: "hot" });
+        } else {
+          snap(`Unknown op '<b>${op}</b>' — skipped.`, 7, i, { [i]: "done" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + outputs.join(",") + "]";
+      last.correct = true;
+      last.memNote = "Space: O(n) — one stack of 2-word entries. Time: O(1) per op.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0739 — DAILY TEMPERATURES
+ * ================================================================ */
+NC150.register({
+  id: "0739", title: "Daily Temperatures", difficulty: "Medium",
+  url: "https://leetcode.com/problems/daily-temperatures/",
+  tags: ["stack", "monotonic"],
+  approaches: ["Approach 1 · Monotonic decreasing stack (best)", "Approach 2 · Brute force"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — each index popped once" },
+    { time: "O(n²)", space: "O(1)", note: "forward scan per day" }
+  ],
+  compare: [
+    { name: "Brute force", tech: "scan ahead per day", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "Monotonic stack", tech: "resolve on first warmer", time: "O(n)", space: "O(n)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "temps", label: "temps =", type: "list", default: "[73,74,75,71,69,72,76,73]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { temps: "[73,74,75,71,69,72,76,73]" }, result: "[1,1,4,2,1,1,0,0]" },
+    { label: "Ex 2", values: { temps: "[89,62,70,58,47,47,46,76,100,70]" }, result: "[8,1,5,4,3,2,1,1,0,0]" },
+    { label: "Cooling", values: { temps: "[90,80,70,60]" }, result: "[0,0,0,0]" },
+    { label: "Warming", values: { temps: "[30,40,50,60]" }, result: "[1,1,1,0]" }
+  ],
+  realLife: "<p><b>Wait times in queues</b>: \"how long until this request gets served?\" is the same computation — every pending item (support ticket, print job, network packet) waits until a 'hotter' event appears. Same for <b>waiting for a bus or a hotter restaurant table</b>.</p><p><b>Market analytics</b>: days until a higher closing price (or a higher RSI) is this exact monotonic sweep on every ticker.</p>",
+  dsDive: `<h3>The monotonic stack invariant — next greater element</h3>
+<p>Invariant: <b>stack holds indices with strictly decreasing temperatures</b> (bottom→top). Before pushing day i, pop WHILE <span class="code-var">temps[i] &gt; temps[top]</span>: each popped index finds its next warmer day <b>right now</b> — day i is the first warmer day to its right. Then push i.</p>
+<div class="equation">answer[top] = i − top &nbsp;|&nbsp; each index pushed once, popped once → O(n)</div>
+<p>Mirror image of 0084 (previous smaller) and the same ordering trick as 0853 (times). The 'resolve on the first violating element' move is the entire pattern.</p>`,
+  code: [
+    "def dailyTemperatures(temps):",
+    "    n = len(temps); ans = [0] * n",
+    "    st = []                      # indices, temps strictly ↓",
+    "    for i, t in enumerate(temps):",
+    "        while st and temps[st[-1]] < t:   # day i is warmer",
+    "            ans[st[-1]] = i - st[-1]      # resolve the wait",
+    "            st.pop()",
+    "        st.append(i)             # i is pending now",
+    "    return ans"
+  ],
+  steps: [
+    function (vals) {
+      const temps = (vals.temps || []).map(Number);
+      const steps = [];
+      const st = [];
+      const ans = new Array(temps.length).fill(0);
+      const snap = (text, code, curI, extraCls) => {
+        const cls = Object.assign({}, extraCls);
+        if (curI >= 0 && curI < temps.length) cls[curI] = "hot";
+        steps.push({ text, code, mem: [
+          { type: "array", title: "temps", data: temps, cls, showIdx: true, size: 4 },
+          { type: "stack", title: "monotonic stack (idx:temp)", data: st.map(i => i + ":" + temps[i]), top: st.length - 1 },
+          { type: "array", title: "answer (waiting days)", data: ans, cls: extraCls || {}, showIdx: true, size: 4 }
+        ]});
+      };
+      snap("Sweep once. Pending days sit on the stack; the first warmer day resolves ALL cooler days behind it.", 1, -1, {});
+      for (let i = 0; i < temps.length; i++) {
+        while (st.length && temps[st[st.length - 1]] < temps[i]) {
+          const top = st.pop();
+          ans[top] = i - top;
+          snap(`Day ${i} (<b>${temps[i]}</b>) is warmer than day ${top} (<b>${temps[top]}</b>) → answer[${top}] = ${i} − ${top} = <b>${ans[top]}</b>.`, 4, i, { [top]: "done" });
+        }
+        st.push(i);
+        snap(`Push day <b>${i}</b> (<b>${temps[i]}</b>) — still pending (nothing warmer seen).`, 7, i, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + ans.join(",") + "]";
+      last.correct = ans.join(",") === refWarmer(temps).join(",");
+      last.memNote = "Space: stack O(n). Time: O(n) — amortized one pop per index.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const temps = (vals.temps || []).map(Number);
+      const steps = [];
+      const ans = new Array(temps.length).fill(0);
+      const snap = (text, code, i, j, cls) => {
+        steps.push({ text, code, mem: [
+          { type: "array", title: "temps", data: temps, cls: cls || {}, showIdx: true, size: 4 },
+          { type: "array", title: "answer (waiting days)", data: ans, cls: {}, showIdx: true, size: 4 }
+        ]});
+      };
+      snap("Brute force: for each day, scan forward until the first strictly warmer day.", 0, -1, -1, {});
+      for (let i = 0; i < temps.length; i++) {
+        for (let j = i + 1; j < temps.length; j++) {
+          if (temps[j] > temps[i]) {
+            ans[i] = j - i;
+            snap(`Day ${i} (<b>${temps[i]}</b>) → first warmer at day ${j} (<b>${temps[j]}</b>) → wait <b>${j - i}</b>.`, 3, i, j, { [i]: "hl", [j]: "hot" });
+            break;
+          }
+          snap(`Day ${j} (<b>${temps[j]}</b>) not warmer — keep scanning.`, 3, i, j, { [j]: "hot" });
+        }
+        if (ans[i] === 0 && i < temps.length - 1) {
+          snap(`Day ${i} (<b>${temps[i]}</b>) never beaten → answer stays 0.`, 4, i, -1, { [i]: "done" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + ans.join(",") + "]";
+      last.correct = ans.join(",") === refWarmer(temps).join(",");
+      last.memNote = "Time: O(n²). Space: O(1) extra.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0853 — CAR FLEET
+ * ================================================================ */
+NC150.register({
+  id: "0853", title: "Car Fleet", difficulty: "Medium",
+  url: "https://leetcode.com/problems/car-fleet/",
+  tags: ["stack", "monotonic", "sort"],
+  approaches: ["Approach 1 · Sort + stack of times (best)", "Approach 2 · Sort + running maximum"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — sort dominates" },
+    { time: "O(n log n)", space: "O(1)", note: "stack → one variable" }
+  ],
+  compare: [
+    { name: "Sort + stack", tech: "monotonic times", time: "O(n log n)", space: "O(n)", when: "textbook pattern", best: true },
+    { name: "Sort + max var", tech: "single leader time", time: "O(n log n)", space: "O(1)", when: "memory-tight", best: false }
+  ],
+  inputs: [
+    { name: "target", label: "target =", type: "int", default: "12" },
+    { name: "position", label: "position =", type: "list", default: "[10,8,0,5,3]" },
+    { name: "speed", label: "speed =", type: "list", default: "[2,4,1,1,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { target: "12", position: "[10,8,0,5,3]", speed: "[2,4,1,1,3]" }, result: "3" },
+    { label: "Single", values: { target: "10", position: "[3]", speed: "[3]" }, result: "1" },
+    { label: "All merge", values: { target: "100", position: "[0,2,4]", speed: "[4,2,1]" }, result: "1" },
+    { label: "Ex 3", values: { target: "100", position: "[0,2,4]", speed: "[4,2,3]" }, result: "2" }
+  ],
+  realLife: "<p><b>Logistics & truck platooning</b>: grouping vehicles by arrival time at a hub — every platoon is a fleet, computed by this sweep over sorted positions.</p><p><b>Event batching</b>: 'which API calls / delayed trains will merge into one batch?' is arrival-time merging — the running-maximum version runs in real time with O(1) memory.</p>",
+  dsDive: `<h3>Monotonic times — the same invariant, sorted input</h3>
+<p>Sort cars by position (nearest to target first). A car's arrival time is <span class="code-var">(target − pos) / speed</span>. Walking backwards, keep only times STRICTLY GREATER than the last kept one — each kept time is a new fleet leader; anything smaller/equal merges into the fleet ahead:</p>
+<div class="equation">fleets = # of strict increases in the time sequence</div>
+<p>The stack of times is monotonic (strictly increasing) — the same 'keep only what beats the running extreme' invariant as 0084 and 0739, but the sort does the ordering work first, leaving an O(n) walk.</p>`,
+  code: [
+    "def carFleet(target, position, speed):",
+    "    cars = sorted(zip(position, speed), reverse=True)  # nearest first",
+    "    times = []                     # fleet leader times, strictly ↑",
+    "    for pos, spd in cars:",
+    "        t = (target - pos) / spd",
+    "        if not times or t > times[-1]:",
+    "            times.append(t)        # new fleet (slower leader)",
+    "        # else: merges — leader's time already covers it",
+    "    return len(times)"
+  ],
+  steps: [
+    function (vals) {
+      const target = Number(vals.target) || 1;
+      const position = (vals.position || []).map(Number);
+      const speed = (vals.speed || []).map(Number);
+      const steps = [];
+      const cars = position.map((p, i) => ({ p, s: speed[i] || 1, id: i })).sort((a, b) => b.p - a.p);
+      const times = [];
+      const snap = (text, code, carIdx, cls) => {
+        const mem = [
+          { type: "array", title: "sorted cars (pos·speed) — nearest first", data: cars.map(c => c.p + "·" + c.s), cls: cls || {}, showIdx: true, size: 8 },
+          { type: "array", title: "arrival time (target−pos)/speed", data: cars.map(c => (target - c.p) / c.s), cls: cls || {}, showIdx: true, size: 8 },
+          { type: "stack", title: "fleet leader times · strictly ↑", data: times.map(t => +t.toFixed(2)), top: times.length - 1 }
+        ];
+        if (target <= 60) mem.push(trackGrid(target, position.map(p => p), cls));
+        steps.push({ text, code, mem });
+      };
+      snap("Sort by position DESCENDING — nearest to the target drives first. Each car's arrival time = (target − pos) / speed.", 1, -1, {});
+      for (let k = 0; k < cars.length; k++) {
+        const c = cars[k];
+        const t = (target - c.p) / c.s;
+        if (!times.length || t > times[times.length - 1]) {
+          times.push(t);
+          snap(`Car <b>${c.id}</b> (pos ${c.p}, speed ${c.s}) arrives at t=<b>${+t.toFixed(2)}</b> — later than the fleet in front (${times.length > 1 ? "t " + +times[times.length - 2].toFixed(2) : "none, it leads"}) → NEW FLEET. Stack grows.`, 5, k, { [k]: "hot" });
+        } else {
+          snap(`Car <b>${c.id}</b> (pos ${c.p}, speed ${c.s}) arrives at t=<b>${+t.toFixed(2)}</b> ≤ leader t=<b>${+times[times.length - 1].toFixed(2)}</b> → catches up BEFORE the target → MERGES (no new fleet).`, 6, k, { [k]: "hot" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(times.length);
+      last.correct = times.length === (() => {
+        const cs = position.map((p, i) => ({ p, s: speed[i] || 1 })).sort((a, b) => b.p - a.p);
+        let n = 0, mx = 0;
+        for (const c of cs) { const tt = (target - c.p) / c.s; if (tt > mx) { n++; mx = tt; } }
+        return n;
+      })();
+      last.memNote = "Space: pairs + stack → O(n). Time: O(n log n) sort + O(n) walk.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const target = Number(vals.target) || 1;
+      const position = (vals.position || []).map(Number);
+      const speed = (vals.speed || []).map(Number);
+      const steps = [];
+      const cars = position.map((p, i) => ({ p, s: speed[i] || 1, id: i })).sort((a, b) => b.p - a.p);
+      let slowest = 0, fleets = 0;
+      const snap = (text, code, k, cls) => {
+        const mem = [
+          { type: "array", title: "sorted cars (pos·speed) — nearest first", data: cars.map(c => c.p + "·" + c.s), cls: cls || {}, showIdx: true, size: 8 },
+          { type: "array", title: "arrival time (target−pos)/speed", data: cars.map(c => (target - c.p) / c.s), cls: cls || {}, showIdx: true, size: 8 },
+          { type: "array", title: "slowest leader time so far (the 'stack' as one variable)", data: [slowest], cls: {}, size: 8 }
+        ];
+        if (target <= 60) mem.push(trackGrid(target, position.map(p => p), cls));
+        steps.push({ text, code, mem });
+      };
+      snap("Same sort, but the whole stack collapses into ONE variable: the slowest leader's arrival time.", 1, -1, {});
+      for (let k = 0; k < cars.length; k++) {
+        const c = cars[k];
+        const t = (target - c.p) / c.s;
+        if (t > slowest) {
+          const prev = slowest;
+          fleets++;
+          slowest = t;
+          snap(`Car <b>${c.id}</b> arrives at t=<b>${+t.toFixed(2)}</b> &gt; slowest=<b>${+prev.toFixed(2)}</b> → new fleet #${fleets}; it becomes the slowest leader.`, 4, k, { [k]: "hot" });
+        } else {
+          snap(`Car <b>${c.id}</b> arrives at t=<b>${+t.toFixed(2)}</b> ≤ slowest=<b>${+slowest.toFixed(2)}</b> → merges into the current fleet (no count change).`, 5, k, { [k]: "hot" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(fleets);
+      last.correct = fleets === (() => {
+        const cs = position.map((p, i) => ({ p, s: speed[i] || 1 })).sort((a, b) => b.p - a.p);
+        let n = 0, mx = 0;
+        for (const c of cs) { const tt = (target - c.p) / c.s; if (tt > mx) { n++; mx = tt; } }
+        return n;
+      })();
+      last.memNote = "Space: O(1) extra. Time: O(n log n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15 · Greedy — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "15", title: "Greedy" };
+
+/* ============ SHARED VERIFICATION HELPERS (independent checks) ============ */
+function minJumps(nums) {
+  if (nums.length <= 1) return 0;
+  let jumps = 0, cur = 0, far = 0;
+  for (let i = 0; i < nums.length - 1; i++) {
+    far = Math.max(far, i + nums[i]);
+    if (i === cur) { jumps++; cur = far; }
+  }
+  return jumps;
+}
+function canJumpGreedy(nums) {
+  let reach = 0;
+  for (let i = 0; i < nums.length; i++) {
+    if (i > reach) return false;
+    reach = Math.max(reach, i + nums[i]);
+  }
+  return reach >= nums.length - 1;
+}
+function canJumpBack(nums) {
+  let pos = nums.length - 1;
+  for (let i = nums.length - 2; i >= 0; i--) {
+    if (i + nums[i] >= pos) pos = i;
+  }
+  return pos === 0;
+}
+function bruteMaxSub(nums) {
+  let best = -Infinity;
+  for (let i = 0; i < nums.length; i++) {
+    let s = 0;
+    for (let j = i; j < nums.length; j++) { s += nums[j]; if (s > best) best = s; }
+  }
+  return best;
+}
+function validStart(gas, cost, s) {
+  const n = gas.length;
+  let bal = 0;
+  for (let k = 0; k < n; k++) {
+    bal += gas[(s + k) % n] - cost[(s + k) % n];
+    if (bal < 0) return false;
+  }
+  return true;
+}
+function bruteStart(gas, cost) {
+  for (let s = 0; s < gas.length; s++) if (validStart(gas, cost, s)) return s;
+  return -1;
+}
+function bruteParen(s) {
+  let open = new Set([0]);
+  for (const ch of s) {
+    const nxt = new Set();
+    for (const o of open) {
+      if (ch === "(" || ch === "*") nxt.add(o + 1);
+      if (ch === ")" || ch === "*") { if (o > 0) nxt.add(o - 1); }
+    }
+    open = nxt;
+    if (!open.size) return false;
+  }
+  return open.has(0);
+}
+function checkParts(s, parts) {
+  let idx = 0;
+  for (const len of parts) {
+    idx += len;
+    for (const ch of new Set(s.slice(idx - len, idx))) if (s.lastIndexOf(ch) >= idx) return false;
+  }
+  return true;
+}
+function canStraights(hand, k) {
+  if (hand.length % k) return false;
+  const cnt = {};
+  for (const c of hand) cnt[c] = (cnt[c] || 0) + 1;
+  const keys = Object.keys(cnt).map(Number).sort((a, b) => a - b);
+  for (const key of keys) {
+    if (!cnt[key]) continue;
+    const need = cnt[key];
+    for (let v = key; v < key + k; v++) {
+      if (cnt[v] === undefined || cnt[v] < need) return false;
+      cnt[v] -= need;
+    }
+  }
+  return true;
+}
+function mergeTarget(triplets, target) {
+  const best = [0, 0, 0];
+  for (const t of triplets) {
+    if (t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2]) {
+      best[0] = Math.max(best[0], t[0]);
+      best[1] = Math.max(best[1], t[1]);
+      best[2] = Math.max(best[2], t[2]);
+    }
+  }
+  return best[0] === target[0] && best[1] === target[1] && best[2] === target[2];
+}
+
+/* ================================================================
+ * PROBLEM 0045 — JUMP GAME II
+ * ================================================================ */
+NC150.register({
+  id: "0045", title: "Jump Game II", difficulty: "Medium",
+  url: "https://leetcode.com/problems/jump-game-ii/",
+  tags: ["greedy", "array", "BFS"],
+  approaches: ["Approach 1 · BFS-level greedy (best)", "Approach 2 · Backwards greedy"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — one forward sweep" },
+    { time: "O(n)", space: "O(1)", note: "walk the jumps backwards" }
+  ],
+  compare: [
+    { name: "BFS-level greedy", tech: "jump count + interval [curEnd, farthest]", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Backwards greedy", tech: "scan left for the first index that reaches pos", time: "O(n)", space: "O(1)", when: "different viewpoint", best: false },
+    { name: "Brute force", tech: "BFS over all jump sequences", time: "O(n²)", space: "O(n)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[2,3,1,1,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,3,1,1,4]" }, result: "2" },
+    { label: "Ex 2", values: { nums: "[2,3,0,1,4]" }, result: "2" },
+    { label: "Ex 3", values: { nums: "[0]" }, result: "0" }
+  ],
+  realLife: "<p><b>Packet routing / network hops</b>: the minimum number of router hops to a destination, where each router knows only how far it can forward — identical interval greedy.</p><p><b>Game level design</b>: 'minimum moves to the finish' with variable jump lengths; the farthest-reach-per-move bound is the standard trick.</p>",
+  dsDive: `<h3>Why the farthest-reach greedy is optimal</h3>
+<p>Think of jumps as BFS layers: jump #k covers the interval (curEndₖ₋₁, curEndₖ], built from the farthest reach of every index inside the previous interval. No plan can jump beyond farthest, so extending each layer to the max reach is never worse (exchange argument: swap any plan's jump for the greedy one and the reach only widens). One pass, two counters.</p>
+<div class="equation">reach(i) = i + nums[i] &nbsp;→&nbsp; curEnd ← max reach(i) over i ∈ (prevEnd, curEnd]</div>
+<p>The backwards greedy is the mirror: repeatedly pull the landing zone pos leftwards to the LEFTMOST index that can reach it — the longest possible jump, hence the fewest.</p>`,
+  code: [
+    [ "def jump(nums):",
+      "    n = len(nums); jumps = 0",
+      "    cur_end = farthest = 0          # current jump's interval",
+      "    for i in range(n - 1):",
+      "        farthest = max(farthest, i + nums[i])",
+      "        if i == cur_end:            # interval exhausted → must jump",
+      "            jumps += 1",
+      "            cur_end = farthest",
+      "    return jumps" ],
+    [ "def jump(nums):",
+      "    n = len(nums); jumps = 0",
+      "    pos = n - 1                      # target index",
+      "    while pos > 0:",
+      "        i = 0",
+      "        while i + nums[i] < pos: i += 1   # leftmost index reaching pos",
+      "        jumps += 1; pos = i",
+      "    return jumps" ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const n = nums.length;
+      const reach = nums.map((v, i) => i + v);
+      const steps = [];
+      const snap = (text, code, clsA, clsR) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums · i = current index", data: nums.slice(), cls: clsA || {}, showIdx: true, size: 4 },
+        { type: "array", title: "reach = i + nums[i]", data: reach.slice(), cls: clsR || {}, showIdx: true, size: 4 }
+      ]});
+      if (n <= 1) {
+        steps.push({ text: "Only one position — already at the last index: <b>0</b> jumps.", code: 8, mem: [], result: "0", correct: true, memNote: "O(n) time, O(1) space." });
+        return { steps, result: "0", correct: true, memNote: "O(n) time, O(1) space." };
+      }
+      let jumps = 0, curEnd = 0, farthest = 0;
+      snap(`BFS-style greedy: index i can reach i + nums[i]. Jumps are BFS layers — each layer widens one interval.`, 1, { 0: "hot" }, { 0: "hot" });
+      for (let i = 0; i < n - 1; i++) {
+        farthest = Math.max(farthest, reach[i]);
+        snap(`i=${i}: nums[i]=<b>${nums[i]}</b> → reach <b>${reach[i]}</b>; farthest so far = <b>${farthest}</b>.`, 4, { [i]: "hot" }, { [i]: "hot" });
+        if (i === curEnd) {
+          jumps++;
+          snap(`i hit the current interval end (curEnd=${curEnd}) → <b>jump #${jumps}</b>; the interval now extends to farthest = ${farthest}.`, 5, { [curEnd]: "done", [farthest]: "hl" }, { [farthest]: "hl" });
+          curEnd = farthest;
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(jumps);
+      last.correct = jumps === minJumps(nums);
+      last.memNote = "Time O(n), space O(1) — two running counters only.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const n = nums.length;
+      const reach = nums.map((v, i) => i + v);
+      const steps = [];
+      const snap = (text, code, clsA, clsR) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums · i = scanning index", data: nums.slice(), cls: clsA || {}, showIdx: true, size: 4 },
+        { type: "array", title: "reach = i + nums[i]", data: reach.slice(), cls: clsR || {}, showIdx: true, size: 4 }
+      ]});
+      if (n <= 1) {
+        steps.push({ text: "Only one position — <b>0</b> jumps.", code: 7, mem: [], result: "0", correct: true, memNote: "O(n) time, O(1) space." });
+        return { steps, result: "0", correct: true, memNote: "O(n) time, O(1) space." };
+      }
+      let jumps = 0, pos = n - 1;
+      snap(`Backwards greedy: work from the LAST index; each step picks the LEFTMOST index that can reach the current position (the longest possible backwards jump).`, 1, { [n - 1]: "done" }, {});
+      while (pos > 0) {
+        let found = -1;
+        for (let i = 0; i < pos; i++) {
+          if (reach[i] >= pos) {
+            found = i;
+            snap(`i=${i}: reach ${reach[i]} ≥ ${pos} → this index can jump onto pos. Leftmost = farthest back = one jump.`, 5, { [i]: "hot", [pos]: "done" }, { [i]: "hot" });
+            break;
+          }
+          snap(`i=${i}: reach ${reach[i]} &lt; ${pos} → not far enough, scan further left.`, 5, { [i]: "hot", [pos]: "done" }, { [i]: "hot" });
+        }
+        if (found === -1) {
+          jumps = -1;
+          snap(`No index reaches pos=${pos} → the end is unreachable → <b>-1</b>.`, 5, {}, {});
+          break;
+        }
+        jumps++;
+        pos = found;
+        snap(`<b>Jump #${jumps}</b>: landing zone pos moves to ${pos}.`, 6, { [pos]: "done" }, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(jumps);
+      last.correct = jumps === minJumps(nums);
+      last.memNote = "Time O(n), space O(1) — every index is scanned once total.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0053 — MAXIMUM SUBARRAY
+ * ================================================================ */
+NC150.register({
+  id: "0053", title: "Maximum Subarray", difficulty: "Medium",
+  url: "https://leetcode.com/problems/maximum-subarray/",
+  tags: ["greedy", "DP", "array"],
+  approaches: ["Approach 1 · Kadane (best)", "Approach 2 · Prefix minimum"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — restart-or-extend rule" },
+    { time: "O(n)", space: "O(1)", note: "hunt the cheapest starting prefix" }
+  ],
+  compare: [
+    { name: "Kadane", tech: "cur = max(x, cur + x)", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Prefix minimum", tech: "best = max(S[i] − min S[j])", time: "O(n)", space: "O(1)", when: "derivation-friendly", best: false },
+    { name: "Brute force", tech: "sum every window", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[-2,1,-3,4,-1,2,1,-5,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[5,4,-1,7,8]" }, result: "23" },
+    { label: "Ex 2", values: { nums: "[1]" }, result: "1" },
+    { label: "Ex 3", values: { nums: "[-2,-1]" }, result: "-1" }
+  ],
+  realLife: "<p><b>Trading bots</b>: the best contiguous run of daily returns is exactly max subarray — run in O(n) over millions of price ticks, with start/end timestamps tracked for free.</p><p><b>Signal processing</b>: finding the strongest contiguous burst in a sensor stream; Kadane's window tracking locates the burst boundaries.</p>",
+  dsDive: `<h3>The restart rule, and why it is safe</h3>
+<p>Kadane keeps <span class="code-var">cur = max(x, cur + x)</span>. The proof is local: if the running subarray is negative, extending it only drags the sum down, so restarting at x dominates. Equivalently, the max subarray equals max over i of (prefix S[i] − smallest prefix before i) — the A2 prefix-min view hunts that cheapest starting prefix.</p>
+<div class="equation">best = max<sub>i</sub> ( S<sub>i</sub> − min<sub>j&lt;i</sub> S<sub>j</sub> ), &nbsp; S<sub>i</sub> = Σ<sub>k≤i</sub> nums[k]</div>
+<p>Both are O(n) with O(1) extra state: one counter pair (A1) or one running prefix plus its running minimum (A2).</p>`,
+  code: [
+    [ "def max_subarray(nums):",
+      "    best = -inf; cur = 0",
+      "    for x in nums:",
+      "        cur = max(x, cur + x)      # restart or extend",
+      "        best = max(best, cur)",
+      "    return best" ],
+    [ "def max_subarray(nums):",
+      "    running = min_pref = 0; best = -inf",
+      "    for x in nums:",
+      "        running += x",
+      "        best = max(best, running - min_pref)   # subarray ending here",
+      "        min_pref = min(min_pref, running)      # cheapest start",
+      "    return best" ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const snap = (text, code, cls, st) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums · red = current subarray, green = best so far", data: nums.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "running state · cur, best", data: st, cls: { 0: "hot" }, showIdx: true, size: 8 }
+      ]});
+      if (!nums.length) {
+        steps.push({ text: "Empty array → sum 0.", code: 5, mem: [], result: "0", correct: true, memNote: "O(n)." });
+        return { steps, result: "0", correct: true, memNote: "O(n)." };
+      }
+      let best = -Infinity, cur = 0, l = 0, bl = 0, br = -1;
+      snap(`Kadane: cur = max(nums[i], cur + nums[i]) — either EXTEND the running subarray or RESTART at nums[i].`, 1, {}, [0, "−∞"]);
+      for (let i = 0; i < nums.length; i++) {
+        const prev = cur;
+        const restart = prev + nums[i] < nums[i];
+        if (restart) { cur = nums[i]; l = i; } else { cur += nums[i]; }
+        const cls = {};
+        for (let j = l; j <= i; j++) cls[j] = "hot";
+        snap(`i=${i}: max(${nums[i]}, ${prev} + ${nums[i]}) = <b>${cur}</b> → ${restart ? "RESTART at " + i : "extend window [" + l + ".." + i + "]"}.`, 3, cls, [cur, best === -Infinity ? "−∞" : best]);
+        if (cur > best) { best = cur; bl = l; br = i; }
+        const cls2 = {};
+        for (let j = bl; j <= br; j++) cls2[j] = "done";
+        snap(`best = max(best, cur) = <b>${best}</b> (window [${bl}..${br}]).`, 4, cls2, [cur, best]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = best === bruteMaxSub(nums);
+      last.memNote = "Time O(n), space O(1) — cur and best only.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const n = nums.length;
+      const steps = [];
+      const pref = Array(n).fill("·");
+      const snap = (text, code, cls, clsP) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums · i = current", data: nums.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "prefix sums S[i] (green = min prefix so far)", data: pref.slice(), cls: clsP || {}, showIdx: true, size: 4 }
+      ]});
+      if (!n) {
+        steps.push({ text: "Empty array → sum 0.", code: 6, mem: [], result: "0", correct: true, memNote: "O(n)." });
+        return { steps, result: "0", correct: true, memNote: "O(n)." };
+      }
+      let running = 0, minP = 0, minIdx = -1, best = -Infinity;
+      snap(`Prefix view: best subarray ending at i = S[i] − smallest S[j] with j &lt; i. Hunt the cheapest starting prefix.`, 1, {}, {});
+      for (let i = 0; i < n; i++) {
+        running += nums[i];
+        pref[i] = running;
+        const cand = running - minP;
+        if (cand > best) best = cand;
+        const clsP = { [i]: "hot" };
+        if (minIdx >= 0) clsP[minIdx] = "done";
+        snap(`i=${i}: S = ${running}; S − minPrefix(${minP}) = <b>${cand}</b> → best = ${best}.`, 4, { [i]: "hot" }, clsP);
+        if (running < minP) {
+          minP = running; minIdx = i;
+          const clsP2 = { [i]: "hot" };
+          clsP2[minIdx] = "done";
+          snap(`S = ${running} is the new smallest prefix → future subarrays can start right after index ${i}.`, 5, { [i]: "hot" }, clsP2);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = best === bruteMaxSub(nums);
+      last.memNote = "Time O(n), space O(1) — running sum + min prefix.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0055 — JUMP GAME
+ * ================================================================ */
+NC150.register({
+  id: "0055", title: "Jump Game", difficulty: "Medium",
+  url: "https://leetcode.com/problems/jump-game/",
+  tags: ["greedy", "array"],
+  approaches: ["Approach 1 · Farthest-reach greedy (best)", "Approach 2 · Backwards walk"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — one frontier variable" },
+    { time: "O(n)", space: "O(1)", note: "pull pos towards index 0" }
+  ],
+  compare: [
+    { name: "Farthest reach", tech: "reach = max(reach, i + nums[i])", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Backwards walk", tech: "collapse pos when i + nums[i] ≥ pos", time: "O(n)", space: "O(1)", when: "dual viewpoint", best: false },
+    { name: "DFS with memo", tech: "reachability over states", time: "O(n)", space: "O(n)", when: "when greedy feels risky", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[2,3,1,1,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,3,1,1,4]" }, result: "true" },
+    { label: "Ex 2", values: { nums: "[3,2,1,0,4]" }, result: "false" },
+    { label: "Ex 3", values: { nums: "[0]" }, result: "true" }
+  ],
+  realLife: "<p><b>Route feasibility</b>: 'can one vehicle cover a route where every stop extends its range' — reachability questions in logistics and drone planning.</p><p><b>Game AI</b>: whether a platforming route exists given each platform's max jump distance.</p>",
+  dsDive: `<h3>Reachability is a monotone frontier</h3>
+<p>The reachable set is a PREFIX of the array: everything ≤ reach is reachable, nothing beyond is. So ONE variable suffices — reach = max(i + nums[i]) over all visited i. The loop only walks while i ≤ reach; the instant i overtakes reach the frontier is stuck and the answer is false.</p>
+<div class="equation">reach ← max(reach, i + nums[i]) &nbsp;&nbsp;|&nbsp;&nbsp; stuck ⇔ ∃ i &gt; reach</div>
+<p>The backwards walk (A2) is the dual: pull pos leftwards whenever i + nums[i] ≥ pos; the end is reachable iff pos collapses to 0.</p>`,
+  code: [
+    [ "def can_jump(nums):",
+      "    reach = 0",
+      "    for i, x in enumerate(nums):",
+      "        if i > reach: return False    # stuck before the end",
+      "        reach = max(reach, i + x)",
+      "        if reach >= len(nums) - 1: return True",
+      "    return True" ],
+    [ "def can_jump(nums):",
+      "    pos = len(nums) - 1",
+      "    for i in range(len(nums) - 2, -1, -1):",
+      "        if i + nums[i] >= pos: pos = i   # walk the jump backwards",
+      "    return pos == 0" ]
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const n = nums.length;
+      const reach = nums.map((v, i) => i + v);
+      const steps = [];
+      const snap = (text, code, clsA) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums · yellow = reachable prefix, red = i", data: nums.slice(), cls: clsA || {}, showIdx: true, size: 4 },
+        { type: "array", title: "reach = i + nums[i]", data: reach.slice(), cls: {}, showIdx: true, size: 4 }
+      ]});
+      if (!nums.length) {
+        steps.push({ text: "Empty array — nothing to reach.", code: 6, mem: [], result: "true", correct: true, memNote: "O(n)." });
+        return { steps, result: "true", correct: true, memNote: "O(n)." };
+      }
+      let r = 0, ans = false;
+      snap(`Greedy frontier: reach = max(i + nums[i]) over every visited index. The reachable set is always a PREFIX of the array.`, 1, { 0: "hot" });
+      for (let i = 0; i < n; i++) {
+        if (i > r) {
+          snap(`i=${i} &gt; reach=${r} → the frontier is stuck; the last index is unreachable → <b>false</b>.`, 3, { [i]: "hot" });
+          break;
+        }
+        const old = r;
+        r = Math.max(r, reach[i]);
+        const cls = { [i]: "hot" };
+        for (let k = 0; k <= r && k < n; k++) cls[k] = "hl";
+        cls[i] = "hot";
+        snap(`i=${i}: nums[i]=${nums[i]} → reach = max(${old}, ${reach[i]}) = <b>${r}</b>${r >= n - 1 ? " — last index is inside!" : ""}.`, 4, cls);
+        if (r >= n - 1) {
+          ans = true;
+          snap(`reach ${r} ≥ n−1 → the last index is reachable → <b>true</b>.`, 5, cls);
+          break;
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = ans === canJumpBack(nums);
+      last.memNote = "Time O(n), space O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const n = nums.length;
+      const reach = nums.map((v, i) => i + v);
+      const steps = [];
+      const snap = (text, code, clsA) => steps.push({ text, code, mem: [
+        { type: "array", title: "nums · red = i, green = pos", data: nums.slice(), cls: clsA || {}, showIdx: true, size: 4 },
+        { type: "array", title: "reach = i + nums[i]", data: reach.slice(), cls: {}, showIdx: true, size: 4 }
+      ]});
+      if (n <= 1) {
+        steps.push({ text: "Already at (or before) the last index → <b>true</b>.", code: 4, mem: [], result: "true", correct: true, memNote: "O(n)." });
+        return { steps, result: "true", correct: true, memNote: "O(n)." };
+      }
+      let pos = n - 1;
+      snap(`Backwards walk: pos = last index; pull pos left whenever an earlier index can jump onto it.`, 1, { [pos]: "done" });
+      for (let i = n - 2; i >= 0; i--) {
+        if (reach[i] >= pos) {
+          const oldPos = pos;
+          pos = i;
+          snap(`i=${i}: ${i} + ${nums[i]} = ${reach[i]} ≥ ${oldPos} → pos pulled back to ${i}.`, 3, { [i]: "hot", [pos]: "done" });
+        } else {
+          snap(`i=${i}: reach ${reach[i]} &lt; ${pos} → cannot jump onto pos, keep scanning left.`, 2, { [i]: "hot" });
+        }
+      }
+      const ans = pos === 0;
+      snap(ans ? "pos collapsed to 0 → every hop back was possible → <b>true</b>." : "pos stuck above 0 → end unreachable → <b>false</b>.", 4, { [pos]: "hot" });
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = ans === canJumpGreedy(nums);
+      last.memNote = "Time O(n), space O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0134 — GAS STATION
+ * ================================================================ */
+NC150.register({
+  id: "0134", title: "Gas Station", difficulty: "Medium",
+  url: "https://leetcode.com/problems/gas-station/",
+  tags: ["greedy", "array"],
+  approaches: ["Approach 1 · One-pass with restart (best)", "Approach 2 · Minimum-prefix restart"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — accumulate and reset" },
+    { time: "O(n)", space: "O(1)", note: "start after the deepest valley" }
+  ],
+  compare: [
+    { name: "One-pass restart", tech: "reset start whenever balance &lt; 0", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Min-prefix restart", tech: "start = (argmin prefix + 1) mod n", time: "O(n)", space: "O(1)", when: "balance-walk intuition", best: false },
+    { name: "Brute force", tech: "simulate every station", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "gas", label: "gas =", type: "list", default: "[1,2,3,4,5]" },
+    { name: "cost", label: "cost =", type: "list", default: "[3,4,5,1,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { gas: "[1,2,3,4,5]", cost: "[3,4,5,1,2]" }, result: "3" },
+    { label: "Ex 2", values: { gas: "[2,3,4]", cost: "[3,4,3]" }, result: "-1" },
+    { label: "Ex 3", values: { gas: "[5,1,2,3,4]", cost: "[4,4,1,5,1]" }, result: "4" }
+  ],
+  realLife: "<p><b>Ring networks / depot planning</b>: a delivery van with battery swaps on a circular route — find the depot where it never runs dry.</p><p><b>Round-robin schedulers</b>: starting a circular task queue at the point where accumulated deficit is minimal keeps every prefix afloat.</p>",
+  dsDive: `<h3>The balance walk</h3>
+<p>Define d[i] = gas[i] − cost[i]. A start s is valid iff every prefix of the cyclic walk d[s..s+k] stays ≥ 0. Two facts make the greedy exact: (1) a valid start exists iff total ≥ 0; (2) starting right after the MINIMUM prefix of the linear walk is always valid — the walk from there never dips below that minimum point.</p>
+<div class="equation">start = (argmin<sub>i</sub> prefix[i] + 1) mod n &nbsp;&nbsp;|&nbsp;&nbsp; valid ⇔ total ≥ 0</div>
+<p>Both variants are O(n) time, O(1) space: one accumulates and resets (A1), the other records the deepest valley (A2).</p>`,
+  code: [
+    [ "def can_complete(gas, cost):",
+      "    total = cur = 0; start = 0",
+      "    for i in range(len(gas)):",
+      "        total += gas[i] - cost[i]",
+      "        cur += gas[i] - cost[i]",
+      "        if cur < 0:                # invalid start → reset",
+      "            start = i + 1; cur = 0",
+      "    return -1 if total < 0 else start" ],
+    [ "def can_complete(gas, cost):",
+      "    total = 0; min_pref = inf; min_idx = 0",
+      "    for i in range(len(gas)):",
+      "        total += gas[i] - cost[i]",
+      "        if total < min_pref:       # deepest point of the walk",
+      "            min_pref = total; min_idx = i",
+      "    return -1 if total < 0 else (min_idx + 1) % len(gas)" ]
+  ],
+  steps: [
+    function (vals) {
+      const gas = (vals.gas || []).map(Number);
+      const cost = (vals.cost || []).map(Number);
+      const n = gas.length;
+      const steps = [];
+      const bal = Array(n).fill("·");
+      const snap = (text, code, clsG, clsC, clsB) => steps.push({ text, code, mem: [
+        { type: "array", title: "gas", data: gas.slice(), cls: clsG || {}, showIdx: true, size: 4 },
+        { type: "array", title: "cost", data: cost.slice(), cls: clsC || {}, showIdx: true, size: 4 },
+        { type: "array", title: "balance when driving from candidate start", data: bal.slice(), cls: clsB || {}, showIdx: true, size: 4 }
+      ]});
+      if (!n) {
+        steps.push({ text: "No stations → no start → <b>-1</b>.", code: 7, mem: [], result: "-1", correct: true, memNote: "O(n)." });
+        return { steps, result: "-1", correct: true, memNote: "O(n)." };
+      }
+      let total = 0, cur = 0, start = 0;
+      snap(`Try stations left→right as start. A start is dead the moment the balance goes negative — reset and try the NEXT station.`, 1, {}, {}, {});
+      for (let i = 0; i < n; i++) {
+        total += gas[i] - cost[i];
+        cur += gas[i] - cost[i];
+        bal[i] = cur;
+        if (cur < 0) {
+          snap(`i=${i}: balance ${cur} &lt; 0 → start ${start} is NOT valid; reset to 0 and try station ${i + 1}.`, 5, { [i]: "hot", [start]: "done" }, { [i]: "hot" }, { [i]: "hot", [start]: "done" });
+          start = i + 1; cur = 0;
+        } else {
+          snap(`i=${i}: balance <b>${cur}</b> ≥ 0 → keep driving; candidate start stays ${start}.`, 4, { [i]: "hot", [start]: "hl" }, { [i]: "hot" }, { [i]: "hot", [start]: "hl" });
+        }
+      }
+      const ans = total < 0 ? -1 : start % n;
+      snap(`Total ${total} ${total < 0 ? "&lt; 0 → no valid start → <b>-1</b>" : "≥ 0 → the last surviving start <b>" + ans + "</b> works → <b>" + ans + "</b>"}.`, 7, {}, {}, {});
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = ans === bruteStart(gas, cost);
+      last.memNote = "Time O(n), space O(1).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const gas = (vals.gas || []).map(Number);
+      const cost = (vals.cost || []).map(Number);
+      const n = gas.length;
+      const steps = [];
+      const pref = Array(n).fill("·");
+      const snap = (text, code, clsG, clsC, clsP) => steps.push({ text, code, mem: [
+        { type: "array", title: "gas", data: gas.slice(), cls: clsG || {}, showIdx: true, size: 4 },
+        { type: "array", title: "cost", data: cost.slice(), cls: clsC || {}, showIdx: true, size: 4 },
+        { type: "array", title: "prefix sums of (gas − cost) · green = minimum", data: pref.slice(), cls: clsP || {}, showIdx: true, size: 4 }
+      ]});
+      if (!n) {
+        steps.push({ text: "No stations → <b>-1</b>.", code: 6, mem: [], result: "-1", correct: true, memNote: "O(n)." });
+        return { steps, result: "-1", correct: true, memNote: "O(n)." };
+      }
+      let total = 0, minP = Infinity, minIdx = 0;
+      snap(`Balance-walk view: prefix sums of (gas − cost). The ride never dips below 0 if it starts right AFTER the lowest point of the walk.`, 1, {}, {}, {});
+      for (let i = 0; i < n; i++) {
+        total += gas[i] - cost[i];
+        pref[i] = total;
+        if (total < minP) { minP = total; minIdx = i; }
+        snap(`i=${i}: prefix ${total} (deepest so far ${minP} at ${minIdx}).`, 4, { [i]: "hot" }, { [i]: "hot" }, { [i]: "hot", [minIdx]: "done" });
+      }
+      const ans = total < 0 ? -1 : (minIdx + 1) % n;
+      snap(`Total ${total} ${total < 0 ? "&lt; 0 → <b>-1</b>" : "≥ 0 → start = (minIdx + 1) mod n = <b>" + ans + "</b>"}.`, 6, {}, {}, { [minIdx]: "done", [ans]: "hot" });
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = ans === bruteStart(gas, cost);
+      last.memNote = "Time O(n), space O(1) — one minimum marker.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0678 — VALID PARENTHESIS STRING
+ * ================================================================ */
+NC150.register({
+  id: "0678", title: "Valid Parenthesis String", difficulty: "Medium",
+  url: "https://leetcode.com/problems/valid-parenthesis-string/",
+  tags: ["greedy", "stack", "string"],
+  approaches: ["Approach 1 · Balance interval (best)", "Approach 2 · Two-stack pairing"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — openMin/openMax counters" },
+    { time: "O(n)", space: "O(n)", note: "explicit '(' and '*' position stacks" }
+  ],
+  compare: [
+    { name: "Balance interval", tech: "track the RANGE of possible open counts", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Two-stack pairing", tech: "'(' and '*' stacks, pop on ')'", time: "O(n)", space: "O(n)", when: "positional reasoning", best: false },
+    { name: "DP / brute force", tech: "enumerate all '*' assignments", time: "O(3ⁿ)", space: "O(n)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "(*))" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "()" }, result: "true" },
+    { label: "Ex 2", values: { s: "(*)" }, result: "true" },
+    { label: "Ex 3", values: { s: "((*" }, result: "false" }
+  ],
+  realLife: "<p><b>Template / config parsers</b>: validating wildcard-capable bracket structures — e.g. log formats where '*' is an optional token — with one linear scan.</p><p><b>Regex engines</b>: 'does this pattern with optional groups match' propagates the same open-count interval idea.</p>",
+  dsDive: `<h3>Track a RANGE of possible states, not one state</h3>
+<p>'(' forces +1 open; ')' forces −1 but never below 0; '*' can be any of the three roles, so the set of possible open-counts after each character is a CONTIGUOUS interval [openMin, openMax]. Only its two endpoints need storing → O(1) space. The two-stack variant (A2) trades memory for deterministic pairing: '(' and '*' positions are popped by ')', then leftover '(' must be closable by a '*' that sits AFTER it — a positional argument the interval trick hides.</p>
+<div class="equation">'*': openMin ← max(0, openMin − 1), &nbsp; openMax ← openMax + 1 &nbsp;&nbsp;→&nbsp;&nbsp; valid ⇔ openMax ≥ 0 ∧ openMin = 0</div>`,
+  code: [
+    [ "def check_valid(s):",
+      "    open_min = open_max = 0",
+      "    for ch in s:",
+      "        if ch == '(': open_min += 1; open_max += 1",
+      "        elif ch == ')': open_min = max(0, open_min - 1); open_max -= 1",
+      "        if open_max < 0: return False",
+      "        else: open_min = max(0, open_min - 1); open_max += 1",
+      "    return open_min == 0" ],
+    [ "def check_valid(s):",
+      "    left, star = [], []             # positions of '(' and '*'",
+      "    for i, ch in enumerate(s):",
+      "        if ch == '(': left.append(i)",
+      "        elif ch == '*': star.append(i)",
+      "        elif left: left.pop()",
+      "        elif star: star.pop()",
+      "        else: return False",
+      "    while left and star:",
+      "        if star.pop() < left.pop(): return False   # '*' must come after",
+      "    return not left" ]
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s || "(*))");
+      const chars = s.split("");
+      const steps = [];
+      const snap = (text, code, cls, ctr) => steps.push({ text, code, mem: [
+        { type: "array", title: "s", data: chars.slice(), cls: cls || {}, showIdx: true, size: 1 },
+        { type: "array", title: "openMin · openMax (possible '(' count interval)", data: ctr, cls: { 0: "hot", 1: "hl" }, showIdx: true, size: 8 }
+      ]});
+      if (!s) {
+        steps.push({ text: "Empty string → valid → <b>true</b>.", code: 7, mem: [], result: "true", correct: true, memNote: "O(n)." });
+        return { steps, result: "true", correct: true, memNote: "O(n)." };
+      }
+      let openMin = 0, openMax = 0, ok = true;
+      snap(`After each char the possible '(' counts form a CONTIGUOUS interval [openMin, openMax]. '(' shifts it up, ')' shifts it down, '*' widens both ends.`, 1, {}, [0, 0]);
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i];
+        if (ch === "(") {
+          openMin++; openMax++;
+          snap(`i=${i} '<b>(</b>': both bounds +1 → [${openMin}, ${openMax}].`, 3, { [i]: "hot" }, [openMin, openMax]);
+        } else if (ch === ")") {
+          openMin = Math.max(0, openMin - 1);
+          openMax--;
+          if (openMax < 0) {
+            ok = false;
+            snap(`i=${i} '<b>)</b>': openMax = ${openMax} &lt; 0 → too many ')' → <b>false</b>.`, 5, { [i]: "hot" }, [openMin, openMax]);
+            break;
+          }
+          snap(`i=${i} '<b>)</b>': interval shifts down → [${openMin}, ${openMax}].`, 4, { [i]: "hot" }, [openMin, openMax]);
+        } else {
+          openMin = Math.max(0, openMin - 1);
+          openMax++;
+          snap(`i=${i} '<b>*</b>': wildcard — as '(' it raises max, as ')' it lowers min → [${openMin}, ${openMax}].`, 6, { [i]: "hot" }, [openMin, openMax]);
+        }
+      }
+      const ans = ok && openMin === 0;
+      snap(`End: openMin=${openMin} ${ans ? "→ a 0-open assignment exists → <b>true</b>" : "→ a '(' is forced to stay open → <b>false</b>"}.`, 7, {}, [openMin, openMax]);
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = ans === bruteParen(s);
+      last.memNote = "Time O(n), space O(1) — two counters.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s || "(*))");
+      const chars = s.split("");
+      const steps = [];
+      const left = [], star = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "s", data: chars.slice(), cls: cls || {}, showIdx: true, size: 1 },
+        { type: "stack", title: "'(' positions (LIFO)", data: left.slice() },
+        { type: "stack", title: "'*' positions (LIFO)", data: star.slice() }
+      ]});
+      if (!s) {
+        steps.push({ text: "Empty string → valid → <b>true</b>.", code: 10, mem: [], result: "true", correct: true, memNote: "O(n)." });
+        return { steps, result: "true", correct: true, memNote: "O(n)." };
+      }
+      let ok = true;
+      snap(`Deterministic pairing: ')' matches the MOST RECENT '(' — hence stacks. '*' positions are saved for later rescue.`, 1, {});
+      for (let i = 0; i < chars.length && ok; i++) {
+        const ch = chars[i];
+        if (ch === "(") {
+          left.push(i);
+          snap(`i=${i} '<b>(</b>' → push position ${i} onto the '(' stack.`, 3, { [i]: "hot" });
+        } else if (ch === "*") {
+          star.push(i);
+          snap(`i=${i} '<b>*</b>' → push position ${i} onto the '*' stack (wildcard, may act as '(' later).`, 4, { [i]: "hot" });
+        } else {
+          if (left.length) {
+            const p = left.pop();
+            snap(`i=${i} '<b>)</b>' → pop '(' pushed at ${p} → matched.`, 5, { [i]: "hot" });
+          } else if (star.length) {
+            const p = star.pop();
+            snap(`i=${i} '<b>)</b>' → no '(' left → use '*' from position ${p} as an '(' → matched.`, 6, { [i]: "hot" });
+          } else {
+            ok = false;
+            snap(`i=${i} '<b>)</b>' → both stacks empty → unmatched ')' → <b>false</b>.`, 7, { [i]: "hot" });
+          }
+        }
+      }
+      while (ok && left.length && star.length) {
+        const lp = left[left.length - 1], sp = star[star.length - 1];
+        if (sp < lp) {
+          ok = false;
+          snap(`'*' at ${sp} is LEFT of '(' at ${lp} → it cannot close it → <b>false</b>.`, 9, {});
+          break;
+        }
+        left.pop(); star.pop();
+        snap(`Close '(' at ${lp} with '*' at ${sp} (star comes after) → both popped.`, 9, {});
+      }
+      if (ok && left.length) { ok = false; snap(`${left.length} unmatched '(' remain → <b>false</b>.`, 10, {}); }
+      if (ok) snap(`Stacks empty, every '(' closed → <b>true</b>.`, 10, {});
+      const last = steps[steps.length - 1];
+      last.result = String(ok);
+      last.correct = ok === bruteParen(s);
+      last.memNote = "Time O(n), space O(n) — two position stacks.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0763 — PARTITION LABELS
+ * ================================================================ */
+NC150.register({
+  id: "0763", title: "Partition Labels", difficulty: "Medium",
+  url: "https://leetcode.com/problems/partition-labels/",
+  tags: ["greedy", "hashmap", "two pointers"],
+  approaches: ["Approach 1 · Last-occurrence sweep (best)", "Approach 2 · Interval merge"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — 26-entry last[] map" },
+    { time: "O(n + d log d)", space: "O(d)", note: "d = distinct chars ≤ 26" }
+  ],
+  compare: [
+    { name: "Last-occurrence sweep", tech: "end = max(end, last[ch]); cut at end", time: "O(n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Interval merge", tech: "merge [first,last] per char", time: "O(n + d log d)", space: "O(d)", when: "interval intuition", best: false },
+    { name: "Brute force", tech: "try every cut point", time: "O(n²)", space: "O(n)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "ababcbacadefegdehijhklij" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "ababcbacadefegdehijhklij" }, result: "[9,7,8]" },
+    { label: "Ex 2", values: { s: "eccbbbbdec" }, result: "[10]" },
+    { label: "Ex 3", values: { s: "a" }, result: "[1]" }
+  ],
+  realLife: "<p><b>Log chunking</b>: splitting logs so every session key's events stay inside one file — the same last-occurrence sweep.</p><p><b>Cache partition sizing</b>: giving each customer's data a contiguous slice bounded by their latest touch time.</p>",
+  dsDive: `<h3>Why the last-occurrence rule is exact</h3>
+<p>If char c occurs at position i and its LAST occurrence is at last[c], any segment containing i must extend to ≥ last[c]. So while sweeping, the segment's right edge is forced to end = max(end, last[c]) — when the cursor reaches end, every character inside has its whole life inside, so the cut is both SAFE and MAXIMAL: cutting earlier would split some character's occurrences.</p>
+<div class="equation">end ← max(end, last[s[i]]) &nbsp;&nbsp;|&nbsp;&nbsp; cut ⇔ i == end</div>
+<p>The interval-merge view (A2) builds [first, last] per character and merges overlapping intervals — identical math, different optics.</p>`,
+  code: [
+    [ "def partition_labels(s):",
+      "    last = {ch: i for i, ch in enumerate(s)}   # rightmost occurrence",
+      "    end = size = 0; parts = []",
+      "    for i, ch in enumerate(s):",
+      "        end = max(end, last[ch]); size += 1",
+      "        if i == end:              # every char inside is fully contained",
+      "            parts.append(size); size = 0",
+      "    return parts" ],
+    [ "def partition_labels(s):",
+      "    first = {}; last = {}",
+      "    for i, ch in enumerate(s): first.setdefault(ch, i); last[ch] = i",
+      "    ivs = sorted((first[ch], last[ch]) for ch in first)   # intervals",
+      "    a, b = ivs[0]; parts = []",
+      "    for x, y in ivs[1:]:",
+      "        if x <= b: b = max(b, y)   # overlapping → merge",
+      "        else: parts.append(b - a + 1); a, b = x, y",
+      "    parts.append(b - a + 1)",
+      "    return parts" ]
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s || "ababcbacadefegdehijhklij");
+      const chars = s.split("");
+      const n = chars.length;
+      const h = ch => ch.charCodeAt(0) - 97;
+      const last = {};
+      for (let i = 0; i < n; i++) last[chars[i]] = i;
+      const slots = Array(26).fill(null);
+      for (const ch of Object.keys(last)) slots[h(ch)] = { k: ch, v: last[ch] };
+      const steps = [];
+      const parts = [];
+      const snap = (text, code, cls, hit) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "last occurrence · ch → index", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe: [hit], hit, formula: "slot = ord(ch) − 97 (a→0 … z→25)", mode: "open" },
+        { type: "array", title: "s · red = cursor i, green = closed segments", data: chars.slice(), cls: cls || {}, showIdx: true, size: 1 },
+        { type: "array", title: "partition sizes", data: parts.slice(), showIdx: true, size: 4 }
+      ]});
+      snap(`Precompute the LAST occurrence of every char in O(n). While sweeping, a segment must extend to the last occurrence of every char it contains.`, 1, {}, h(chars[0]));
+      let end = 0, size = 0, segStart = 0;
+      for (let i = 0; i < n; i++) {
+        end = Math.max(end, last[chars[i]]);
+        size++;
+        snap(`i=${i} '<b>${chars[i]}</b>': last occurrence = ${last[chars[i]]} → end = max(end, last) = <b>${end}</b>.`, 4, { [i]: "hot" }, h(chars[i]));
+        if (i === end) {
+          parts.push(size);
+          const cls2 = { [i]: "hot" };
+          for (let j = segStart; j <= i; j++) cls2[j] = "done";
+          snap(`i === end → <b>CUT</b>: segment [${segStart}..${i}] size ${size} → parts = [${parts.join(", ")}].`, 5, cls2, h(chars[i]));
+          segStart = i + 1;
+          size = 0;
+        }
+      }
+      const lastStep = steps[steps.length - 1];
+      lastStep.result = JSON.stringify(parts);
+      lastStep.correct = checkParts(s, parts);
+      lastStep.memNote = "Time O(n), space O(1) beyond the 26-entry map.";
+      return { steps, result: JSON.stringify(parts), correct: checkParts(s, parts), memNote: lastStep.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s || "ababcbacadefegdehijhklij");
+      const chars = s.split("");
+      const n = chars.length;
+      const first = {}, last = {};
+      for (let i = 0; i < n; i++) { if (first[chars[i]] === undefined) first[chars[i]] = i; last[chars[i]] = i; }
+      const ivs = Object.keys(first).map(ch => ({ ch, a: first[ch], b: last[ch] })).sort((x, y) => x.a - y.a || x.b - y.b);
+      const steps = [];
+      const parts = [];
+      const snap = (text, code, cls, parts2) => steps.push({ text, code, mem: [
+        { type: "array", title: "intervals [first, last] per char (sorted by first)", data: ivs.map(iv => iv.ch + ":" + iv.a + "-" + iv.b), cls: cls || {}, showIdx: true, size: 8 },
+        { type: "array", title: "partition sizes", data: (parts2 || parts).slice(), showIdx: true, size: 4 }
+      ]});
+      snap(`Interval view: every char spans [first, last]. Overlapping intervals must share one segment → merge them.`, 1, {});
+      let a = ivs[0].a, b = ivs[0].b;
+      for (let i = 1; i < ivs.length; i++) {
+        const x = ivs[i].a, y = ivs[i].b;
+        const cls = {};
+        for (let k = 0; k < i; k++) cls[k] = "done";
+        cls[i] = "hot";
+        if (x <= b) {
+          b = Math.max(b, y);
+          snap(`[${x},${y}] of '<b>${ivs[i].ch}</b>' overlaps [${a},${b}] → merge → [${a},${b}].`, 6, cls);
+        } else {
+          parts.push(b - a + 1);
+          snap(`[${x},${y}] of '<b>${ivs[i].ch}</b>' starts after ${b} → close segment size ${b - a + 1} → parts [${parts.join(", ")}]; new interval [${x},${y}].`, 7, cls, parts.slice());
+          a = x; b = y;
+        }
+      }
+      parts.push(b - a + 1);
+      snap(`Final close: segment size ${b - a + 1} → parts = [${parts.join(", ")}].`, 8, {}, parts.slice());
+      const lastStep = steps[steps.length - 1];
+      lastStep.result = JSON.stringify(parts);
+      lastStep.correct = checkParts(s, parts);
+      lastStep.memNote = "Time O(n + d log d), d = distinct chars ≤ 26; space O(d).";
+      return { steps, result: JSON.stringify(parts), correct: checkParts(s, parts), memNote: lastStep.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0846 — HAND OF STRAIGHTS
+ * ================================================================ */
+NC150.register({
+  id: "0846", title: "Hand of Straights", difficulty: "Medium",
+  url: "https://leetcode.com/problems/hand-of-straights/",
+  tags: ["greedy", "hashmap", "sorting"],
+  approaches: ["Approach 1 · Frequency-map chain (best)", "Approach 2 · Sorted array + used marks"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — count map + sorted keys" },
+    { time: "O(n log n)", space: "O(n)", note: "no hash table needed" }
+  ],
+  compare: [
+    { name: "Freq-map chain", tech: "smallest v must start v..v+k−1", time: "O(n log n)", space: "O(n)", when: "the standard", best: true },
+    { name: "Sorted + used[]", tech: "scan sorted cards, mark consumed", time: "O(n log n)", space: "O(n)", when: "array-only mindset", best: false },
+    { name: "Brute force", tech: "retry group starts everywhere", time: "O(n²)", space: "O(n)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "hand", label: "hand =", type: "list", default: "[1,2,3,6,2,3,4,7,8]" },
+    { name: "groupSize", label: "groupSize =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { hand: "[1,2,3,6,2,3,4,7,8]", groupSize: "3" }, result: "true" },
+    { label: "Ex 2", values: { hand: "[1,2,3,4,5]", groupSize: "4" }, result: "false" },
+    { label: "Ex 3", values: { hand: "[1,2,3,4,5]", groupSize: "1" }, result: "true" }
+  ],
+  realLife: "<p><b>Warehouse picking</b>: packing items into consecutive-size kits with a limited stock per size — the freq-map chain is exactly the inventory validation.</p><p><b>Ticket allocation</b>: seat blocks of k consecutive numbered seats with limited supply per row number.</p>",
+  dsDive: `<h3>Forcing the groups by value order</h3>
+<p>Sorted keys make the greedy deterministic: the smallest remaining value v MUST start a group, and that group must consume exactly cnt[v] copies of v, v+1, …, v+k−1 — no smaller group exists to absorb them. The counter map answers 'remaining copies?' in O(1); a key is only revisited while its count is still positive.</p>
+<div class="equation">v needs cnt[v] copies of [v, v+k−1] &nbsp;&nbsp;|&nbsp;&nbsp; fail ⇔ ∃ x ∈ [v, v+k−1] with cnt[x] &lt; cnt[v]</div>
+<p>A2 sorts the raw cards and marks consumed ones in a used[] array — same O(n log n) bound, no hash table.</p>`,
+  code: [
+    [ "def is_n_straight(hand, k):",
+      "    if len(hand) % k: return False",
+      "    cnt = Counter(hand)",
+      "    for v in sorted(cnt):",
+      "        need = cnt[v]             # v must start that many groups",
+      "        for x in range(v, v + k):",
+      "            if cnt[x] < need: return False",
+      "            cnt[x] -= need",
+      "    return True" ],
+    [ "def is_n_straight(hand, k):",
+      "    cards = sorted(hand); used = [False] * len(cards)",
+      "    for i in range(len(cards)):",
+      "        if used[i]: continue",
+      "        used[i] = True",
+      "        j = i + 1; expect = cards[i] + 1; taken = 1",
+      "        while taken < k:",
+      "            while j < len(cards) and used[j]: j += 1",
+      "            if j == len(cards) or cards[j] != expect: return False",
+      "            used[j] = True; j += 1; expect += 1; taken += 1",
+      "    return True" ]
+  ],
+  steps: [
+    function (vals) {
+      const hand = (vals.hand || []).map(Number);
+      const k = Number(vals.groupSize);
+      const cnt = {};
+      for (const c of hand) cnt[c] = (cnt[c] || 0) + 1;
+      const keys = Object.keys(cnt).map(Number).sort((a, b) => a - b);
+      const M = 16;
+      const h = v => ((v % M) + M) % M;
+      const mkSlots = () => { const s = Array(M).fill(null); for (const kk of keys) s[h(kk)] = { k: kk, v: cnt[kk] }; return s; };
+      const steps = [];
+      const group = [];
+      const snap = (text, code, slot, clsG) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "value → remaining count", slots: mkSlots(), probe: slot === undefined ? [] : [slot], hit: -1, formula: "h(v) = v mod 16", mode: "open" },
+        { type: "array", title: "group under construction", data: group.slice(), cls: clsG || {}, showIdx: true, size: 8 }
+      ]});
+      let ok = true;
+      if (!Number.isFinite(k) || k <= 0) {
+        steps.push({ text: "groupSize must be ≥ 1.", code: 0, mem: [], result: "false", correct: true, memNote: "Invalid input." });
+        return { steps, result: "false", correct: true, memNote: "Invalid input." };
+      }
+      snap(`Count every value. Greedy rule: the smallest remaining value v MUST start a group v, v+1, …, v+k−1 — no smaller group could absorb it.`, 2, undefined, {});
+      if (hand.length % k) {
+        snap(`len(hand) = ${hand.length} not divisible by k = ${k} → exact groups impossible → <b>false</b>.`, 1, undefined, {});
+        ok = false;
+      }
+      let groups = 0;
+      for (const key of keys) {
+        if (!ok) break;
+        if (!cnt[key]) continue;
+        const need = cnt[key];
+        group.length = 0;
+        let bad = false;
+        for (let v = key; v < key + k; v++) {
+          if (bad) break;
+          group.push(v);
+          if (cnt[v] === undefined || cnt[v] < need) {
+            ok = false; bad = true;
+            snap(`v=${v}: need ${need} copy(ies), have ${cnt[v] === undefined ? 0 : cnt[v]} → group [${key}..${key + k - 1}] impossible → <b>false</b>.`, 6, h(v), { [group.length - 1]: "hot" });
+            break;
+          }
+          cnt[v] -= need;
+          snap(`v=${v}: consume ${need} → remaining ${cnt[v]}.`, 7, h(v), { [group.length - 1]: "hot" });
+        }
+        if (!bad) { groups++; snap(`Group ${groups}: [${group.join(", ")}] × ${need} — chain complete.`, 8, undefined, {}); }
+      }
+      const lastStep = steps[steps.length - 1];
+      lastStep.result = String(ok);
+      lastStep.correct = ok === canStraights(hand, k);
+      lastStep.memNote = "Time O(n log n), space O(n) — count map.";
+      return { steps, result: String(ok), correct: ok === canStraights(hand, k), memNote: lastStep.memNote };
+    },
+    function (vals) {
+      const hand = (vals.hand || []).map(Number);
+      const k = Number(vals.groupSize);
+      const cards = hand.slice().sort((a, b) => a - b);
+      const used = Array(cards.length).fill(false);
+      const steps = [];
+      const snap = (text, code, cls, grp) => steps.push({ text, code, mem: [
+        { type: "array", title: "cards (sorted) · green = used, red = group", data: cards.slice(), cls: cls || {}, showIdx: true, size: 8 },
+        { type: "array", title: "group under construction", data: (grp || []).slice(), showIdx: true, size: 8 }
+      ]});
+      if (!Number.isFinite(k) || k <= 0) {
+        steps.push({ text: "groupSize must be ≥ 1.", code: 0, mem: [], result: "false", correct: true, memNote: "Invalid input." });
+        return { steps, result: "false", correct: true, memNote: "Invalid input." };
+      }
+      let ok = true;
+      snap(`Sort the hand. Repeatedly take the smallest UNUSED card v; its group must contain v+1 … v+k−1 as unused cards.`, 1, {});
+      for (let i = 0; i < cards.length; i++) {
+        if (!ok) break;
+        if (used[i]) continue;
+        const group = [cards[i]];
+        used[i] = true;
+        const cls0 = {};
+        for (let x = 0; x < used.length; x++) if (used[x]) cls0[x] = "done";
+        cls0[i] = "hot";
+        snap(`Smallest unused card: <b>${cards[i]}</b> at index ${i} → starts a new group.`, 4, cls0, group);
+        let j = i + 1, expect = cards[i] + 1, taken = 1, bad = false;
+        while (taken < k) {
+          while (j < cards.length && (used[j] || cards[j] < expect)) j++;
+          if (j >= cards.length || cards[j] !== expect) {
+            bad = true; ok = false;
+            const clsB = {};
+            for (let x = 0; x < used.length; x++) if (used[x]) clsB[x] = "done";
+            if (j < cards.length) clsB[j] = "hl";
+            snap(`Need ${expect}, but the next unused card is ${j >= cards.length ? "— end of array" : cards[j]} → group impossible → <b>false</b>.`, 8, clsB, group);
+            break;
+          }
+          group.push(cards[j]);
+          used[j] = true;
+          const clsG = {};
+          for (let x = 0; x < used.length; x++) if (used[x]) clsG[x] = "done";
+          clsG[j] = "hot";
+          snap(`Need ${expect} → take <b>${cards[j]}</b> at index ${j} → group [${group.join(", ")}].`, 9, clsG, group);
+          j++; expect++; taken++;
+        }
+        if (!bad) snap(`Group complete: [${group.join(", ")}].`, 10, undefined, group);
+      }
+      const lastStep = steps[steps.length - 1];
+      lastStep.result = String(ok);
+      lastStep.correct = ok === canStraights(hand, k);
+      lastStep.memNote = "Time O(n log n), space O(n) — used[] marks.";
+      return { steps, result: String(ok), correct: ok === canStraights(hand, k), memNote: lastStep.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 1899 — MERGE TRIPLETS TO FORM TARGET TRIPLET
+ * ================================================================ */
+NC150.register({
+  id: "1899", title: "Merge Triplets to Form Target Triplet", difficulty: "Medium",
+  url: "https://leetcode.com/problems/merge-triplets-to-form-target-triplet/",
+  tags: ["greedy", "array"],
+  approaches: ["Approach 1 · Filter + axis coverage (best)", "Approach 2 · Running best merge"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — three target checks" },
+    { time: "O(n)", space: "O(1)", note: "element-wise max accumulator" }
+  ],
+  compare: [
+    { name: "Filter + coverage", tech: "keep ≤ target, check each axis", time: "O(3n)", space: "O(1)", when: "the standard", best: true },
+    { name: "Running best", tech: "best = element-wise max; best == target?", time: "O(3n)", space: "O(1)", when: "merge-flavored", best: false },
+    { name: "Brute force", tech: "try every subset of triplets", time: "O(2ⁿ·n)", space: "O(n)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "triplets", label: "triplets =", type: "list", default: "[[2,5,3],[1,8,4],[1,7,5]]" },
+    { name: "target", label: "target =", type: "list", default: "[2,7,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { triplets: "[[2,5,3],[1,8,4],[1,7,5]]", target: "[2,7,5]" }, result: "true" },
+    { label: "Ex 2", values: { triplets: "[[2,5,3],[2,3,4],[1,2,5],[5,2,3]]", target: "[5,5,5]" }, result: "true" },
+    { label: "Ex 3", values: { triplets: "[[3,4,5],[4,5,6]]", target: "[3,2,5]" }, result: "false" }
+  ],
+  realLife: "<p><b>Feature-flag merging in CI</b>: combining partial configuration states across microservices into one target state — merge = element-wise max, monotone and idempotent.</p><p><b>Sensor fusion</b>: merging readings where each sensor reliably provides one coordinate; the union of constraints must reach the goal state.</p>",
+  dsDive: `<h3>Monotone merge: only three numbers matter</h3>
+<p>Merging triplets by element-wise max is MONOTONE — values only grow, never shrink. So a triplet with any coordinate above target can never help and is discarded; every kept triplet only pushes best upward. The target is reachable iff the kept set covers all three target coordinates: each axis needs some kept triplet hitting exactly target[i], and element-wise max then reaches the rest.</p>
+<div class="equation">best ← [max(best₀,t₀), max(best₁,t₁), max(best₂,t₂)] &nbsp;&nbsp;|&nbsp;&nbsp; reachable ⇔ best == target</div>`,
+  code: [
+    [ "def merge_triplets(triplets, target):",
+      "    valid = [t for t in triplets",
+      "             if all(t[i] <= target[i] for i in range(3))]",
+      "    for i in range(3):",
+      "        if not any(t[i] == target[i] for t in valid): return False",
+      "    return True" ],
+    [ "def merge_triplets(triplets, target):",
+      "    best = [0, 0, 0]",
+      "    for t in triplets:",
+      "        if all(t[i] <= target[i] for i in range(3)):",
+      "            best = [max(best[i], t[i]) for i in range(3)]",
+      "    return best == target" ]
+  ],
+  steps: [
+    function (vals) {
+      const triplets = (vals.triplets || []).map(t => t.map(Number));
+      const target = (vals.target || []).map(Number);
+      const steps = [];
+      const snap = (text, code, cls, clsT) => steps.push({ text, code, mem: [
+        { type: "grid", title: "triplets · green = mergeable, red = discarded", data: triplets.map(t => t.slice()), cls: cls || {}, cols: 3 },
+        { type: "array", title: "target", data: target.slice(), cls: clsT || {}, showIdx: true, size: 8 }
+      ]});
+      const valid = [];
+      snap(`Merging takes element-wise MAX — values only grow. Any triplet with a coordinate above target can never help → discard it.`, 1, {}, {});
+      for (let i = 0; i < triplets.length; i++) {
+        const t = triplets[i];
+        const okRow = t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2];
+        const cls = { [i + ",0"]: okRow ? "done" : "hot", [i + ",1"]: okRow ? "done" : "hot", [i + ",2"]: okRow ? "done" : "hot" };
+        if (okRow) valid.push(i);
+        snap(`Triplet [${t.join(", ")}] ${okRow ? "all coords ≤ target → <b>KEEP</b> (mergeable)" : "has a coord &gt; target → <b>DISCARD</b>"}.`, 2, cls, {});
+      }
+      let ans = true;
+      for (let ax = 0; ax < 3; ax++) {
+        const covered = valid.some(i => triplets[i][ax] === target[ax]);
+        if (!covered) ans = false;
+        const clsT = { [ax]: covered ? "done" : "hot" };
+        snap(`Axis ${ax}: kept triplet with coordinate = ${target[ax]}? ${covered ? "<b>YES</b>" : "<b>NO</b> → target unreachable → false"}.`, 4, {}, clsT);
+      }
+      snap(ans ? "All three axes covered by kept triplets → merging reaches the target → <b>true</b>." : "At least one axis uncovered → <b>false</b>.", 5, {}, {});
+      const lastStep = steps[steps.length - 1];
+      lastStep.result = String(ans);
+      lastStep.correct = ans === mergeTarget(triplets, target);
+      lastStep.memNote = "Time O(3n) = O(n), space O(1).";
+      return { steps, result: String(ans), correct: ans === mergeTarget(triplets, target), memNote: lastStep.memNote };
+    },
+    function (vals) {
+      const triplets = (vals.triplets || []).map(t => t.map(Number));
+      const target = (vals.target || []).map(Number);
+      const steps = [];
+      let best = [0, 0, 0];
+      const snap = (text, code, cls, clsB) => steps.push({ text, code, mem: [
+        { type: "grid", title: "triplets · red = current, green = merged in", data: triplets.map(t => t.slice()), cls: cls || {}, cols: 3 },
+        { type: "array", title: "best merge so far", data: best.slice(), cls: clsB || {}, showIdx: true, size: 8 }
+      ]});
+      snap(`Running merge: best = element-wise max of every mergeable triplet, seeded at [0,0,0].`, 1, {}, {});
+      for (let i = 0; i < triplets.length; i++) {
+        const t = triplets[i];
+        const okRow = t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2];
+        const cls = { [i + ",0"]: okRow ? "done" : "hot", [i + ",1"]: okRow ? "done" : "hot", [i + ",2"]: okRow ? "done" : "hot" };
+        if (okRow) {
+          best = [Math.max(best[0], t[0]), Math.max(best[1], t[1]), Math.max(best[2], t[2])];
+          snap(`Merge [${t.join(", ")}] → best = [${best.join(", ")}] (element-wise max).`, 4, cls, { 0: "hot", 1: "hot", 2: "hot" });
+        } else {
+          snap(`[${t.join(", ")}] has a coordinate above target → skip (merging could only overshoot).`, 3, cls, {});
+        }
+      }
+      const ans = best[0] === target[0] && best[1] === target[1] && best[2] === target[2];
+      const clsB = { 0: best[0] === target[0] ? "done" : "hot", 1: best[1] === target[1] ? "done" : "hot", 2: best[2] === target[2] ? "done" : "hot" };
+      snap(`Final best [${best.join(", ")}] vs target [${target.join(", ")}] → ${ans ? "equal → <b>true</b>" : "not equal → <b>false</b>"}.`, 5, {}, clsB);
+      const lastStep = steps[steps.length - 1];
+      lastStep.result = String(ans);
+      lastStep.correct = ans === mergeTarget(triplets, target);
+      lastStep.memNote = "Time O(n), space O(1) — three numbers.";
+      return { steps, result: String(ans), correct: ans === mergeTarget(triplets, target), memNote: lastStep.memNote };
+    }
+  ]
+});
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

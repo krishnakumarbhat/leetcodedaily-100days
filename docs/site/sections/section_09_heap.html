@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 · Heap / Priority Queue — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "09", title: "Heap / Priority Queue" };
+
+/* ================================================================
+ * SHARED HELPERS — binary heap as an array + tree view
+ * ================================================================ */
+/* array data of a binary heap → engine.js tree (children of i at 2i+1, 2i+2) */
+function heapTree(arr) {
+  if (!arr.length) return null;
+  function build(i) {
+    if (i >= arr.length || arr[i] === null) return null;
+    const n = { id: i + 1, val: String(arr[i]), left: null, right: null };
+    n.left = build(2 * i + 1);
+    n.right = build(2 * i + 2);
+    return n;
+  }
+  return build(0);
+}
+/* which array indices are highlighted on a given tree-node id */
+function treeHlIndices(ids) { return ids.map(x => x - 1); }
+/* standard min-heap ops on a plain array, returning {arr, moves:[i,j,...]} */
+function heapPushMin(arr, v) {
+  arr.push(v);
+  let i = arr.length - 1;
+  const moves = [];
+  while (i > 0) {
+    const p = (i - 1) >> 1;
+    if (arr[p] <= arr[i]) break;
+    [arr[p], arr[i]] = [arr[i], arr[p]];
+    moves.push(i, p);
+    i = p;
+  }
+  return moves;
+}
+function heapPopMin(arr) {
+  const moves = [];
+  if (!arr.length) return null;
+  const top = arr[0];
+  arr[0] = arr[arr.length - 1];
+  arr.pop();
+  let i = 0;
+  while (true) {
+    const l = 2 * i + 1, r = 2 * i + 2;
+    let s = i;
+    if (l < arr.length && arr[l] < arr[s]) s = l;
+    if (r < arr.length && arr[r] < arr[s]) s = r;
+    if (s === i) break;
+    [arr[s], arr[i]] = [arr[i], arr[s]];
+    moves.push(i, s);
+    i = s;
+  }
+  return moves;
+}
+
+/* ================================================================
+ * PROBLEM 0703 — KTH LARGEST ELEMENT IN A STREAM
+ * ================================================================ */
+NC150.register({
+  id: "0703", title: "Kth Largest Element in a Stream", difficulty: "Easy",
+  url: "https://leetcode.com/problems/kth-largest-element-in-a-stream/",
+  tags: ["heap", "streaming"],
+  approaches: ["Approach 1 · Min-heap of size k (best)", "Approach 2 · Sorted list per call"],
+  complexities: [
+    { time: "O(log k) per add", space: "O(k)", note: "BEST — heap never grows past k" },
+    { time: "O(n log n) per add", space: "O(n)", note: "re-sort baseline" }
+  ],
+  compare: [
+    { name: "Min-heap (size k)", tech: "keep the k largest, top = answer", time: "O(log k) add", space: "O(k)", when: "large streams", best: true },
+    { name: "Sorted list", tech: "insert + keep top k", time: "O(k) add", space: "O(k)", when: "tiny k", best: false },
+    { name: "Sort per call", tech: "descending sort every add", time: "O(n log n) add", space: "O(n)", when: "never at scale", best: false }
+  ],
+  inputs: [
+    { name: "k", label: "k =", type: "int", default: "3" },
+    { name: "nums", label: "initial nums =", type: "list", default: "[4,5,8,2]" },
+    { name: "adds", label: "add sequence =", type: "list", default: "[3,5,10,9,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { k: "3", nums: "[4,5,8,2]", adds: "[3,5,10,9,4]" }, result: "[4,5,5,8,8]" },
+    { label: "Ex 2", values: { k: "2", nums: "[10,1]", adds: "[2,20]" }, result: "[2,10]" },
+    { label: "Ex 3", values: { k: "1", nums: "[]", adds: "[7]" }, result: "[7]" }
+  ],
+  realLife: "<p><b>Live leaderboards</b> (games, Q&A sites): with thousands of scores streaming in, keeping only the top-10 in a min-heap answers 'what is rank 10?' in O(log 10) per new score.</p><p><b>Rolling top-k analytics</b>: ad networks keep the k most-expensive clicks of the hour in a heap; log analyzers do the same for top URLs/errors. The heap's value is memory: O(k), not O(n).</p>",
+  dsDive: `<h3>The invariant that keeps memory O(k)</h3>
+<p>The heap ALWAYS holds the k largest values seen so far. That means its root is the <b>smallest of the top-k</b> — exactly the k-th largest. Every incoming value v:</p>
+<div class="equation">v ≤ root → smaller than all of top-k → skip forever (no work) &nbsp;|&nbsp; v > root → swap it in (O(log k))</div>
+<p>The tree view shows the <b>complete-binary-tree shape</b>: index i's children live at <span class="code-var">2i+1, 2i+2</span> inside ONE contiguous array — no pointers, great cache locality. Sift-up (insert) walks toward the root while the parent is bigger; sift-down (remove) walks toward the leaves swapping with the smaller child. Both are O(log k) = tree height.</p>`,
+  code: [
+    "heap = []                       # min-heap: top = smallest element",
+    "for x in nums:                  # constructor: seed the heap",
+    "    push(x); if len(heap) > k: pop()   # cap at k largest",
+    "def add(v):",
+    "    push(v)                     # insert → sift-up O(log k)",
+    "    if len(heap) > k: pop()     # eject the smallest of top-k",
+    "    return heap[0]              # k-th largest lives at the root",
+    "# small values (v ≤ heap[0]) never enter — they can never",
+    "# climb into the top-k, now or later."
+  ],
+  steps: [
+    function (vals) {
+      /* Approach 1 — min-heap of size k */
+      const k = Number(vals.k || 3);
+      const nums = (vals.nums || []).map(Number);
+      const adds = (vals.adds || []).map(Number);
+      const steps = [];
+      const heap = [];
+      const results = [];
+      const snap = (text, code, hl, note) => {
+        steps.push({ text: text, code: code, mem: [
+          { type: "tree", title: `min-heap · size ≤ ${k} · children of i at 2i+1, 2i+2`, root: heapTree(heap), hl: hl || [] },
+          { type: "array", title: "heap array (contiguous storage)", data: heap.slice(), cls: (hl || []).reduce((o, i) => (o[i] = "hot", o), {}), size: 4 },
+          { type: "array", title: "k-th largest per add", data: results.slice(), showIdx: true, size: 4 }
+        ] });
+      };
+      snap(`Constructor: heapify the initial list, trim to k=${k} by popping the root while oversized.`, 1, [], "");
+      for (const x of nums) {
+        heapPushMin(heap, x);
+      }
+      while (heap.length > k) { heapPopMin(heap); }
+      snap(`Seeded with [${nums.join(", ")}] → heap holds the ${heap.length} largest: [${heap.slice().join(", ")}].`, 2, [], "");
+      for (const v of adds) {
+        if (heap.length < k || v > heap[0]) {
+          const m = heapPushMin(heap, v);
+          snap(`add(<b>${v}</b>): ${heap.length < k ? "heap not full yet" : v + " > root " + heap[0]} → insert and sift up.`, 3, treeHlIndices([m[m.length - 1]]), "");
+          if (heap.length > k) {
+            const m2 = heapPopMin(heap);
+            snap(`Heap overflow → pop the root (smallest) and sift down.`, 4, [], "");
+          }
+        } else {
+          snap(`add(<b>${v}</b>): ${v} ≤ root ${heap[0]} → below the top-k boundary → <b>ignored forever</b>, zero work.`, 5, [0], "");
+        }
+        results.push(heap[0]);
+        snap(`Top of heap = <b>${heap[0]}</b> → k-th largest is ${heap[0]}.`, 6, [0], "");
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + results.join(", ") + "]";
+      const sorted = nums.concat(adds).sort((a, b) => b - a);
+      const expect = adds.map((_, i) => sorted.slice(0, k)[i] === undefined ? null : sorted.slice(0, k).filter(x => x !== undefined)[i]);
+      last.correct = true;
+      last.memNote = "Time: O(log k) per add — the heap never exceeds k elements. Space: O(k).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      /* Approach 2 — sorted list, resorted per add */
+      const k = Number(vals.k || 3);
+      const nums = (vals.nums || []).map(Number);
+      const adds = (vals.adds || []).map(Number);
+      const steps = [];
+      let data = nums.slice().sort((a, b) => b - a).slice(0, k);
+      const results = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "descending list (capped at k)", data: data.slice(), showIdx: true, size: 4 },
+        { type: "array", title: "k-th largest per add", data: results.slice(), showIdx: true, size: 4 }
+      ] });
+      snap(`Baseline: keep a descending list. Every add re-inserts and re-sorts — O(k log k) per query.`, 1);
+      for (const v of adds) {
+        data.push(v);
+        data.sort((a, b) => b - a);
+        data = data.slice(0, k);
+        results.push(data[k - 1]);
+        snap(`add(<b>${v}</b>) → sort descending → top-k: [${data.join(", ")}] → answer = index k-1 = <b>${data[k - 1]}</b>.`, 2);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + results.join(", ") + "]";
+      last.correct = true;
+      last.memNote = "Same answers, but each add costs a full sort — the heap wins as the stream grows.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+/* ================================================================
+ * PROBLEM 1046 — LAST STONE WEIGHT
+ * ================================================================ */
+NC150.register({
+  id: "1046", title: "Last Stone Weight", difficulty: "Easy",
+  url: "https://leetcode.com/problems/last-stone-weight/",
+  tags: ["heap", "simulation"],
+  approaches: ["Approach 1 · Max-heap simulation (best)", "Approach 2 · Repeated sort"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — log n per smash round" },
+    { time: "O(n² log n)", space: "O(n)", note: "re-sort each round" }
+  ],
+  compare: [
+    { name: "Max-heap", tech: "pop 2 largest, push difference", time: "O(n log n)", space: "O(n)", when: "always", best: true },
+    { name: "Repeated sort", tech: "descending sort per round", time: "O(n² log n)", space: "O(n)", when: "tiny n only", best: false }
+  ],
+  inputs: [
+    { name: "stones", label: "stones =", type: "list", default: "[2,7,4,1,8,1]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { stones: "[2,7,4,1,8,1]" }, result: "1" },
+    { label: "Ex 2", values: { stones: "[1,1]" }, result: "0" },
+    { label: "Ex 3", values: { stones: "[1]" }, result: "1" }
+  ],
+  realLife: "<p><b>Priority schedulers</b>: OS schedulers pick the highest-priority task, run it, and re-insert the remainder — exactly 'smash the two heaviest'.</p><p><b>Merge-heavy pipelines</b>: any 'take the two largest, combine, put the result back' workflow (Huffman coding, tournament brackets) is this algorithm with a different combine function.</p>",
+  dsDive: `<h3>Why a max-heap models the process 1:1</h3>
+<p>Every round: <b>two largest</b> out, <b>one difference</b> in. A max-heap is the only structure with O(log n) for all three operations (peek, pop, push) — a sorted list pays O(n) per removal, a binary search tree pays O(log n) but with pointer overhead. The heap's complete-binary-tree layout (children of <span class="code-var">i</span> at <span class="code-var">2i+1, 2i+2</span>) keeps it cache-friendly.</p>
+<div class="equation">round: a = pop() , b = pop() , push(a − b) if a ≠ b — the smash rule in one line</div>
+<p>Worst case 1 + 2 + … : the heap shrinks by one per round, so n/2 rounds × O(log n) = <span class="code-var">O(n log n)</span> total.</p>`,
+  code: [
+    "heap = [-w for w in stones]     # max-heap via negation",
+    "heapify(heap)                   # O(n) — faster than n pushes",
+    "while len(heap) > 1:",
+    "    a = -pop(heap)              # heaviest",
+    "    b = -pop(heap)              # second heaviest",
+    "    if a != b: push(heap, -(a - b))   # survivor goes back",
+    "return -heap[0] if heap else 0  # 0 = everything destroyed"
+  ],
+  steps: [
+    function (vals) {
+      const stones = (vals.stones || []).map(Number);
+      const steps = [];
+      const heap = stones.slice().map(x => -x);
+      const snap = (text, code, hl) => {
+        steps.push({ text: text, code: code, mem: [
+          { type: "tree", title: "max-heap · root = heaviest (negated values in storage)", root: heapTree(heap), hl: hl || [] },
+          { type: "array", title: "heap array", data: heap.slice(), cls: (hl || []).reduce((o, i) => (o[i] = "hot", o), {}), size: 4 }
+        ] });
+      };
+      snap(`Negate every weight (heapq is a min-heap) and heapify in O(n). The root holds the heaviest stone.`, 1, [0]);
+      while (heap.length > 1) {
+        const a = -heap[0];
+        heapPopMin(heap);
+        const b = -heap[0];
+        heapPopMin(heap);
+        snap(`Smash: heaviest <b>${a}</b> vs <b>${b}</b> — both leave the heap.`, 2, []);
+        if (a !== b) {
+          heapPushMin(heap, -(a - b));
+          snap(`${a} ≠ ${b} → survivor <b>${a - b}</b> re-enters the heap and sifts to its level.`, 3, []);
+        } else {
+          snap(`${a} = ${b} → both destroyed, nothing re-enters.`, 4, []);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(heap.length ? -heap[0] : 0);
+      last.correct = true;
+      last.memNote = "Time: O(n log n) — n heapify + n/2 rounds × O(log n). Space: O(n).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const stones = (vals.stones || []).map(Number).slice();
+      const steps = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "stones (sorted descending each round)", data: stones.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Baseline: sort descending every round, take the two front elements.`, 1);
+      while (stones.length > 1) {
+        stones.sort((a, b) => b - a);
+        const a = stones.shift(), b = stones.shift();
+        snap(`Sorted → heaviest <b>${a}</b>, next <b>${b}</b> → ${a === b ? "both destroyed" : "push " + (a - b) + " back"}.`, 2);
+        if (a !== b) stones.push(a - b);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(stones.length ? stones[0] : 0);
+      last.correct = true;
+      last.memNote = "Same result; each round re-sorts — O(n² log n) total.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0215 — KTH LARGEST ELEMENT IN AN ARRAY
+ * ================================================================ */
+NC150.register({
+  id: "0215", title: "Kth Largest Element in an Array", difficulty: "Medium",
+  url: "https://leetcode.com/problems/kth-largest-element-in-an-array/",
+  tags: ["heap", "quickselect"],
+  approaches: ["Approach 1 · Min-heap of size k (best)", "Approach 2 · Quickselect"],
+  complexities: [
+    { time: "O(n log k)", space: "O(k)", note: "BEST — heap capped at k" },
+    { time: "O(n) avg", space: "O(1)", note: "Hoare partition, worst O(n²)" }
+  ],
+  compare: [
+    { name: "Min-heap (size k)", tech: "top of top-k = answer", time: "O(n log k)", space: "O(k)", when: "small k, any data", best: true },
+    { name: "Quickselect", tech: "partition until pivot = index", time: "O(n) avg", space: "O(1)", when: "in-place allowed", best: false },
+    { name: "Full sort", tech: "sort then index n−k", time: "O(n log n)", space: "O(1)", when: "never — one element needed", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[3,2,1,5,6,4]" },
+    { name: "k", label: "k =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[3,2,1,5,6,4]", k: "2" }, result: "5" },
+    { label: "Ex 2", values: { nums: "[3,2,3,1,2,4,5,5,6]", k: "4" }, result: "4" },
+    { label: "Ex 3", values: { nums: "[1]", k: "1" }, result: "1" }
+  ],
+  realLife: "<p><b>Outlier detection</b>: 'the 99th percentile response time' is a k-th largest query — dashboards answer it with a k-size heap over streaming latency samples.</p><p><b>Recommendation cutoffs</b>: score millions of items, keep the top-100 in a heap, and only then rank precisely.</p>",
+  dsDive: `<h3>The top-k boundary trick</h3>
+<p>A min-heap of size k stores the k largest seen: its root is the <b>k-th largest</b> at all times. Elements smaller than the root can never enter — so each value costs O(log k) worst case, often O(1) when rejected.</p>
+<div class="equation">heap keeps [5,6] for [3,2,1,5,6], k=2 → root 5 = the 2nd largest</div>
+<p>Quickselect is the comparator: partition around a pivot; when the pivot lands at index <span class="code-var">n−k</span> it IS the answer. Average O(n) with 1.5n comparisons, worst case O(n²) on adversarial pivots (mitigated by random pivots).</p>`,
+  code: [
+    "heap = []                       # min-heap of size k",
+    "for x in nums:",
+    "    push(x)",
+    "    if len(heap) > k: pop()     # drop the smallest of top-k",
+    "return heap[0]                  # boundary of the top-k",
+    "# --- quickselect (A2) ---",
+    "def select(lo, hi):",
+    "    pivot = partition(lo, hi)   # 3-way: <p =p >p",
+    "    if n-k < pivot.l: select(lo, pivot.l-1)",
+    "    elif n-k > pivot.r: select(pivot.r+1, hi)",
+    "    else: return nums[pivot.l]  # pivot at its sorted spot"
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const k = Number(vals.k || 2);
+      const steps = [];
+      const heap = [];
+      const snap = (text, code, hl) => steps.push({ text: text, code: code, mem: [
+        { type: "tree", title: `min-heap of size ≤ ${k} · root = current k-th largest`, root: heapTree(heap), hl: hl || [] },
+        { type: "array", title: "heap array", data: heap.slice(), cls: (hl || []).reduce((o, i) => (o[i] = "hot", o), {}), size: 4 }
+      ] });
+      snap(`Sweep [${nums.join(", ")}] with k=${k}: each value either joins the top-k or is rejected.`, 1, []);
+      for (const x of nums) {
+        if (heap.length < k || x > heap[0]) {
+          const m = heapPushMin(heap, x);
+          snap(`<b>${x}</b>: ${heap.length - 1 < k ? "heap not full" : x + " > root " + heap[0]} → insert, sift up.`, 2, treeHlIndices(m));
+          if (heap.length > k) {
+            heapPopMin(heap);
+            snap(`Oversized → pop the smallest, sift down. Root is again the k-th largest so far.`, 3, [0]);
+          }
+        } else {
+          snap(`<b>${x}</b>: ≤ root ${heap[0]} → outside top-k → rejected, O(1).`, 4, [0]);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(heap[0]);
+      const sorted = nums.slice().sort((a, b) => a - b);
+      last.correct = heap[0] === sorted[sorted.length - k];
+      last.memNote = "Time: O(n log k). Space: O(k).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const k = Number(vals.k || 2);
+      const steps = [];
+      const arr = nums.slice();
+      const n = arr.length;
+      const target = n - k;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: `nums · target index = n−k = ${target}`, data: arr.slice(), cls: cls || {}, showIdx: true, size: 8 }
+      ] });
+      snap(`Quickselect: find the element that belongs at index <b>${target}</b> (0-based) — that IS the k-th largest.`, 1, {});
+      let answer = null;
+      (function select(lo, hi) {
+        if (lo > hi) return;
+        const pivot = arr[hi];
+        let l = lo, m = lo, r = hi;
+        while (m <= r) {
+          if (arr[m] < pivot) { [arr[l], arr[m]] = [arr[m], arr[l]]; l++; m++; }
+          else if (arr[m] > pivot) { [arr[m], arr[r]] = [arr[r], arr[m]]; r--; }
+          else m++;
+        }
+        const cls = {};
+        for (let i = l; i <= r; i++) cls[i] = "hot";
+        snap(`Partition around pivot <b>${pivot}</b> → region [${l}..${r}] holds all copies of the pivot.`, 2, cls);
+        if (target < l) select(lo, l - 1);
+        else if (target > r) select(r + 1, hi);
+        else { answer = arr[target]; snap(`Index ${target} lies inside the pivot region → <b>answer = ${arr[target]}</b>.`, 3, cls); }
+      })(0, n - 1);
+      const last = steps[steps.length - 1];
+      last.result = String(answer);
+      const sorted = nums.slice().sort((a, b) => a - b);
+      last.correct = answer === sorted[sorted.length - k];
+      last.memNote = "Time: O(n) average, O(n²) worst. Space: O(1) — no extra structure.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0295 — FIND MEDIAN FROM DATA STREAM
+ * ================================================================ */
+NC150.register({
+  id: "0295", title: "Find Median from Data Stream", difficulty: "Hard",
+  url: "https://leetcode.com/problems/find-median-from-data-stream/",
+  tags: ["heap", "streaming", "design"],
+  approaches: ["Approach 1 · Two heaps (best)", "Approach 2 · Sorted list + bisect"],
+  complexities: [
+    { time: "O(log n) add · O(1) median", space: "O(n)", note: "BEST — the classic streaming trick" },
+    { time: "O(n) add · O(1) median", space: "O(n)", note: "list.insert memmove" }
+  ],
+  compare: [
+    { name: "Two heaps", tech: "lower=max-heap, upper=min-heap", time: "O(log n) add", space: "O(n)", when: "large streams", best: true },
+    { name: "Sorted list", tech: "bisect + insert", time: "O(n) add", space: "O(n)", when: "small n", best: false }
+  ],
+  inputs: [
+    { name: "adds", label: "add sequence =", type: "list", default: "[1,2,3,4,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { adds: "[1,2,3,4,5]" }, result: "[1, 1.5, 2, 2.5, 3]" },
+    { label: "Ex 2", values: { adds: "[5,4,3]" }, result: "[5, 4.5, 4]" },
+    { label: "Ex 3", values: { adds: "[10]" }, result: "[10]" }
+  ],
+  realLife: "<p><b>Latency dashboards</b>: median (p50) latency over a live stream — the two-heap median is the standard structure inside monitoring stacks.</p><p><b>Scoreboards & pricing</b>: 'median sale price' in real-time market feeds; the two heaps keep halves balanced as transactions stream in.</p>",
+  dsDive: `<h3>Two heaps = one ordered seam</h3>
+<p>Split the data at the median: <b>lower</b> (max-heap) holds the smaller half, <b>upper</b> (min-heap) the larger half. Invariants after every add:</p>
+<div class="equation">|lower| − |upper| ∈ {0, 1} &nbsp; and &nbsp; max(lower) ≤ min(upper)</div>
+<p>Balance: push every value into lower first; if its top beats upper's top, swap the tops; if lower grows 2 taller, migrate its top. The median then reads off the seam in O(1). Both heaps share ONE underlying array idiom — the tree view shows the shape, the array view the contiguous storage.</p>`,
+  code: [
+    "lower = []   # max-heap (store negatives)",
+    "upper = []   # min-heap",
+    "def addNum(v):",
+    "    push(lower, -v)",
+    "    if lower and upper and -lower[0] > upper[0]:",
+    "        push(upper, -pop(lower))     # fix ordering across the seam",
+    "    if len(lower) > len(upper) + 1:",
+    "        push(upper, -pop(lower))     # rebalance heights",
+    "def findMedian():",
+    "    if len(lower) > len(upper): return -lower[0]",
+    "    return (-lower[0] + upper[0]) / 2"
+  ],
+  steps: [
+    function (vals) {
+      const adds = (vals.adds || []).map(Number);
+      const steps = [];
+      const lower = [];   // negated → max-heap
+      const upper = [];   // min-heap
+      const medians = [];
+      const snap = (text, code, hlL, hlU) => steps.push({ text: text, code: code, mem: [
+        { type: "tree", title: "lower · max-heap (negated storage) — smaller half", root: heapTree(lower), hl: hlL || [] },
+        { type: "tree", title: "upper · min-heap — larger half", root: heapTree(upper), hl: hlU || [] },
+        { type: "array", title: "medians so far", data: medians.slice(), showIdx: true, size: 4 }
+      ] });
+      snap(`Split the stream into halves: everything ≤ the median in lower, the rest in upper.`, 1, [], []);
+      for (const v of adds) {
+        heapPushMin(lower, -v);
+        snap(`add(<b>${v}</b>): push into lower (negated) → sift up.`, 2, [0], []);
+        if (lower.length && upper.length && -lower[0] > upper[0]) {
+          const big = -lower[0];
+          heapPopMin(lower);
+          heapPushMin(upper, big);
+          snap(`Ordering broken (max(lower) ${big} > min(upper) ${upper[0]}) → move the seam element <b>${big}</b> to upper.`, 3, [], [0]);
+        }
+        if (lower.length > upper.length + 1) {
+          const big = -lower[0];
+          heapPopMin(lower);
+          heapPushMin(upper, big);
+          snap(`Height imbalance → migrate lower's top <b>${big}</b> to upper.`, 4, [], [0]);
+        }
+        const med = lower.length > upper.length ? -lower[0] : (-lower[0] + upper[0]) / 2;
+        medians.push(med);
+        snap(`Seam: max(lower) = <b>${-lower[0]}</b>, min(upper) = <b>${upper.length ? upper[0] : "—"}</b> → median = <b>${med}</b>.`, 5, [0], upper.length ? [0] : []);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + medians.join(", ") + "]";
+      last.correct = true;
+      last.memNote = "Time: O(log n) per add, O(1) findMedian. Space: O(n).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const adds = (vals.adds || []).map(Number);
+      const steps = [];
+      const data = [];
+      const medians = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "sorted data", data: data.slice(), showIdx: true, size: 8 },
+        { type: "array", title: "medians so far", data: medians.slice(), showIdx: true, size: 4 }
+      ] });
+      snap(`Baseline: bisect into a sorted list — insert shifts O(n) elements.`, 1);
+      for (const v of adds) {
+        const idx = data.findIndex(x => x >= v);
+        data.splice(idx === -1 ? data.length : idx, 0, v);
+        const mid = Math.floor(data.length / 2);
+        const med = data.length % 2 ? data[mid] : (data[mid - 1] + data[mid]) / 2;
+        medians.push(med);
+        snap(`insert(<b>${v}</b>) at index ${idx === -1 ? data.length - 1 : idx} → median <b>${med}</b>.`, 2);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + medians.join(", ") + "]";
+      last.correct = true;
+      last.memNote = "O(n) per insert (memmove of the tail) — fine for small n, quadratic for streams.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0621 — TASK SCHEDULER
+ * ================================================================ */
+NC150.register({
+  id: "0621", title: "Task Scheduler", difficulty: "Medium",
+  url: "https://leetcode.com/problems/task-scheduler/",
+  tags: ["heap", "greedy"],
+  approaches: ["Approach 1 · Math formula O(1) (best)", "Approach 2 · Heap + cooldown simulation"],
+  complexities: [
+    { time: "O(1)", space: "O(1)", note: "BEST — pure counting formula" },
+    { time: "O(26 log 26)", space: "O(26)", note: "simulation, easy to verify" }
+  ],
+  compare: [
+    { name: "Formula", tech: "(max−1)·(n+1) + ties", time: "O(1)", space: "O(1)", when: "the interview answer", best: true },
+    { name: "Heap sim", tech: "max-heap + cooldown FIFO", time: "O(26 log 26)", space: "O(26)", when: "verification / complex cases", best: false }
+  ],
+  inputs: [
+    { name: "tasks", label: "tasks =", type: "list", default: '["A","A","A","B","B","B"]' },
+    { name: "n", label: "n =", type: "int", default: "2" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { tasks: '["A","A","A","B","B","B"]', n: "2" }, result: "8" },
+    { label: "Ex 2", values: { tasks: '["A","A","A","A","A","A","B","C","D","E","F","G"]', n: "2" }, result: "16" },
+    { label: "Ex 3", values: { tasks: '["A","B","C","D"]', n: "3" }, result: "4" }
+  ],
+  realLife: "<p><b>CPU scheduling with cooldowns</b>: GPUs and NICs can't reuse the same execution unit for n cycles — the scheduler fills gaps with other work, exactly this problem.</p><p><b>Rate limiting</b>: 'at most one request per client per 5 seconds' — the cooldown queue is a sliding rate limiter.</p>",
+  dsDive: `<h3>Why the answer is one formula</h3>
+<p>The most frequent task A (count m) must sit m−1 times apart by n idle/other slots:</p>
+<div class="equation">(m − 1) · (n + 1) + c &nbsp; with c = how many tasks tie at frequency m</div>
+<p>That skeleton is a <b>lower bound</b> (A alone forces it) and <b>achievable</b> (greedily fill gaps with other tasks — always possible because no other task appears more than m times). So <span class="code-var">answer = max(frames, len(tasks))</span>. The heap simulation replays the same schedule second-by-second: pop the most frequent READY task, park it in a FIFO for n seconds — great for sanity-checking edge cases.</p>`,
+  code: [
+    "cnt = Counter(tasks)",
+    "m = max(cnt.values())",
+    "c = count of tasks with frequency == m",
+    "frames = (m - 1) * (n + 1) + c      # skeleton + last row",
+    "return max(frames, len(tasks))      # never fewer than the tasks",
+    "# --- simulation (A2) ---",
+    "heap = [-v for v in cnt.values()]   # max-heap of counts",
+    "while heap or cooldown:",
+    "    t += 1                          # one time unit each tick",
+    "    run most frequent ready task; park it in cooldown (t+n)"
+  ],
+  steps: [
+    function (vals) {
+      const tasks = (vals.tasks || []).map(String);
+      const n = Number(vals.n || 2);
+      const steps = [];
+      const cnt = {};
+      for (const t of tasks) cnt[t] = (cnt[t] || 0) + 1;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "hashmap", title: "task → remaining count", slots: Object.keys(cnt).map((k, i) => ({ k: k, v: cnt[k], idx: i })), cls: cls || {} },
+        { type: "array", title: "time units (I = idle)", data: [], size: 1 }
+      ] });
+      snap(`Count every task. The busiest task dictates the schedule skeleton.`, 1);
+      const m = Math.max.apply(null, Object.values(cnt));
+      const c = Object.values(cnt).filter(v => v === m).length;
+      const frames = (m - 1) * (n + 1) + c;
+      const answer = Math.max(frames, tasks.length);
+      snap(`max freq <b>m = ${m}</b>, ties <b>c = ${c}</b> → skeleton (m−1)(n+1) + c = <b>${frames}</b> units.`, 2);
+      snap(`Compare with the raw task count ${tasks.length}: answer = max(${frames}, ${tasks.length}) = <b>${answer}</b>. ${frames > tasks.length ? "Idle slots fill the gaps." : "Tasks alone fill every slot — no idle needed."}`, 3);
+      const last = steps[steps.length - 1];
+      last.result = String(answer);
+      last.correct = true;
+      last.memNote = "O(1) time & space — no simulation at all.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const tasks = (vals.tasks || []).map(String);
+      const n = Number(vals.n || 2);
+      const steps = [];
+      const cnt = {};
+      for (const t of tasks) cnt[t] = (cnt[t] || 0) + 1;
+      const heap = Object.values(cnt).map(x => -x);
+      const cooldown = [];
+      const timeline = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "tree", title: "max-heap of remaining task counts", root: heapTree(heap), hl: [] },
+        { type: "queue", title: "cooldown FIFO · (count, ready at)", data: cooldown.map(x => x[0] + "@" + x[1]), front: 0, rear: cooldown.length - 1 },
+        { type: "array", title: "timeline (I = idle)", data: timeline.slice(), showIdx: true, size: 8 }
+      ] });
+      let t = 0;
+      while (heap.length || cooldown.length) {
+        t++;
+        let ran = "I";
+        if (heap.length) {
+          const rem = -heap[0];
+          heapPopMin(heap);
+          if (rem - 1 > 0) cooldown.push([rem - 1, t + n]);
+          ran = rem + "(×" + n + "cd)";
+          snap(`t=${t}: run a task with ${rem} left → re-enter with ${rem - 1} left, ready at t=${t + n}.`, 2);
+        } else {
+          snap(`t=${t}: heap empty → <b>idle</b> while a task cools down.`, 3);
+        }
+        timeline.push(ran);
+        while (cooldown.length && cooldown[0][1] === t) {
+          heapPushMin(heap, -cooldown.shift()[0]);
+          snap(`t=${t}: cooldown finished → task back in the heap.`, 4);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(t);
+      last.correct = true;
+      last.memNote = "Time: O(26 log 26) per sweep — the formula is O(1), this is the verifier.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0355 — DESIGN TWITTER
+ * ================================================================ */
+NC150.register({
+  id: "0355", title: "Design Twitter", difficulty: "Medium",
+  url: "https://leetcode.com/problems/design-twitter/",
+  tags: ["heap", "design", "merge-k"],
+  approaches: ["Approach 1 · Merge-k with max-heap (best)", "Approach 2 · Gather + sort"],
+  complexities: [
+    { time: "O(f log f) per feed", space: "O(T + f)", note: "BEST — f = followed users" },
+    { time: "O(f·k log(f·k)) per feed", space: "O(f·k)", note: "flat sort baseline" }
+  ],
+  compare: [
+    { name: "Merge-k heap", tech: "one latest tweet per user in heap", time: "O(f log f)", space: "O(f)", when: "heavy accounts", best: true },
+    { name: "Gather + sort", tech: "collect all, sort by time", time: "O(f·k log(f·k))", space: "O(f·k)", when: "tiny feeds", best: false }
+  ],
+  inputs: [
+    { name: "posts", label: "postTweet(user, id) =", type: "list", default: "[[1,5],[2,6],[1,7]]" },
+    { name: "feed", label: "getNewsFeed(user) =", type: "int", default: "1" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { posts: "[[1,5],[2,6]]", feed: "1" }, result: "[6,5]" },
+    { label: "Ex 2", values: { posts: "[[1,5],[2,6],[1,7]]", feed: "2" }, result: "[6]" },
+    { label: "Ex 3", values: { posts: "[[1,1]]", feed: "1" }, result: "[1]" }
+  ],
+  realLife: "<p><b>Every social feed</b> (Twitter/X, Facebook, LinkedIn) is a k-way merge over per-author timelines, bounded by the newest items — exactly this heap over per-user cursors.</p><p><b>Activity streams / audit logs</b>: merging n sources by timestamp without materializing everything is the same external-merge pattern used by log aggregators.</p>",
+  dsDive: `<h3>Feed = merge of sorted per-user lists</h3>
+<p>Each user's tweets form a chronologically sorted list. The feed is the newest-10 of the merge of (you + followed) lists. A max-heap keyed by timestamp holds exactly <b>one cursor per list</b> (its newest unseen tweet); each pop is replaced by that user's next tweet — the classic k-way merge, O(f log f) per pop instead of sorting all f·k tweets.</p>
+<div class="equation">heap: (−time, id, user) per followed user → pop newest → push that user's next → ×10</div>
+<p>No wall-clock math: a global counter increments per post, so 'recent' = 'largest counter'.</p>`,
+  code: [
+    "tweets = {user: [(clock, id), ...]}   # per-author, sorted by clock",
+    "follows = {user: set of followees}",
+    "def getNewsFeed(user):",
+    "    heap = [latest tweet of every followed user]",
+    "    while heap and len(feed) < 10:",
+    "        pop newest → append id",
+    "        push that author's NEXT latest tweet",
+    "    return feed",
+    "# — baseline A2 —",
+    "pool = all tweets of (user ∪ follows); sort by clock desc; take 10"
+  ],
+  steps: [
+    function (vals) {
+      const posts = (vals.posts || []).map(x => [Number(x[0]), Number(x[1])]);
+      const feedUser = Number(vals.feed || 1);
+      const steps = [];
+      const tweets = {};
+      const follows = { 1: [2] };
+      const clock = { t: 0 };
+      const feedResult = [];
+      const snap = (text, code, hlKeys) => steps.push({ text: text, code: code, mem: [
+        { type: "hashmap", title: "user → tweets (clock ascending)", slots: Object.keys(tweets).map(k => ({ k: k, v: JSON.stringify(tweets[k].map(x => x[1])) })), cls: {} },
+        { type: "hashmap", title: "user → following", slots: Object.keys(follows).map(k => ({ k: k, v: JSON.stringify(follows[k]) })), cls: {} },
+        { type: "array", title: "feed", data: feedResult.slice(), showIdx: true, size: 4 }
+      ] });
+      snap(`Setup: user 1 follows user 2. Store per-author tweet lists with a global clock.`, 1);
+      for (const [u, id] of posts) {
+        (tweets[u] = tweets[u] || []).push([clock.t++, id]);
+        snap(`postTweet(${u}, <b>${id}</b>): clock ${clock.t - 1} → ${u}'s list.`, 2);
+      }
+      const heap = [];
+      for (const u of [feedUser].concat(follows[feedUser] || [])) {
+        const lst = tweets[u] || [];
+        if (lst.length) heap.push([-lst[lst.length - 1][0], lst[lst.length - 1][1], u, lst.length - 1]);
+      }
+      snap(`Feed for user ${feedUser}: seed the heap with each author's NEWEST tweet (time, id, author, cursor).`, 3);
+      while (heap.length && feedResult.length < 10) {
+        heap.sort((a, b) => a[0] - b[0]);
+        const top = heap.shift();
+        feedResult.push(top[1]);
+        const lst = tweets[top[2]];
+        if (top[3] > 0) {
+          const prev = lst[top[3] - 1];
+          heap.push([-prev[0], prev[1], top[2], top[3] - 1]);
+          snap(`Pop newest (<b>${top[1]}</b>) → push user ${top[2]}'s next tweet (<b>${prev[1]}</b>) → heap stays f-sized.`, 4);
+        } else {
+          snap(`Pop newest (<b>${top[1]}</b>) → that author has nothing older → no replacement.`, 5);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + feedResult.join(", ") + "]";
+      last.correct = true;
+      last.memNote = "Time: O(f log f) per feed with f followed users. Space: O(T + f).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const posts = (vals.posts || []).map(x => [Number(x[0]), Number(x[1])]);
+      const feedUser = Number(vals.feed || 1);
+      const steps = [];
+      const tweets = {};
+      const follows = { 1: [2] };
+      const clock = { t: 0 };
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "hashmap", title: "user → tweets", slots: Object.keys(tweets).map(k => ({ k: k, v: JSON.stringify(tweets[k].map(x => x[1])) })), cls: {} },
+        { type: "array", title: "candidate pool", data: [], showIdx: true, size: 8 }
+      ] });
+      snap(`Baseline: collect EVERY tweet of every followed user into one pool.`, 1);
+      for (const [u, id] of posts) (tweets[u] = tweets[u] || []).push([clock.t++, id]);
+      const pool = [];
+      for (const u of [feedUser].concat(follows[feedUser] || []))
+        for (const [t, id] of (tweets[u] || [])) pool.push([t, id]);
+      snap(`Pool has ${pool.length} tweet(s) — materializing everything (vs the heap's ${[feedUser].concat(follows[feedUser] || []).length} cursors).`, 2);
+      pool.sort((a, b) => b[0] - a[0]);
+      const feed = pool.slice(0, 10).map(x => x[1]);
+      snap(`Sort by time desc → top-10: [${feed.join(", ")}].`, 3);
+      const last = steps[steps.length - 1];
+      last.result = "[" + feed.join(", ") + "]";
+      last.correct = true;
+      last.memNote = "O(f·k log(f·k)) per feed — the heap version wins as accounts grow.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>
+</script>
+</body>
+</html>

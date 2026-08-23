@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08 · Tries — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "08", title: "Tries" };
+const U = window.NC150.utils;
+
+/* ================================================================
+ * SHARED HELPERS
+ * ================================================================ */
+
+/* empty hash slots for open-addressing visuals (mirrors section_01) */
+function emptySlots(m) { return new Array(m).fill(null); }
+function hmod(k, m) { return ((k % m) + m) % m; }
+/* linear-probing lookup for NUMBERS; returns {hit:slot|null, probe} */
+function probeFind(slots, m, key) {
+  const probe = [];
+  for (let j = 0; j < m; j++) {
+    const s = hmod(key + j, m);
+    probe.push(s);
+    if (slots[s] && slots[s].k === key) return { hit: s, probe };
+    if (!slots[s]) return { hit: null, probe };
+  }
+  return { hit: null, probe };
+}
+function probeInsert(slots, m, key, val) {
+  for (let j = 0; j < m; j++) {
+    const s = hmod(key + j, m);
+    if (!slots[s]) { slots[s] = { k: key, v: val }; return s; }
+  }
+  return -1;
+}
+/* string hash for word sets: 31-based, wraps into [0, m) */
+function hstr(s, m) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % m; return h; }
+function probeFindStr(slots, m, key) {
+  const probe = [];
+  const start = hstr(key, m);
+  for (let j = 0; j < m; j++) {
+    const s = (start + j) % m;
+    probe.push(s);
+    if (slots[s] && slots[s].k === key) return { hit: s, probe };
+    if (!slots[s]) return { hit: null, probe };
+  }
+  return { hit: null, probe };
+}
+function probeInsertStr(slots, m, key, val) {
+  const start = hstr(key, m);
+  for (let j = 0; j < m; j++) {
+    const s = (start + j) % m;
+    if (!slots[s]) { slots[s] = { k: key, v: val }; return s; }
+  }
+  return -1;
+}
+
+/* ------------------------------------------------------------------
+ * JS trie + LCRS (left-child right-sibling) view conversion.
+ * engine.js's 'tree' renderer draws left/right children only, so the
+ * 26-way trie is laid out as a binary tree where left = FIRST child
+ * and right = NEXT SIBLING. Every node carries its letter; a • marks
+ * an end-of-word node.
+ * ------------------------------------------------------------------ */
+function trieRoot() { return { ch: {}, end: false, label: "∅", word: null, refs: 0 }; }
+function trieInsert(t, word) {
+  let n = t;
+  for (const ch of word) {
+    if (!n.ch[ch]) n.ch[ch] = { ch: {}, end: false, label: ch, word: null, refs: 0 };
+    n = n.ch[ch];
+  }
+  n.end = true;      // a word terminates here
+  n.word = word;     // terminal nodes remember their own word
+}
+/* same as trieInsert but ALSO counts refs (words reachable below) */
+function trieInsertRefs(t, word) {
+  let n = t;
+  n.refs++;
+  for (const ch of word) {
+    if (!n.ch[ch]) n.ch[ch] = { ch: {}, end: false, label: ch, word: null, refs: 0 };
+    n = n.ch[ch];
+    n.refs++;
+  }
+  n.end = true;
+  n.word = word;
+}
+/* converts the JS trie into engine.js's binary-tree view; fills
+   `ids` (trie node → view id) so callers can highlight paths */
+function toLCRS(t, ids) {
+  let seq = 0;
+  function build(n) {
+    const id = ++seq;
+    ids.set(n, id);
+    const v = { id: id, val: n.label + (n.end ? "•" : ""), left: null, right: null };
+    const keys = Object.keys(n.ch); // insertion order → stable layout
+    if (keys.length) {
+      v.left = build(n.ch[keys[0]]);
+      let prev = v.left;
+      for (let i = 1; i < keys.length; i++) {
+        prev.right = build(n.ch[keys[i]]);
+        prev = prev.right;
+      }
+    }
+    return v;
+  }
+  return build(t);
+}
+/* view ids for a chain of trie nodes (the highlighted walk path) */
+function pathIds(nodes, ids) {
+  return nodes.map(x => ids.get(x)).filter(x => x !== undefined);
+}
+/* independent wildcard matcher: '.' → any letter (for `correct` checks) */
+function wildcardRegex(q) {
+  let rx = "^";
+  for (const c of q) {
+    rx += c === "." ? "." : c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(rx + "$");
+}
+/* independent brute force for Word Search II: is `w` spellable? */
+function bruteWords(board, words) {
+  const rows = board.length;
+  const cols = rows ? Math.max.apply(null, board.map(r => r.length)) : 0;
+  const res = [];
+  for (const w of words) {
+    if (!w || res.indexOf(w) !== -1) continue;
+    let ok = false;
+    function dfs(r, c, i) {
+      if (ok) return;
+      if (i === w.length) { ok = true; return; }
+      if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+      if (board[r][c] !== w[i]) return;
+      const save = board[r][c];
+      board[r][c] = "#";
+      dfs(r + 1, c, i + 1); dfs(r - 1, c, i + 1); dfs(r, c + 1, i + 1); dfs(r, c - 1, i + 1);
+      board[r][c] = save;
+    }
+    for (let r = 0; r < rows && !ok; r++) for (let c = 0; c < cols && !ok; c++) dfs(r, c, 0);
+    if (ok) res.push(w);
+  }
+  return res;
+}
+
+/* ================================================================
+ * PROBLEM 0208 — IMPLEMENT TRIE (PREFIX TREE)
+ * ================================================================ */
+NC150.register({
+  id: "0208", title: "Implement Trie (Prefix Tree)", difficulty: "Medium",
+  url: "https://leetcode.com/problems/implement-trie-prefix-tree/",
+  tags: ["trie", "design"],
+  approaches: ["Approach 1 · 26-array trie (best)", "Approach 2 · Hash set + prefix scan"],
+  complexities: [
+    { time: "O(L) per op", space: "O(26·n·L)", note: "BEST — L = word length" },
+    { time: "search O(1) · prefix O(n·L)", space: "O(n·L)", note: "no prefix data structure" }
+  ],
+  compare: [
+    { name: "26-array trie", tech: "children[26] + isEnd", time: "O(L) per op", space: "O(26·n·L)", when: "fixed lowercase alphabet", best: true },
+    { name: "Hash map children", tech: "only used letters", time: "O(L) per op", space: "O(n·L) avg", when: "sparse / Unicode alphabet", best: false },
+    { name: "Hash set + scan", tech: "exact match, scan prefixes", time: "search O(1) · prefix O(n·L)", space: "O(n·L)", when: "no prefix queries needed", best: false }
+  ],
+  inputs: [
+    { name: "inserts", label: "insert =", type: "list", default: '["apple","app","application","apply"]' },
+    { name: "search", label: "search =", type: "str", default: "app" },
+    { name: "prefix", label: "startsWith =", type: "str", default: "appl" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { inserts: '["apple","app"]', search: "app", prefix: "appl" }, result: '{"search":true,"startsWith":true}' },
+    { label: "Ex 2", values: { inserts: '["apple"]', search: "app", prefix: "apx" }, result: '{"search":false,"startsWith":false}' },
+    { label: "Prefix ≠ word", values: { inserts: '["bad","dad","mad"]', search: "pad", prefix: "ba" }, result: '{"search":false,"startsWith":true}' }
+  ],
+  realLife: "<p><b>Autocomplete on your keyboard</b>: every keystroke fires a startsWith query against a trie of dictionary words — the engine walks the prefix path in O(L) and surfaces the ~10 most popular descendants. That is why phone keyboards feel instant.</p><p><b>Spell checkers & search engines</b>: 'did you mean…' suggestions are trie prefix walks + edit-distance within the walked subtree; DNS servers and IP routers use the same shared-prefix idea (radix trees).</p>",
+  dsDive: `<h3>Why a trie beats a hash set — the prefix query</h3>
+<p>A <b>26-way tree</b>: each node has 26 child pointers (one per letter, <span class="code-var">idx = ord(c) − 97</span>) plus an <span class="code-cpp">isEnd</span> flag. Inserting "app" then "apple" re-uses the first 3 nodes — shared prefixes share memory <i>and</i> lookup work.</p>
+<div class="equation">insert("app")  → a→p→p(•) &nbsp;|&nbsp; insert("apple") → a→p→p→l→e(•) &nbsp;:&nbsp; 2 words, 5 nodes</div>
+<p><b>Hash set</b> (Python open addressing, linear probing h(k,i) = (hash(k)+i) mod m; C++ separate chaining) answers <b>exact</b> membership in O(1) — but a <i>prefix is not a key</i>. "Any word starting with <b>app</b>?" cannot be hashed; you would scan every stored word (O(n·L)). The trie turns it into ONE root→leaf walk.</p>
+<p><b>Space trade-off</b>: each 26-pointer node costs ≈ 26×8 B = 208 B even when only 1–2 children exist. n words of avg length L → worst case n·L nodes ≈ <span class="code-var">26·8·n·L</span> bytes; prefix sharing shrinks this dramatically (English dictionaries: ~10× compression). For sparse or Unicode alphabets, hash-map children allocate only what is used.</p>`,
+  code: [
+    "class TrieNode:                     # one node = one letter of a prefix",
+    "    children = [None]*26            # 'a'→0 … 'z'→25, 26-way branch",
+    "    isEnd = False                   # a word terminates here",
+    "def insert(word):",
+    "    n = root",
+    "    for c in word:",
+    "        i = ord(c) - 97              # letter → child slot",
+    "        if not n.children[i]:",
+    "            n.children[i] = TrieNode()  # grow the path on demand",
+    "        n = n.children[i]",
+    "    n.isEnd = True                   # mark word completion",
+    "def search(word):                    # EXACT match only",
+    "    for c in word:",
+    "        n = n.children[ord(c)-97]",
+    "        if not n: return False       # path died → word absent",
+    "    return n.isEnd                   # must END exactly here",
+    "def startsWith(prefix):              # prefix: ANY descendant counts",
+    "    for c in prefix:",
+    "        n = n.children[ord(c)-97]",
+    "        if not n: return False",
+    "    return True                      # path exists → word continues"
+  ],
+  steps: [
+    function (vals) {
+      /* Approach 1 — 26-array trie, animated node by node */
+      const inserts = (vals.inserts || []).map(x => String(x));
+      const search = String(vals.search || "");
+      const prefix = String(vals.prefix || "");
+      const steps = [];
+      const t = trieRoot();
+      const inserted = [];
+      const snap = (text, code, pathNodes) => {
+        const ids = new Map();
+        steps.push({ text: text, code: code, mem: [
+          { type: "tree", title: "trie · left = first child, right = next sibling (• = word end)", root: toLCRS(t, ids), hl: pathIds(pathNodes || [], ids) },
+          { type: "array", title: "inserted words", data: inserted.slice(), showIdx: true, size: 8 }
+        ] });
+      };
+      snap("Empty trie — just the ∅ root. Every operation is one O(L) walk down shared prefixes.", 0, []);
+      for (let w = 0; w < inserts.length; w++) {
+        const word = inserts[w];
+        const path = [t];
+        snap(`insert('<b>${word}</b>'): walk letters, create missing nodes, mark the last one with •.`, 5, path);
+        for (let i = 0; i < word.length; i++) {
+          const ch = word[i];
+          const parent = path[path.length - 1];
+          if (!parent.ch[ch]) {
+            parent.ch[ch] = { ch: {}, end: false, label: ch, word: null, refs: 0 };
+            path.push(parent.ch[ch]);
+            snap(`'<b>${ch}</b>' under '<b>${path.slice(0, -1).map(n => n.label).join("") || "∅"}</b>': no child yet → <b>allocate</b> node '<b>${ch}</b>' (26 empty slots reserved).`, 8, path);
+          } else {
+            path.push(parent.ch[ch]);
+            snap(`'<b>${ch}</b>': child <b>exists</b> → shared prefix, reuse it (the trie's memory win).`, 7, path);
+          }
+        }
+        path[path.length - 1].end = true;
+        inserted.push(word);
+        snap(`insert('<b>${word}</b>') done: mark the final node with <b>•</b>.`, 10, path);
+      }
+      /* ---- search: exact match ---- */
+      const sPath = [t];
+      let sOk = true;
+      for (let i = 0; i < search.length; i++) {
+        const ch = search[i];
+        const parent = sPath[sPath.length - 1];
+        if (!parent.ch[ch]) {
+          sOk = false;
+          snap(`search('<b>${search}</b>'): no child '<b>${ch}</b>' after '<b>${search.slice(0, i)}</b>' → path dies → <b>false</b>.`, 14, sPath);
+          break;
+        }
+        sPath.push(parent.ch[ch]);
+        snap(`search('<b>${search}</b>') · '<b>${ch}</b>' found → descend (shared with every other word having this prefix).`, 12, sPath);
+      }
+      if (sOk) {
+        const endNode = sPath[sPath.length - 1];
+        sOk = !!endNode.end;
+        snap(`search('<b>${search}</b>'): path complete. ${endNode.end ? "Final node carries <b>•</b> → inserted verbatim → <b>true</b>." : "Final node has <b>no •</b> → only a prefix exists → <b>false</b>."}`, 15, sPath);
+      }
+      /* ---- startsWith: prefix walk, no isEnd check ---- */
+      const pPath = [t];
+      let pOk = true;
+      for (let i = 0; i < prefix.length; i++) {
+        const ch = prefix[i];
+        const parent = pPath[pPath.length - 1];
+        if (!parent.ch[ch]) {
+          pOk = false;
+          snap(`startsWith('<b>${prefix}</b>'): no child '<b>${ch}</b>' after '<b>${prefix.slice(0, i)}</b>' → no word can begin this way → <b>false</b>.`, 18, pPath);
+          break;
+        }
+        pPath.push(parent.ch[ch]);
+        snap(`startsWith('<b>${prefix}</b>') · '<b>${ch}</b>' found → descend.`, 17, pPath);
+      }
+      if (pOk) {
+        snap(`startsWith('<b>${prefix}</b>'): full path exists → SOME word continues from here → <b>true</b> (no • needed).`, 19, pPath);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify({ search: sOk, startsWith: pOk });
+      last.correct = sOk === (inserted.indexOf(search) !== -1) &&
+                     pOk === (prefix === "" || inserted.some(w => w.slice(0, prefix.length) === prefix));
+      last.memNote = "Time: O(L) per op (one walk). Space: O(26·n·L) worst case, shrunk by shared prefixes.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      /* Approach 2 — hash set + linear prefix scan (contrast) */
+      const inserts = (vals.inserts || []).map(x => String(x));
+      const search = String(vals.search || "");
+      const prefix = String(vals.prefix || "");
+      const m = 8;
+      const slots = emptySlots(m);
+      const inserted = [];
+      const steps = [];
+      const snap = (text, code, probe, hit, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "hashmap", title: "set · open addressing (linear probing)", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe: probe || [], hit: hit === undefined ? -1 : hit, formula: "h(k, i) = (hash(k) + i) mod 8" },
+        { type: "array", title: "words", data: inserted.slice(), cls: cls || {}, showIdx: true, size: 8 }
+      ] });
+      snap("Store every word in a hash set. Exact matches become O(1) probes — but watch what happens to prefix queries.", 0, [], -1, {});
+      for (let w = 0; w < inserts.length; w++) {
+        const word = inserts[w];
+        if (inserted.indexOf(word) === -1) {
+          const r = probeFindStr(slots, m, word);
+          const placed = probeInsertStr(slots, m, word, "✓");
+          inserted.push(word);
+          snap(`insert('<b>${word}</b>'): h('${word}') = ${hstr(word, m)} → probe ${r.probe.join("→")} → placed at slot ${placed}.`, 1, r.probe, placed, { [inserted.length - 1]: "hot" });
+        } else {
+          snap(`insert('<b>${word}</b>'): already present — sets deduplicate.`, 1, [], -1, {});
+        }
+      }
+      /* search = one probe sequence */
+      const r = probeFindStr(slots, m, search);
+      const sOk = r.hit !== null;
+      snap(`search('<b>${search}</b>'): h = ${hstr(search, m)}, probe ${r.probe.join("→")} ${sOk ? `hits slot ${r.hit} → <b>true</b>` : "hits empty slot → absent → <b>false</b>"}.`, 3, r.probe, r.hit, {});
+      /* startsWith = O(n·L) linear scan, the trie's big win */
+      let pIdx = -1;
+      for (let i = 0; i < inserted.length; i++) {
+        if (inserted[i].slice(0, prefix.length) === prefix) { pIdx = i; break; }
+      }
+      const cls = {};
+      if (pIdx !== -1) cls[pIdx] = "done";
+      snap(pIdx !== -1
+        ? `startsWith('<b>${prefix}</b>'): a hash set cannot probe "any word starting with…" — scan ALL ${inserted.length} word(s) → '<b>${inserted[pIdx]}</b>' matches → <b>true</b>.`
+        : `startsWith('<b>${prefix}</b>'): no hash for prefixes → scan ALL ${inserted.length} word(s) → none matches → <b>false</b>.`, 4, [], -1, cls);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify({ search: sOk, startsWith: pIdx !== -1 });
+      last.correct = sOk === (inserted.indexOf(search) !== -1) &&
+                     (pIdx !== -1) === (prefix === "" || inserted.some(w => w.slice(0, prefix.length) === prefix));
+      last.memNote = "search: O(1) avg. startsWith: O(n·L) scan — the trie's O(L) prefix walk is the entire point.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0211 — DESIGN ADD AND SEARCH WORDS
+ * ================================================================ */
+NC150.register({
+  id: "0211", title: "Add and Search Words (Wildcard)", difficulty: "Medium",
+  url: "https://leetcode.com/problems/design-add-and-search-words-data-structure/",
+  tags: ["trie", "dfs", "bfs"],
+  approaches: ["Approach 1 · Trie + recursive DFS (best)", "Approach 2 · Trie + iterative BFS frontier"],
+  complexities: [
+    { time: "O(26^d)", space: "O(26·n·L)", note: "BEST — d = wildcard count" },
+    { time: "O(26^d)", space: "O(26^d)", note: "frontier wavefront" }
+  ],
+  compare: [
+    { name: "Trie + DFS", tech: "recurse every '.' child", time: "O(26^d)", space: "O(L) stack", when: "deep patterns", best: true },
+    { name: "Trie + BFS", tech: "level frontier sweep", time: "O(26^d)", space: "O(26^d)", when: "wide patterns, no recursion", best: false },
+    { name: "Hash set + regex", tech: "scan every word", time: "O(n·L)", space: "O(n·L)", when: "tiny word lists", best: false }
+  ],
+  inputs: [
+    { name: "adds", label: "add =", type: "list", default: '["bad","dad","mad","pad"]' },
+    { name: "query", label: "search =", type: "str", default: "b.." }
+  ],
+  examples: [
+    { label: "Ex 1", values: { adds: '["bad","dad","mad"]', query: "b.." }, result: "true" },
+    { label: "Ex 2", values: { adds: '["hello","world","help"]', query: "w.r.x" }, result: "false" },
+    { label: "Ex 3", values: { adds: '["a"]', query: "a." }, result: "false" },
+    { label: "Ex 4", values: { adds: '["a"]', query: "." }, result: "true" }
+  ],
+  realLife: "<p><b>Regex search engines</b> (grep, IDE find): wildcard '.' matching is this DFS/BFS over a pattern tree — the trie here is the words, the pattern is your query.</p><p><b>Spell-check with unknown characters</b>: OCR text has unreadable glyphs; '.ad' style queries find candidate corrections. Bioinformatics does the same over DNA fragments (A/C/G/T tries).</p>",
+  dsDive: `<h3>The wildcard cost: every '.' multiplies live paths</h3>
+<p>Without '.' this is plain LeetCode 208: node = 26 children + <span class="code-cpp">isEnd</span>. A '.' forces a <b>branch</b>: all 26 children are candidates, and each later '.' multiplies again — d wildcards cost up to <span class="code-var">26^d</span> node visits. DFS (A1) exhausts one branch before backtracking; BFS (A2) advances every candidate one level in lockstep — identical work, different order.</p>
+<div class="equation">"b.." over {bad, dad, mad, pad}: b→a→[d] — 1 path &nbsp;|&nbsp; "..." over k words of len 3: up to 26³ paths</div>
+<p><b>Python note:</b> dict children (open addressing, linear probing h(k,i) = (hash(k)+i) mod m) are the lean choice here: iterating only the children that EXIST beats scanning 26 fixed slots per branch.</p>`,
+  code: [
+    "def dfs(node, i):                    # match query[i:] under node",
+    "    if i == len(query): return node.isEnd   # pattern spent",
+    "    if query[i] == '.':              # wildcard: branch!",
+    "        for child in node.children.values():   # try EVERY child",
+    "            if dfs(child, i+1): return True",
+    "        return False                 # no child completed the match",
+    "    if query[i] not in node.children: return False",
+    "    return dfs(node.children[query[i]], i+1)   # letter = one path",
+    "return dfs(root, 0)"
+  ],
+  steps: [
+    function (vals) {
+      /* Approach 1 — DFS with wildcard branching */
+      const adds = (vals.adds || []).map(x => String(x));
+      const query = String(vals.query || "");
+      const steps = [];
+      const t = trieRoot();
+      for (const w of adds) trieInsert(t, w);
+      const qcells = query.split("");
+      const snap = (text, code, pathNodes, qIdx, cls) => {
+        const ids = new Map();
+        const qc = {};
+        if (qIdx !== undefined && qIdx >= 0 && qIdx < qcells.length) qc[qIdx] = "hot";
+        steps.push({ text: text, code: code, mem: [
+          { type: "tree", title: "trie · left = first child, right = next sibling (• = word end)", root: toLCRS(t, ids), hl: pathIds(pathNodes || [], ids) },
+          { type: "string", title: "query", data: qcells, cls: qc, size: 1 },
+          { type: "array", title: "dictionary words", data: adds, showIdx: true, size: 8 }
+        ] });
+      };
+      snap(`Build the trie from [${adds.join(", ")}]. Now match '<b>${query}</b>'.`, 7, [], undefined, {});
+      let result = false;
+      function dfs(node, i, path) {
+        if (i === query.length) {
+          result = !!node.end;
+          snap(node.end
+            ? `Position ${i} = end of pattern. Current node <b>${node.label}</b> carries <b>•</b> → word found → <b>true</b>.`
+            : `Position ${i} = end of pattern, but node <b>${node.label}</b> has no • (only a prefix) → <b>false</b>.`, 1, path, undefined, {});
+          return node.end;
+        }
+        const ch = query[i];
+        if (ch === ".") {
+          const kids = Object.keys(node.ch);
+          if (!kids.length) {
+            snap(`'<b>.</b>' at position ${i}, but the current node has <b>no children</b> to branch into → <b>false</b>.`, 3, path, i, {});
+            return false;
+          }
+          const kidNodes = kids.map(k => node.ch[k]);
+          snap(`'<b>.</b>' at position ${i} → wildcard: branch into ${kids.length} child/children <b>[${kids.join(", ")}]</b> — DFS tries each subtree fully.`, 2, path.concat(kidNodes), i, {});
+          for (const k of kids) {
+            path.push(node.ch[k]);
+            snap(`Try branch '<b>${k}</b>' (position ${i}).`, 3, path, i, {});
+            if (dfs(node.ch[k], i + 1, path)) return true;
+            path.pop();
+            snap(`Branch '<b>${k}</b>' failed → backtrack, try the next child.`, 4, path, i, {});
+          }
+          snap(`All ${kids.length} wildcard branch(es) failed → <b>false</b>.`, 5, path, i, {});
+          return false;
+        }
+        if (!node.ch[ch]) {
+          snap(`'<b>${ch}</b>' at position ${i}: no child → pattern dies here → <b>false</b>.`, 6, path, i, {});
+          return false;
+        }
+        path.push(node.ch[ch]);
+        snap(`'<b>${ch}</b>' at position ${i}: child exists → follow it (one fixed path).`, 7, path, i, {});
+        return dfs(node.ch[ch], i + 1, path);
+      }
+      dfs(t, 0, [t]);
+      const last = steps[steps.length - 1];
+      last.result = String(result);
+      last.correct = result === adds.some(w => wildcardRegex(query).test(w));
+      last.memNote = "Time: O(26^d) worst case (d = '.' count), O(L) without wildcards. Space: O(L) call stack.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      /* Approach 2 — BFS frontier sweep */
+      const adds = (vals.adds || []).map(x => String(x));
+      const query = String(vals.query || "");
+      const steps = [];
+      const t = trieRoot();
+      for (const w of adds) trieInsert(t, w);
+      const qcells = query.split("");
+      const snap = (text, code, frontier, qIdx, done) => {
+        const ids = new Map();
+        const qc = {};
+        if (qIdx !== undefined && qIdx >= 0 && qIdx < qcells.length) qc[qIdx] = "hot";
+        const fv = { type: "array", title: "frontier · candidates at this level", data: frontier.map(n => n.label + (n.end ? "•" : "")), showIdx: true, size: 8, cls: done ? { [frontier.length - 1]: "done" } : {} };
+        steps.push({ text: text, code: code, mem: [
+          { type: "tree", title: "trie · left = first child, right = next sibling (• = word end)", root: toLCRS(t, ids), hl: pathIds(frontier, ids) },
+          fv,
+          { type: "string", title: "query", data: qcells, cls: qc, size: 1 }
+        ] });
+      };
+      snap(`BFS matching: keep a FRONTIER of candidate nodes and advance it one query-char at a time.`, 0, [t], undefined, false);
+      let frontier = [t];
+      let result = false;
+      let died = false;
+      for (let i = 0; i < query.length; i++) {
+        const ch = query[i];
+        const nxt = [];
+        if (ch === ".") {
+          for (const n of frontier) {
+            for (const k of Object.keys(n.ch)) nxt.push(n.ch[k]);
+          }
+          if (!nxt.length) {
+            snap(`Level ${i} '<b>.</b>': no candidates have children → frontier dies → <b>false</b>.`, 4, frontier, i, false);
+            died = true;
+            break;
+          }
+          snap(`Level ${i} '<b>.</b>': wildcard fans out — ${frontier.length} node(s) → ${nxt.length} candidate(s): [${nxt.map(n => n.label).join(" ")}].`, 3, nxt, i, false);
+        } else {
+          for (const n of frontier) {
+            if (n.ch[ch]) nxt.push(n.ch[ch]);
+          }
+          if (!nxt.length) {
+            snap(`Level ${i} '<b>${ch}</b>': no candidate has a '<b>${ch}</b>' child → frontier empty → <b>false</b>.`, 4, frontier, i, false);
+            died = true;
+            break;
+          }
+          snap(`Level ${i} '<b>${ch}</b>': filter frontier → ${nxt.length} candidate(s): [${nxt.map(n => n.label).join(" ")}].`, 3, nxt, i, false);
+        }
+        frontier = nxt;
+      }
+      if (!died) {
+        const ends = frontier.filter(n => n.end);
+        result = ends.length > 0;
+        snap(ends.length
+          ? `Pattern complete. ${ends.length} surviving node(s) carry <b>•</b> → matched word exists → <b>true</b>.`
+          : `Pattern complete, but none of the ${frontier.length} survivor(s) carry <b>•</b> → <b>false</b>.`, 6, frontier, undefined, true);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(result);
+      last.correct = result === adds.some(w => wildcardRegex(query).test(w));
+      last.memNote = "Time: O(26^d) worst case. Space: O(26^d) frontier — no call stack, all candidates in lockstep.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0212 — WORD SEARCH II
+ * ================================================================ */
+NC150.register({
+  id: "0212", title: "Word Search II", difficulty: "Hard",
+  url: "https://leetcode.com/problems/word-search-ii/",
+  tags: ["trie", "grid", "dfs"],
+  approaches: ["Approach 1 · Trie + grid DFS (foundation)", "Approach 2 · DFS + branch pruning (best)"],
+  complexities: [
+    { time: "O(m·n·4^L)", space: "O(26·n·L)", note: "L = max word length" },
+    { time: "O(m·n·4^L)", space: "O(26·n·L)", note: "faster in practice — dead branches deleted" }
+  ],
+  compare: [
+    { name: "Trie + grid DFS", tech: "walk board, prune dead prefixes", time: "O(m·n·4^L)", space: "O(26·n·L)", when: "the base idea", best: false },
+    { name: "DFS + refs pruning", tech: "delete exhausted branches", time: "O(m·n·4^L)", space: "O(26·n·L)", when: "dense boards, many words", best: true },
+    { name: "Hash set + per-word DFS", tech: "search each word alone", time: "O(n·m·n·4^L)", space: "O(n·L)", when: "never — n independent searches", best: false }
+  ],
+  inputs: [
+    { name: "board", label: "board rows =", type: "list", default: '["oaan","etae","ihkr","iflv"]' },
+    { name: "words", label: "words =", type: "list", default: '["oath","pea","eat","rain"]' }
+  ],
+  examples: [
+    { label: "Ex 1", values: { board: '["oaan","etae","ihkr","iflv"]', words: '["oath","pea","eat","rain"]' }, result: '["oath", "eat"]' },
+    { label: "Ex 2", values: { board: '["ab","cd"]', words: '["ab","cb","ad","abcd","ac","bd"]' }, result: '["ab", "ac", "bd"]' },
+    { label: "Ex 3", values: { board: '["a"]', words: '["a","b","aa"]' }, result: '["a"]' }
+  ],
+  realLife: "<p><b>Boggle / word-game solvers</b>: the exact same algorithm powers every 'find all words in a letter grid' game — build the dictionary trie once, then one shared DFS over the grid.</p><p><b>OCR / handwriting lookup</b>: recognizing words letter-by-letter with ambiguous characters is a grid/trie walk; <b>genome search</b> finds short DNA sequences (tries) inside long sequences the same way.</p>",
+  dsDive: `<h3>Why a trie — and why deleting used words</h3>
+<p>From any cell you must ask: <i>"which dictionary words continue the letters I've spelled?"</i> — a <b>prefix query</b>, which hash sets cannot answer (probing h(k,i) = (hash(k)+i) mod m finds only exact keys). The trie answers per letter in O(1): one child lookup decides descend-or-prune, so one DFS tree serves ALL words at once — instead of n independent searches.</p>
+<div class="equation">memory: n words × avg L × 26 pointers, shared prefixes included</div>
+<p><b>A2's trick</b> (refs counter + deletion): once a word is found, its node's <span class="code-var">refs</span> drops; when a branch's refs hits 0 it is <b>deleted</b> — every later cell stops paying DFS time for already-answered words. The trie becomes a live accumulator: each word costs exactly its discovery path.</p>`,
+  code: [
+    "build trie — each terminal node stores its full word",
+    "for r in rows, c in cols: dfs(r, c, root)",
+    "def dfs(r, c, node):",
+    "    if letter not in node.ch: return      # prune dead prefix",
+    "    node = node.ch[letter]                # descend",
+    "    if node.word: report it; node.word = None  # each word once",
+    "    board[r][c] = '#'                     # claim the cell",
+    "    dfs(r+1,c); dfs(r-1,c); dfs(r,c+1); dfs(r,c-1)",
+    "    board[r][c] = letter                  # backtrack: release"
+  ],
+  steps: [
+    function (vals) {
+      /* Approach 1 — trie + grid DFS backtracking (foundation) */
+      const board = (vals.board || []).map(r => String(r).split(""));
+      const words = (vals.words || []).map(x => String(x));
+      const steps = [];
+      const t = trieRoot();
+      for (const w of words) trieInsert(t, w);
+      const rows = board.length;
+      const cols = rows ? Math.max.apply(null, board.map(r => r.length)) : 0;
+      const found = [];
+      const snap = (text, code, pathNodes, cls) => {
+        const ids = new Map();
+        steps.push({ text: text, code: code, mem: [
+          { type: "grid", title: "board · '#' = cell claimed by the walk", data: board, cls: cls || {}, cols: cols },
+          { type: "tree", title: "trie · highlighted = current prefix path", root: toLCRS(t, ids), hl: pathIds(pathNodes || [], ids) },
+          { type: "array", title: "found words", data: found.slice(), showIdx: true, size: 8 }
+        ] });
+      };
+      if (!words.length) {
+        const empty = { text: "No words to search — nothing to find.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(empty);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap(`Insert [${words.join(", ")}] into one trie — a single DFS tree now serves every word.`, 0, [], {});
+      function dfs(r, c, node, path) {
+        if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+        const ch = board[r][c];
+        if (ch === "#") return;
+        const child = node.ch[ch];
+        if (!child) return;                 // prune: no word continues here
+        path.push(child);
+        if (child.end) {
+          found.push(child.word);
+          child.end = false;                // never report this word again
+          snap(`Path spells '<b>${found[found.length - 1]}</b>' → <b>word found!</b> Report it and clear the • so later cells never re-find it.`, 5, path, { [r + "," + c]: "done" });
+        } else {
+          snap(`'<b>${ch}</b>' at (${r},${c}) continues the prefix → descend.`, 4, path, { [r + "," + c]: "hot" });
+        }
+        board[r][c] = "#";                  // claim the cell — no re-use
+        snap(`Claim (${r},${c}) with '#' → try 4 neighbours.`, 6, path, { [r + "," + c]: "hot" });
+        dfs(r + 1, c, child, path);
+        dfs(r - 1, c, child, path);
+        dfs(r, c + 1, child, path);
+        dfs(r, c - 1, child, path);
+        board[r][c] = ch;                   // backtrack: release the cell
+        snap(`Backtrack: restore (${r},${c}) = '<b>${ch}</b>'.`, 8, path.slice(0, -1), { [r + "," + c]: "done" });
+        path.pop();
+      }
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          snap(`Start a walk at (${r},${c}) '<b>${board[r][c]}</b>'.`, 1, [], { [r + "," + c]: "hot" });
+          dfs(r, c, t, []);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + found.join(", ") + "]";
+      const brute = bruteWords((vals.board || []).map(x => String(x).split("")), words);
+      last.correct = found.slice().sort().join() === brute.slice().sort().join();
+      last.memNote = "Time: O(m·n·4^L) worst case; trie prunes dead prefixes. Space: O(26·n·L) trie + O(L) stack.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      /* Approach 2 — trie + grid DFS with refs-pruning (best) */
+      const board = (vals.board || []).map(r => String(r).split(""));
+      const words = (vals.words || []).map(x => String(x));
+      const steps = [];
+      const t = trieRoot();
+      for (const w of words) trieInsertRefs(t, w);
+      const rows = board.length;
+      const cols = rows ? Math.max.apply(null, board.map(r => r.length)) : 0;
+      const found = [];
+      const snap = (text, code, pathNodes, cls) => {
+        const ids = new Map();
+        steps.push({ text: text, code: code, mem: [
+          { type: "grid", title: "board · '#' = cell claimed by the walk", data: board, cls: cls || {}, cols: cols },
+          { type: "tree", title: "trie · highlighted = current prefix (refs > 0 only)", root: toLCRS(t, ids), hl: pathIds(pathNodes || [], ids) },
+          { type: "array", title: "found words", data: found.slice(), showIdx: true, size: 8 }
+        ] });
+      };
+      if (!words.length) {
+        const empty = { text: "No words to search — nothing to find.", code: 0, mem: [], result: "[]", correct: true, memNote: "O(1)." };
+        steps.push(empty);
+        return { steps: steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap(`Insert with a <b>refs</b> counter: refs = words still reachable below this node. Watch the trie SHRINK as words are found.`, 0, [], {});
+      function dfs(r, c, node, path) {
+        if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+        const ch = board[r][c];
+        if (ch === "#") return;
+        const child = node.ch[ch];
+        if (!child || child.refs <= 0) return;   // exhausted branch → skip
+        path.push(child);
+        if (child.end) {
+          found.push(child.word);
+          child.end = false;
+          child.refs--;
+          snap(`Found '<b>${found[found.length - 1]}</b>' → refs of its branch drop by 1 (now ${child.refs}).`, 3, path, { [r + "," + c]: "done" });
+        } else {
+          snap(`'<b>${ch}</b>' at (${r},${c}) continues the prefix (refs=${child.refs}) → descend.`, 2, path, { [r + "," + c]: "hot" });
+        }
+        board[r][c] = "#";
+        dfs(r + 1, c, child, path);
+        dfs(r - 1, c, child, path);
+        dfs(r, c + 1, child, path);
+        dfs(r, c - 1, child, path);
+        board[r][c] = ch;
+        if (child.refs <= 0) {
+          delete node.ch[ch];               // prune: no words left below
+          snap(`refs = 0 → <b>delete</b> the '<b>${ch}</b>' branch — later cells never pay DFS time for it again.`, 5, path.slice(0, -1), { [r + "," + c]: "done" });
+        }
+        path.pop();
+      }
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          snap(`Start a walk at (${r},${c}) '<b>${board[r][c]}</b>'.`, 1, [], { [r + "," + c]: "hot" });
+          dfs(r, c, t, []);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = "[" + found.join(", ") + "]";
+      const brute = bruteWords((vals.board || []).map(x => String(x).split("")), words);
+      last.correct = found.slice().sort().join() === brute.slice().sort().join();
+      last.memNote = "Same worst case, but each word is discovered once and its branch dies — later cells skip it entirely.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

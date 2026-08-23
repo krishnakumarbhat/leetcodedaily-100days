@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10 · Backtracking — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "10", title: "Backtracking" };
+
+/* ================================================================
+ * SHARED HELPERS — decision-tree rendering
+ * ================================================================ */
+/* renders the recursion call stack as a stack view + current state */
+function factorial(n) { return n <= 1 ? 1 : n * factorial(n - 1); }
+function bruteExists(board, word) {
+  const rows = board.length, cols = rows ? Math.max.apply(null, board.map(r => r.length)) : 0;
+  let ok = false;
+  function dfs(r, c, i) {
+    if (ok) return;
+    if (i === word.length) { ok = true; return; }
+    if (r < 0 || c < 0 || r >= rows || c >= cols) return;
+    if (board[r][c] !== word[i]) return;
+    const save = board[r][c];
+    board[r][c] = "#";
+    dfs(r + 1, c, i + 1); dfs(r - 1, c, i + 1); dfs(r, c + 1, i + 1); dfs(r, c - 1, i + 1);
+    board[r][c] = save;
+  }
+  for (let r = 0; r < rows && !ok; r++) for (let c = 0; c < cols && !ok; c++) dfs(r, c, 0);
+  return ok;
+}
+function countChars(str) {
+  const c = {};
+  for (const ch of str) c[ch] = (c[ch] || 0) + 1;
+  return c;
+}
+function stateViews(cur, extra) {
+  const v = [
+    { type: "stack", title: "recursion stack · current choice path", data: cur.slice(), top: cur.length - 1 },
+    { type: "array", title: "results found so far", data: (extra.results || []).slice(), showIdx: true, size: 8 }
+  ];
+  if (extra.extra) v.push(extra.extra);
+  return v;
+}
+
+/* ================================================================
+ * PROBLEM 0078 — SUBSETS
+ * ================================================================ */
+NC150.register({
+  id: "0078", title: "Subsets", difficulty: "Medium",
+  url: "https://leetcode.com/problems/subsets/",
+  tags: ["backtracking", "bitmask"],
+  approaches: ["Approach 1 · Include/exclude DFS (best)", "Approach 2 · Bitmask enumeration"],
+  complexities: [
+    { time: "O(n · 2ⁿ)", space: "O(n)", note: "BEST — copy each of the 2ⁿ subsets" },
+    { time: "O(n · 2ⁿ)", space: "O(n)", note: "bits select elements" }
+  ],
+  compare: [
+    { name: "DFS include/exclude", tech: "branch per element, share one path", time: "O(n·2ⁿ)", space: "O(n)", when: "the standard", best: true },
+    { name: "Bitmask", tech: "mask ∈ [0, 2ⁿ), pick set bits", time: "O(n·2ⁿ)", space: "O(1)", when: "iterative mindset", best: false },
+    { name: "Iterative build", tech: "extend every subset by x", time: "O(n·2ⁿ)", space: "O(2ⁿ)", when: "BFS flavor", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,2,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,2,3]" }, result: "8 subsets" },
+    { label: "Ex 2", values: { nums: "[0]" }, result: "2 subsets" },
+    { label: "Ex 3", values: { nums: "[]" }, result: "1 subset" }
+  ],
+  realLife: "<p><b>Feature selection</b>: trying every subset of n features for a model is the power set — pruning with branch-and-bound turns this exponential into a usable search.</p><p><b>Menu & bundle configurators</b>: 'which combinations of options exist' is literally a subsets enumeration.</p>",
+  dsDive: `<h3>What "backtrack" means, mechanically</h3>
+<p>The DFS shares ONE mutable path list. Entering the include-branch <b>appends</b> the element; leaving it <b>pops</b> — the pop IS the backtrack, restoring the exact state the exclude-sibling expects. Nothing is copied between siblings.</p>
+<div class="equation">dfs(i) → [exclude branch] dfs(i+1) &nbsp;→&nbsp; [include branch] push · dfs(i+1) · pop</div>
+<p>The recursion tree has 2ⁿ leaves (one per subset) and 2ⁿ⁺¹−1 nodes total. Every leaf materializes a copy → <span class="code-var">O(n·2ⁿ)</span>. The bitmask variant generates the same 2ⁿ masks with no call stack.</p>`,
+  code: [
+    "def dfs(i):",
+    "    if i == n: results.append(path[:])  # leaf = one subset",
+    "    else:",
+    "        dfs(i + 1)                       # EXCLUDE nums[i]",
+    "        path.append(nums[i])             # INCLUDE...",
+    "        dfs(i + 1)",
+    "        path.pop()                       # ...then backtrack",
+    "dfs(0)"
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const results = [];
+      const path = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: stateViews(path.slice(), { results: results }) });
+      snap(`DFS over nums = [${nums.join(", ")}]: at each index, branch EXCLUDE first, then INCLUDE.`, 1);
+      let i = 0;
+      function go(idx) {
+        if (idx === nums.length) {
+          results.push(path.slice());
+          snap(`Leaf reached → subset [${path.join(", ")}] recorded. Backtrack to the last decision.`, 2);
+          return;
+        }
+        i++;
+        snap(`Position ${idx} (value <b>${nums[idx]}</b>): try EXCLUDE → descend.`, 3);
+        go(idx + 1);
+        path.push(nums[idx]);
+        snap(`Back from exclude. Now INCLUDE <b>${nums[idx]}</b> → descend.`, 4);
+        go(idx + 1);
+        path.pop();
+        snap(`Backtrack: pop <b>${nums[idx]}</b> — the state is restored for the sibling branch.`, 5);
+      }
+      go(0);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " subsets: " + JSON.stringify(results.slice(0, 4)) + (results.length > 4 ? " …" : "");
+      last.correct = results.length === Math.pow(2, nums.length);
+      last.memNote = "Time: O(n·2ⁿ) copying all subsets. Space: O(n) recursion depth.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const results = [];
+      const snap = (text, code, mask) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "counter (bits = chosen elements)", data: nums.map((_, b) => mask === undefined ? "·" : (mask >> b) & 1), showIdx: true, size: 1 },
+        { type: "array", title: "results found so far", data: results.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Count from 0 to 2ⁿ−1: bit b of the counter = is nums[b] in this subset?`, 1, 0);
+      for (let mask = 0; mask < (1 << nums.length); mask++) {
+        const cur = nums.filter((_, b) => (mask >> b) & 1);
+        results.push(cur);
+        snap(`mask = ${mask} (${nums.map((_, b) => (mask >> b) & 1).join("")}) → subset [${cur.join(", ")}].`, 2, mask);
+      }
+      const last = steps[steps.length - 1];
+      last.result = results.length + " subsets";
+      last.correct = results.length === Math.pow(2, nums.length);
+      last.memNote = "No call stack — one loop over all masks, O(n·2ⁿ).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+/* ================================================================
+ * PROBLEM 0090 — SUBSETS II (DUPLICATES)
+ * ================================================================ */
+NC150.register({
+  id: "0090", title: "Subsets II", difficulty: "Medium",
+  url: "https://leetcode.com/problems/subsets-ii/",
+  tags: ["backtracking", "duplicates"],
+  approaches: ["Approach 1 · Sorted DFS + skip duplicates (best)", "Approach 2 · Set of masks"],
+  complexities: [
+    { time: "O(2ⁿ)", space: "O(n)", note: "BEST — skip rule removes duplicates" },
+    { time: "O(n·2ⁿ)", space: "O(2ⁿ)", note: "dedupe by hash set" }
+  ],
+  compare: [
+    { name: "Sorted DFS skip", tech: "skip equal neighbors after a choice", time: "O(2ⁿ)", space: "O(n)", when: "the standard", best: true },
+    { name: "Set of tuples", tech: "generate all, hash-dedupe", time: "O(n·2ⁿ)", space: "O(2ⁿ)", when: "quick and dirty", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,2,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,2,2]" }, result: "6 subsets" },
+    { label: "Ex 2", values: { nums: "[0]" }, result: "2 subsets" },
+    { label: "Ex 3", values: { nums: "[1,1,1]" }, result: "4 subsets" }
+  ],
+  realLife: "<p><b>Set-cover style optimizers</b> where identical items exist: deduplicating the search space avoids exploring isomorphic branches — the same skip rule powers many constraint solvers.</p><p><b>Data dedup pipelines</b>: enumerating unique groupings of repeated records is this exact enumeration.</p>",
+  dsDive: `<h3>Why sorting makes duplicates skippable</h3>
+<p>Equal values are adjacent after sorting. Two copies of value v at the same decision level generate <b>identical subtrees</b> — the second copy's work was already done by the first. The rule <span class="code-var">if j > i and c[j] == c[j−1]: continue</span> skips exactly those redundant branches. Note the condition is <b>j > i</b>, not j > 0: the first copy of v must still be usable; only later equal ones are skipped.</p>
+<div class="equation">[1,2,2]: at level 1, use 2 (idx 1) → subtree with one 2; skip idx 2's 2 → subtree with two 2s only generated from idx 1</div>
+<p>Total subsets collapse to 2^d where d = number of DISTINCT values.</p>`,
+  code: [
+    "nums.sort()",
+    "def dfs(i):",
+    "    results.append(path[:])              # every node is a subset",
+    "    for j in range(i, len(nums)):",
+    "        if j > i and nums[j] == nums[j-1]:",
+    "            continue                      # skip duplicate siblings",
+    "        path.append(nums[j])",
+    "        dfs(j + 1)",
+    "        path.pop()",
+    "dfs(0)"
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number).sort((a, b) => a - b);
+      const steps = [];
+      const results = [];
+      const path = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: stateViews(path.slice(), { results: results, extra: { type: "array", title: "nums (sorted)", data: nums.slice(), showIdx: true, size: 4 } }) });
+      snap(`Sort [${nums.join(", ")}] — equal values now sit next to each other.`, 1);
+      function go(i) {
+        results.push(path.slice());
+        snap(`Record subset [${path.join(", ")}] — every node of the tree is a subset.`, 2);
+        for (let j = i; j < nums.length; j++) {
+          if (j > i && nums[j] === nums[j - 1]) {
+            snap(`j=${j}: value <b>${nums[j]}</b> equals the previous candidate → <b>skip</b> (its subtree was already explored).`, 3);
+            continue;
+          }
+          path.push(nums[j]);
+          snap(`Choose <b>${nums[j]}</b> (first copy) → descend.`, 4);
+          go(j + 1);
+          path.pop();
+        }
+      }
+      go(0);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " unique subsets";
+      last.correct = true;
+      last.memNote = "Time: O(2ⁿ) worst (all distinct). Space: O(n) depth.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number).sort((a, b) => a - b);
+      const steps = [];
+      const seen = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "unique subsets (hash-deduped)", data: seen.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Baseline: generate ALL 2ⁿ subsets, hash-dedupe.`, 1);
+      for (let mask = 0; mask < (1 << nums.length); mask++) {
+        const cur = nums.filter((_, b) => (mask >> b) & 1).join(",");
+        if (!seen.includes(cur)) {
+          seen.push(cur);
+          snap(`mask ${mask} → [${cur}] new → keep.`, 2);
+        } else {
+          snap(`mask ${mask} → [${cur}] <b>already seen</b> → dropped.`, 3);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = seen.length + " unique subsets";
+      last.correct = true;
+      last.memNote = "Same answer, but pays O(2ⁿ) for duplicates the DFS skip rule avoids for free.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0046 — PERMUTATIONS
+ * ================================================================ */
+NC150.register({
+  id: "0046", title: "Permutations", difficulty: "Medium",
+  url: "https://leetcode.com/problems/permutations/",
+  tags: ["backtracking"],
+  approaches: ["Approach 1 · Swap-based DFS (best)", "Approach 2 · used[] bitmap"],
+  complexities: [
+    { time: "O(n · n!)", space: "O(n)", note: "BEST — state lives in the array" },
+    { time: "O(n · n!)", space: "O(n)", note: "explicit used[]" }
+  ],
+  compare: [
+    { name: "Swap DFS", tech: "fix pos via swaps, no extra array", time: "O(n·n!)", space: "O(n)", when: "memory-lean", best: true },
+    { name: "used[] DFS", tech: "bitmap + running permutation", time: "O(n·n!)", space: "O(n)", when: "readable", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[1,2,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[1,2,3]" }, result: "6 permutations" },
+    { label: "Ex 2", values: { nums: "[0,1]" }, result: "2 permutations" },
+    { label: "Ex 3", values: { nums: "[1]" }, result: "1 permutation" }
+  ],
+  realLife: "<p><b>Route planning</b>: the travelling-salesman brute force enumerates permutations of cities; smarter versions prune with branch-and-bound.</p><p><b>Anagram & crossword engines</b>: generating all letter arrangements, then filtering against a dictionary.</p>",
+  dsDive: `<h3>The swap trick: state without storage</h3>
+<p>At position pos, elements left of pos are already fixed (used); the suffix holds the remaining pool. Swapping nums[pos] ↔ nums[j] places candidate j in its slot and shrinks the pool — <b>no used[] array exists</b>. The backtrack is the reverse swap. Each leaf materializes the array: n! leaves × O(n) copy = <span class="code-var">O(n·n!)</span>.</p>
+<div class="equation">fix(1): [1,2,3] → swap(0,1) [2,1,3] → fix(1): swap(1,2) [2,3,1] → leaf [2,3,1]</div>
+<p>The used[] version encodes the same tree with an explicit bitmap — identical work, more readable.</p>`,
+  code: [
+    "def dfs(pos):",
+    "    if pos == n: results.append(nums[:])   # leaf = one permutation",
+    "    for j in range(pos, n):",
+    "        nums[pos], nums[j] = nums[j], nums[pos]   # place candidate",
+    "        dfs(pos + 1)",
+    "        nums[pos], nums[j] = nums[j], nums[pos]   # BACKTRACK (un-swap)",
+    "dfs(0)"
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const results = [];
+      const arr = nums.slice();
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "nums · left of pos = fixed (used), right = pool", data: arr.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "permutations found", data: results.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Swap-DFS: position 0 is filled by swapping in ANY element of the pool.`, 1, { 0: "hot" });
+      function go(pos) {
+        if (pos === arr.length) {
+          results.push(arr.slice());
+          snap(`Full permutation [${arr.join(", ")}] recorded.`, 2);
+          return;
+        }
+        for (let j = pos; j < arr.length; j++) {
+          [arr[pos], arr[j]] = [arr[j], arr[pos]];
+          snap(`swap(${pos},${j}): fix <b>${arr[pos]}</b> at position ${pos} → recurse.`, 3, { [pos]: "done", [j]: "hot" });
+          go(pos + 1);
+          [arr[pos], arr[j]] = [arr[j], arr[pos]];
+          snap(`Backtrack: swap back → pool restored for the next candidate.`, 4, { [pos]: "hot" });
+        }
+      }
+      go(0);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " permutations";
+      last.correct = results.length === factorial(arr.length);
+      last.memNote = "Time: O(n·n!). Space: O(n) — the array itself carries the state.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const results = [];
+      const path = [];
+      const used = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "used[] bitmap (1 = already placed)", data: used.slice(), cls: used.map(x => (x ? "done" : null)), showIdx: true, size: 4 },
+        { type: "stack", title: "permutation under construction", data: path.slice(), top: path.length - 1 },
+        { type: "array", title: "permutations found", data: results.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Classic DFS: pick any UNUSED element for the next slot.`, 1);
+      function go() {
+        if (path.length === nums.length) {
+          results.push(path.slice());
+          snap(`Permutation [${path.join(", ")}] complete.`, 2);
+          return;
+        }
+        for (let i = 0; i < nums.length; i++) {
+          if (used[i]) continue;
+          used[i] = 1;
+          path.push(nums[i]);
+          snap(`Place <b>${nums[i]}</b> (used[${i}]=1) → recurse.`, 3);
+          go();
+          path.pop();
+          used[i] = 0;
+          snap(`Backtrack: remove <b>${nums[i]}</b>, free slot ${i}.`, 4);
+        }
+      }
+      go();
+      const last = steps[steps.length - 1];
+      last.result = results.length + " permutations";
+      last.correct = results.length === factorial(nums.length);
+      last.memNote = "Same complexity; explicit used[] trades clarity for a bitmap.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+
+
+/* ================================================================
+ * PROBLEM 0079 — WORD SEARCH
+ * ================================================================ */
+NC150.register({
+  id: "0079", title: "Word Search", difficulty: "Medium",
+  url: "https://leetcode.com/problems/word-search/",
+  tags: ["backtracking", "grid"],
+  approaches: ["Approach 1 · In-place sentinel marking (best)", "Approach 2 · visited[][] bitmap"],
+  complexities: [
+    { time: "O(m·n·3^L)", space: "O(L)", note: "BEST — sentinel encodes visited in the board" },
+    { time: "O(m·n·3^L)", space: "O(m·n + L)", note: "explicit bitmap" }
+  ],
+  compare: [
+    { name: "Sentinel marking", tech: "overwrite cell, restore on unwind", time: "O(m·n·3^L)", space: "O(L)", when: "the standard", best: true },
+    { name: "visited[][]", tech: "separate bool grid", time: "O(m·n·3^L)", space: "O(m·n)", when: "readability", best: false }
+  ],
+  inputs: [
+    { name: "board", label: "board rows =", type: "list", default: '["ABCE","SFCS","ADEE"]' },
+    { name: "word", label: "word =", type: "str", default: "ABCCED" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { board: '["ABCE","SFCS","ADEE"]', word: "ABCCED" }, result: "true" },
+    { label: "Ex 2", values: { board: '["ABCE","SFCS","ADEE"]', word: "SEE" }, result: "true" },
+    { label: "Ex 3", values: { board: '["ABCE","SFCS","ADEE"]', word: "ABCB" }, result: "false" }
+  ],
+  realLife: "<p><b>OCR / handwriting recognition</b>: tracing a letter path over ambiguous glyph grids — DFS with claim/release is the model.</p><p><b>Pathfinding with no-revisit</b>: maze solvers that must not step on a cell twice use the same sentinel trick.</p>",
+  dsDive: `<h3>The one-byte state machine</h3>
+<p>Visited state lives IN the board: overwrite the matched cell with a sentinel ('\0') that can never equal a letter, restore it when the branch unwinds. No allocation, perfect cache locality, and a forgotten restore corrupts loudly — a good failure mode. Branching factor: the first step has 4 neighbors, every later step only 3 (never back to the claimed cell): <span class="code-var">O(m·n·3^L)</span> worst case.</p>
+<div class="equation">claim (r,c) → try ↑↓←→ → restore (r,c) — the backtrack in one line</div>`,
+  code: [
+    "def dfs(r, c, k):",
+    "    if k == len(word): return True",
+    "    if out of bounds or board[r][c] != word[k]: return False",
+    "    save = board[r][c]; board[r][c] = '\0'   # claim the cell",
+    "    found = dfs(r+1,c,k+1) or dfs(r-1,c,k+1) or",
+    "            dfs(r,c+1,k+1) or dfs(r,c-1,k+1)",
+    "    board[r][c] = save                        # backtrack: release",
+    "    return found",
+    "for every cell: if dfs(r, c, 0): return True"
+  ],
+  steps: [
+    function (vals) {
+      const board = (vals.board || []).map(r => String(r).split(""));
+      const word = String(vals.word || "");
+      const steps = [];
+      const rows = board.length;
+      const cols = rows ? Math.max.apply(null, board.map(r => r.length)) : 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "board · '\0' (∅) = cell claimed by the walk", data: board.map(r => r.slice()), cls: cls || {}, cols: cols },
+        { type: "array", title: "word", data: word.split(""), cls: {}, size: 1 }
+      ] });
+      if (!word) {
+        const e = { text: "Empty word — trivially found.", code: 0, mem: [], result: "true", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "true", correct: true, memNote: "O(1)." };
+      }
+      let result = false;
+      const wc = word.split("");
+      function go(r, c, k) {
+        if (k === wc.length) { result = true; snap(`All ${k} letters matched → <b>found</b>.`, 1, {}); return; }
+        if (r < 0 || c < 0 || r >= rows || c >= cols) return;
+        if (board[r][c] !== wc[k]) return;
+        const save = board[r][c];
+        board[r][c] = "\0";
+        snap(`(${r},${c}) '<b>${save}</b>' = word[${k}] → claim cell, try 4 neighbours.`, 2, { [r + "," + c]: "hot" });
+        go(r + 1, c, k + 1);
+        go(r - 1, c, k + 1);
+        go(r, c + 1, k + 1);
+        go(r, c - 1, k + 1);
+        board[r][c] = save;
+        if (!result) snap(`Dead end at (${r},${c}) → backtrack: restore '<b>${save}</b>'.`, 3, { [r + "," + c]: "done" });
+      }
+      for (let r = 0; r < rows && !result; r++)
+        for (let c = 0; c < cols && !result; c++) {
+          snap(`Try start cell (${r},${c}) '<b>${board[r][c]}</b>'.`, 4, { [r + "," + c]: "hot" });
+          go(r, c, 0);
+        }
+      const last = steps[steps.length - 1];
+      last.result = String(result);
+      last.correct = result === bruteExists(board.map(r => r.slice()), word);
+      last.memNote = "Time: O(m·n·3^L). Space: O(L) recursion depth.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const board = (vals.board || []).map(r => String(r).split(""));
+      const word = String(vals.word || "");
+      const steps = [];
+      const rows = board.length;
+      const cols = rows ? Math.max.apply(null, board.map(r => r.length)) : 0;
+      const vis = Array.from({ length: rows }, () => Array(cols).fill(0));
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "visited[][] (1 = claimed)", data: vis.map(r => r.slice()), cls: cls || {}, cols: cols },
+        { type: "array", title: "word", data: word.split(""), cls: {}, size: 1 }
+      ] });
+      let result = false;
+      const wc = word.split("");
+      snap(`Explicit bitmap instead of board mutation — same DFS, clearer state.`, 1, {});
+      function go(r, c, k) {
+        if (k === wc.length) { result = true; return; }
+        if (r < 0 || c < 0 || r >= rows || c >= cols || vis[r][c]) return;
+        if (board[r][c] !== wc[k]) return;
+        vis[r][c] = 1;
+        snap(`(${r},${c}) '<b>${board[r][c]}</b>' matches → vis=1, descend.`, 2, { [r + "," + c]: "hot" });
+        go(r + 1, c, k + 1); go(r - 1, c, k + 1); go(r, c + 1, k + 1); go(r, c - 1, k + 1);
+        vis[r][c] = 0;
+        if (!result) snap(`Backtrack: vis(${r},${c})=0 → cell released.`, 3, { [r + "," + c]: "done" });
+      }
+      for (let r = 0; r < rows && !result; r++)
+        for (let c = 0; c < cols && !result; c++) go(r, c, 0);
+      const last = steps[steps.length - 1];
+      last.result = String(result);
+      last.correct = result === bruteExists(board.map(r => r.slice()), word);
+      last.memNote = "Same search; extra O(m·n) bool grid instead of in-place marking.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0017 — LETTER COMBINATIONS OF A PHONE NUMBER
+ * ================================================================ */
+NC150.register({
+  id: "0017", title: "Letter Combinations of a Phone Number", difficulty: "Medium",
+  url: "https://leetcode.com/problems/letter-combinations-of-a-phone-number/",
+  tags: ["backtracking", "product"],
+  approaches: ["Approach 1 · Backtracking DFS (best)", "Approach 2 · Iterative product"],
+  complexities: [
+    { time: "O(4ⁿ)", space: "O(n)", note: "BEST — n = number of digits" },
+    { time: "O(4ⁿ)", space: "O(4ⁿ)", note: "all prefixes materialized" }
+  ],
+  compare: [
+    { name: "DFS backtracking", tech: "one shared prefix path", time: "O(4ⁿ)", space: "O(n)", when: "deep inputs", best: true },
+    { name: "Iterative product", tech: "extend all prefixes per digit", time: "O(4ⁿ)", space: "O(4ⁿ)", when: "simple code", best: false }
+  ],
+  inputs: [
+    { name: "digits", label: "digits =", type: "str", default: "23" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { digits: "23" }, result: "9 combos" },
+    { label: "Ex 2", values: { digits: "" }, result: "0 combos" },
+    { label: "Ex 3", values: { digits: "2" }, result: "3 combos" }
+  ],
+  realLife: "<p><b>Phone T9 input</b>: literally this problem — every T9 keyboard and old SMS composer enumerates digit→letter combinations.</p><p><b>Config space explosion</b>: product enumerations (one choice per dimension) appear in A/B test matrix builders.</p>",
+  dsDive: `<h3>The output is a Cartesian product</h3>
+<p>Each digit is an independent dimension with 3-4 letters. The answer has <span class="code-var">Π len(letters(d))</span> strings. DFS holds ONE mutable prefix — the '23' tree has 9 leaves. The iterative variant keeps ALL prefixes at every level (memory grows to total output size). Empty input must return [] — both idioms special-case it, or the [""] seed leaks through.</p>
+<div class="equation">"23" → 3×3 = 9 leaves &nbsp;|&nbsp; "999" → 4³ = 64 leaves</div>`,
+  code: [
+    "KEYPAD = {'2':'abc','3':'def','4':'ghi','5':'jkl',",
+    "          '6':'mno','7':'pqrs','8':'tuv','9':'wxyz'}",
+    "def dfs(d):",
+    "    if d == len(digits): results.append(''.join(path)); return",
+    "    for ch in KEYPAD[digits[d]]:",
+    "        path.append(ch)",
+    "        dfs(d + 1)",
+    "        path.pop()                 # backtrack the letter",
+    "dfs(0)"
+  ],
+  steps: [
+    function (vals) {
+      const digits = String(vals.digits || "23");
+      const KEYPAD = { "2": "abc", "3": "def", "4": "ghi", "5": "jkl", "6": "mno", "7": "pqrs", "8": "tuv", "9": "wxyz" };
+      const steps = [];
+      const results = [];
+      const path = [];
+      const dg = digits.split("");
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "digits", data: dg.slice(), cls: cls || {}, showIdx: true, size: 1 },
+        { type: "stack", title: "prefix under construction", data: path.slice(), top: path.length - 1 },
+        { type: "array", title: "combinations found", data: results.slice(), showIdx: true, size: 8 }
+      ] });
+      if (!digits) {
+        const e = { text: "No digits → no letters → return [].", code: 0, mem: [], result: "0 combos", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "0 combos", correct: true, memNote: "O(1)." };
+      }
+      snap(`Map each digit to its letters; DFS builds one letter per level.`, 1, { 0: "hot" });
+      function go(d) {
+        if (d === dg.length) { results.push(path.join("")); snap(`Leaf: combo '<b>${path.join("")}</b>' recorded.`, 2); return; }
+        for (const ch of KEYPAD[dg[d]]) {
+          path.push(ch);
+          snap(`Digit ${dg[d]} → letter '<b>${ch}</b>' → descend to level ${d + 1}.`, 3, { [d]: "hot" });
+          go(d + 1);
+          path.pop();
+        }
+      }
+      go(0);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " combos";
+      last.correct = true;
+      last.memNote = "Time: O(4ⁿ). Space: O(n) — one shared prefix.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const digits = String(vals.digits || "23");
+      const KEYPAD = { "2": "abc", "3": "def", "4": "ghi", "5": "jkl", "6": "mno", "7": "pqrs", "8": "tuv", "9": "wxyz" };
+      const steps = [];
+      let out = [""];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "all prefixes at this level", data: out.slice(), showIdx: true, size: 8 }
+      ] });
+      if (!digits) {
+        const e = { text: "Empty digits → [].", code: 0, mem: [], result: "0 combos", correct: true, memNote: "O(1)." };
+        steps.push(e);
+        return { steps: steps, result: "0 combos", correct: true, memNote: "O(1)." };
+      }
+      snap(`Seed with [""] — every digit multiplies the prefix list.`, 1);
+      for (const d of digits) {
+        out = out.flatMap(p => KEYPAD[d].split("").map(ch => p + ch));
+        snap(`Digit <b>${d}</b>: extend every prefix by ${KEYPAD[d].split("").length} letters → ${out.length} prefixes.`, 2);
+      }
+      const last = steps[steps.length - 1];
+      last.result = out.length + " combos";
+      last.correct = true;
+      last.memNote = "Same leaves; materializes all prefixes — O(4ⁿ) memory.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0395 — LONGEST SUBSTRING WITH AT LEAST K REPEATING CHARS
+ * ================================================================ */
+NC150.register({
+  id: "0395", title: "Longest Substring with At Least K Repeating Characters", difficulty: "Medium",
+  url: "https://leetcode.com/problems/longest-substring-with-at-least-k-repeating-characters/",
+  tags: ["backtracking", "divide & conquer", "sliding window"],
+  approaches: ["Approach 1 · Divide & conquer on blockers (best)", "Approach 2 · 26 sliding-window passes"],
+  complexities: [
+    { time: "O(n²) worst", space: "O(n)", note: "recursion over blocker gaps" },
+    { time: "O(26·n)", space: "O(1)", note: "BEST — bounded distinct count" }
+  ],
+  compare: [
+    { name: "Divide & conquer", tech: "split at chars with count < k", time: "O(n²)", space: "O(n)", when: "intuitive", best: false },
+    { name: "Sliding window ×26", tech: "fix distinct count, two pointers", time: "O(26n)", space: "O(1)", when: "the interview answer", best: true }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "aaabb" },
+    { name: "k", label: "k =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "aaabb", k: "3" }, result: "3" },
+    { label: "Ex 2", values: { s: "ababbc", k: "2" }, result: "5" },
+    { label: "Ex 3", values: { s: "ababacb", k: "3" }, result: "0" }
+  ],
+  realLife: "<p><b>Log anomaly detection</b>: the longest time window where every log-level appears at least k times — a monitoring query, verbatim.</p><p><b>Consensus voting windows</b>: longest stretch where every candidate got ≥ k mentions is this algorithm on vote streams.</p>",
+  dsDive: `<h3>Blockers split the problem cleanly</h3>
+<p>If a character occurs fewer than k times in a window, it can NEVER be part of a valid substring — any valid substring must lie entirely inside one of the gaps between its occurrences. Recursing on the gaps is complete and correct; each level removes ≥ 1 character so depth ≤ 26.</p>
+<div class="equation">"ababbc", k=2: 'c' occurs once → splits into "ababb" (valid, len 5) | ""</div>
+<p>A2's insight: 'all counts ≥ k' isn't monotone for two pointers, but 'window has ≤ d distinct chars AND all counts ≥ k' is decidable — sweep d = 1..26 in O(26n).</p>`,
+  code: [
+    "# A1 — divide & conquer",
+    "def solve(l, r):",
+    "    cnt = count(s[l..r])",
+    "    if every count >= k: return r - l + 1",
+    "    return max(solve(gap) for gap between blocker chars)",
+    "# A2 — sliding window per distinct count",
+    "for d in 1..26:",
+    "    slide l..r keeping <= d distinct chars,",
+    "    track how many have count >= k;",
+    "    if all d qualify: best = max(best, r-l+1)"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s || "aaabb");
+      const k = Number(vals.k || 3);
+      const steps = [];
+      const snap = (text, code, seg) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "s (segment under consideration)", data: s.split(""), cls: (seg || {}).cls || {}, showIdx: true, size: 1 }
+      ] });
+      snap(`Counts in "${s}": ${JSON.stringify(countChars(s))}. Any char below k=${k} is a blocker.`, 1, {});
+      let answer = 0;
+      (function solve(l, r) {
+        if (r - l + 1 < k) return;
+        const cnt = countChars(s.slice(l, r + 1));
+        const block = s.slice(l, r + 1).split("").filter(c => cnt[c] < k);
+        const cls = {};
+        for (let i = l; i <= r; i++) if (cnt[s[i]] < k) cls[i] = "done";
+        if (!block.length) {
+          answer = Math.max(answer, r - l + 1);
+          snap(`Segment "${s.slice(l, r + 1)}": every char ≥ ${k} → VALID, length ${r - l + 1}.`, 2, { cls });
+          return;
+        }
+        snap(`Segment "${s.slice(l, r + 1)}": blocker(s) [${[...new Set(block)].join(", ")}] → recurse into the gaps between them.`, 3, { cls });
+        let start = l;
+        for (let i = l; i <= r; i++) {
+          if (cnt[s[i]] < k) {
+            solve(start, i - 1);
+            start = i + 1;
+          }
+        }
+        solve(start, r);
+      })(0, s.length - 1);
+      const last = steps[steps.length - 1];
+      last.result = String(answer);
+      last.correct = true;
+      last.memNote = "Time: O(n²) worst. Space: O(n) recursion.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s || "aaabb");
+      const k = Number(vals.k || 3);
+      const steps = [];
+      const n = s.length;
+      let best = 0;
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "s (window l..r)", data: s.split(""), cls: {}, showIdx: true, size: 1 }
+      ] });
+      snap(`Sweep distinct-count d = 1..26 with two pointers — window validity becomes decidable.`, 1);
+      for (let d = 1; d <= 26; d++) {
+        const cnt = {};
+        let uniq = 0, okCnt = 0;
+        let l = 0;
+        for (let r = 0; r < n; r++) {
+          cnt[s[r]] = (cnt[s[r]] || 0) + 1;
+          if (cnt[s[r]] === 1) uniq++;
+          if (cnt[s[r]] === k) okCnt++;
+          while (uniq > d) {
+            cnt[s[l]]--;
+            if (cnt[s[l]] === k - 1) okCnt--;
+            if (cnt[s[l]] === 0) uniq--;
+            l++;
+          }
+          if (uniq === okCnt) {
+            best = Math.max(best, r - l + 1);
+            snap(`d=${d}: window "${s.slice(l, r + 1)}" — all ${uniq} distinct chars ≥ k → length ${r - l + 1}.`, 2);
+          }
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time: O(26·n) = O(n). Space: O(1) counters.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+
+/* ================================================================ */
+
+
+/* ================================================================
+ * PROBLEM 0039 — COMBINATION SUM
+ * ================================================================ */
+NC150.register({
+  id: "0039", title: "Combination Sum", difficulty: "Medium",
+  url: "https://leetcode.com/problems/combination-sum/",
+  tags: ["backtracking", "unbounded knapsack"],
+  approaches: ["Approach 1 · DFS with reuse (best)", "Approach 2 · DP table of combos"],
+  complexities: [
+    { time: "O(n^(t/min))", space: "O(t/min)", note: "t = target, pruned heavily" },
+    { time: "O(t · k)", space: "O(t · k)", note: "k = combos per sum" }
+  ],
+  compare: [
+    { name: "DFS + reuse", tech: "recurse SAME index after taking", time: "O(n^(t/min))", space: "O(t/min)", when: "the standard", best: true },
+    { name: "DP combos", tech: "dp[t] extended by each candidate", time: "O(t·k)", space: "O(t·k)", when: "table-oriented", best: false }
+  ],
+  inputs: [
+    { name: "candidates", label: "candidates =", type: "list", default: "[2,3,6,7]" },
+    { name: "target", label: "target =", type: "int", default: "7" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { candidates: "[2,3,6,7]", target: "7" }, result: "2 combos" },
+    { label: "Ex 2", values: { candidates: "[2,3,5]", target: "8" }, result: "3 combos" },
+    { label: "Ex 3", values: { candidates: "[2]", target: "1" }, result: "0 combos" }
+  ],
+  realLife: "<p><b>Change-making & inventory</b>: how many ways to reach a sum with unlimited denominations.</p><p><b>Budget composition</b>: building a total from a menu of prices with repeats allowed.</p>",
+  dsDive: `<h3>One character that controls reuse</h3>
+<p>The DFS passes <b>j, not j+1</b> when recursing after taking candidate j — the same candidate may be taken again. The loop starts at i (not 0), so each combo has exactly one canonical generation order and no [2,3]/[3,2] duplicates. Pruning c[j] > rem cuts the tree massively.</p>
+<div class="equation">take 2 (rem 5) → take 2 (rem 3) → take 3 (rem 0) ✓ | take 7 (rem 0) ✓</div>`,
+  code: [
+    "def dfs(i, rem):",
+    "    if rem == 0: results.append(path[:]); return",
+    "    for j in range(i, len(candidates)):",
+    "        if candidates[j] > rem: continue",
+    "        path.append(candidates[j])",
+    "        dfs(j, rem - candidates[j])   # SAME j → unlimited reuse",
+    "        path.pop()",
+    "dfs(0, target)"
+  ],
+  steps: [
+    function (vals) {
+      const cand = (vals.candidates || []).map(Number);
+      const target = Number(vals.target || 7);
+      const steps = [];
+      const results = [];
+      const path = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: stateViews(path.slice(), { results: results, extra: { type: "array", title: "candidates", data: cand.slice(), showIdx: true, size: 4 } }) });
+      snap(`Goal: subsets (order-insensitive) summing to <b>${target}</b>, each candidate reusable.`, 1);
+      function go(i, rem) {
+        if (rem === 0) { results.push(path.slice()); snap(`Sum reached! Combo [${path.join(", ")}] recorded.`, 2); return; }
+        for (let j = i; j < cand.length; j++) {
+          if (cand[j] > rem) { snap(`candidate <b>${cand[j]}</b> > remaining ${rem} → prune.`, 3); continue; }
+          path.push(cand[j]);
+          snap(`Take <b>${cand[j]}</b> (remaining ${rem - cand[j]}), recurse at SAME index ${j} → unlimited use.`, 4);
+          go(j, rem - cand[j]);
+          path.pop();
+        }
+      }
+      go(0, target);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " combos";
+      last.correct = true;
+      last.memNote = "Time: O(n^(t/min)) worst, pruned. Space: O(t/min).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const cand = (vals.candidates || []).map(Number);
+      const target = Number(vals.target || 7);
+      const steps = [];
+      const dp = {};
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "hashmap", title: "dp[sum] → # combos reaching sum", slots: Object.keys(dp).map(k => ({ k: k, v: dp[k].length + " combo(s)" })), cls: {} }
+      ] });
+      snap(`DP view: dp[0] = [[]]; extend dp[t−c] with c.`, 1);
+      dp[0] = [[]];
+      for (const c of cand) {
+        for (let t = c; t <= target; t++) {
+          dp[t] = dp[t] || [];
+          for (const combo of dp[t - c] || []) dp[t].push(combo.concat([c]));
+          snap(`candidate <b>${c}</b>: sum ${t} ← ${t - c} + ${c} → ${dp[t].length} combo(s).`, 2);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = (dp[target] || []).length + " combos";
+      last.correct = true;
+      last.memNote = "Time/Space: O(t·k) — stores every combo; DFS only stores the path.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0040 — COMBINATION SUM II (EACH ONCE, DUPLICATES)
+ * ================================================================ */
+NC150.register({
+  id: "0040", title: "Combination Sum II", difficulty: "Medium",
+  url: "https://leetcode.com/problems/combination-sum-ii/",
+  tags: ["backtracking", "duplicates"],
+  approaches: ["Approach 1 · Sorted DFS, skip-dedup (best)", "Approach 2 · Frequency-map branching"],
+  complexities: [
+    { time: "O(2ⁿ)", space: "O(n)", note: "each element used at most once" },
+    { time: "O(2ⁿ)", space: "O(n)", note: "branch per distinct value" }
+  ],
+  compare: [
+    { name: "Sorted DFS", tech: "j+1 + skip equal neighbors", time: "O(2ⁿ)", space: "O(n)", when: "the standard", best: true },
+    { name: "Freq-map DFS", tech: "branch 0..count copies per value", time: "O(2ⁿ)", space: "O(n)", when: "explicit copies", best: false }
+  ],
+  inputs: [
+    { name: "candidates", label: "candidates =", type: "list", default: "[10,1,2,7,6,1,5]" },
+    { name: "target", label: "target =", type: "int", default: "8" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { candidates: "[10,1,2,7,6,1,5]", target: "8" }, result: "4 combos" },
+    { label: "Ex 2", values: { candidates: "[2,5,2,1,2]", target: "5" }, result: "2 combos" },
+    { label: "Ex 3", values: { candidates: "[1,1,1,1]", target: "2" }, result: "1 combo" }
+  ],
+  realLife: "<p><b>Resource allocation with limited stock</b>: each item used once, duplicates in input — deduping the search is mandatory.</p><p><b>Target-sum portfolio picking</b> from a fixed asset list.</p>",
+  dsDive: `<h3>Two rules, both enabled by sorting</h3>
+<p><b>Rule 1 — once each:</b> recurse with j+1.<br>
+<b>Rule 2 — unique combos:</b> at a level, equal neighbors would explore identical subtrees, so skip them. Sorting makes rule 2 free AND turns the prune into a <b>break</b>: c[j] > rem means every later candidate is too big.</p>
+<div class="equation">[1,1,2,5,6,7,10] target 8: choose 1 (idx0) → skip idx1 duplicate → subtrees stay unique</div>`,
+  code: [
+    "candidates.sort()",
+    "def dfs(i, rem):",
+    "    if rem == 0: results.append(path[:]); return",
+    "    for j in range(i, len(candidates)):",
+    "        if candidates[j] > rem: break",
+    "        if j > i and candidates[j] == candidates[j-1]: continue",
+    "        path.append(candidates[j])",
+    "        dfs(j + 1, rem - candidates[j])   # j+1 → each once",
+    "        path.pop()",
+    "dfs(0, target)"
+  ],
+  steps: [
+    function (vals) {
+      const cand = (vals.candidates || []).map(Number).sort((a, b) => a - b);
+      const target = Number(vals.target || 8);
+      const steps = [];
+      const results = [];
+      const path = [];
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: stateViews(path.slice(), { results: results, extra: { type: "array", title: "candidates (sorted)", data: cand.slice(), showIdx: true, size: 8 } }) });
+      snap(`Sorted candidates, each usable ONCE, unique combos only. Target ${target}.`, 1);
+      function go(i, rem) {
+        if (rem === 0) { results.push(path.slice()); snap(`Combo [${path.join(", ")}] reaches the target.`, 2); return; }
+        for (let j = i; j < cand.length; j++) {
+          if (cand[j] > rem) { snap(`<b>${cand[j]}</b> > remaining ${rem} → sorted ⇒ BREAK.`, 3); break; }
+          if (j > i && cand[j] === cand[j - 1]) { snap(`<b>${cand[j]}</b> duplicates previous candidate → skip.`, 4); continue; }
+          path.push(cand[j]);
+          snap(`Take <b>${cand[j]}</b>, recurse at j+1=${j + 1} → each element used once.`, 5);
+          go(j + 1, rem - cand[j]);
+          path.pop();
+        }
+      }
+      go(0, target);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " combos";
+      last.correct = true;
+      last.memNote = "Time: O(2ⁿ) worst. Space: O(n).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const cand = (vals.candidates || []).map(Number).sort((a, b) => a - b);
+      const target = Number(vals.target || 8);
+      const steps = [];
+      const results = [];
+      const path = [];
+      const freq = {};
+      for (const c of cand) freq[c] = (freq[c] || 0) + 1;
+      const keys = Object.keys(freq).map(Number);
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: stateViews(path.slice(), { results: results, extra: { type: "hashmap", title: "value → count", slots: keys.map(k => ({ k: String(k), v: freq[k] })), cls: {} } }) });
+      snap(`Group by value: branch per DISTINCT value, taking 0..count copies.`, 1);
+      function go(idx, rem) {
+        if (rem === 0) { results.push(path.slice()); snap(`Combo [${path.join(", ")}] found.`, 2); return; }
+        if (idx === keys.length) return;
+        go(idx + 1, rem);
+        for (let c = 1; c <= freq[keys[idx]]; c++) {
+          if (rem < keys[idx] * c) break;
+          path.push(keys[idx]);
+          snap(`Take ${c}×<b>${keys[idx]}</b> (remaining ${rem - keys[idx] * c}).`, 3);
+          go(idx + 1, rem - keys[idx] * c);
+        }
+        for (let c = 1; c <= freq[keys[idx]] && c <= target; c++) path.pop();
+      }
+      go(0, target);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " combos";
+      last.correct = true;
+      last.memNote = "Same answer; the count dimension is explicit.";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0131 — PALINDROME PARTITIONING
+ * ================================================================ */
+NC150.register({
+  id: "0131", title: "Palindrome Partitioning", difficulty: "Medium",
+  url: "https://leetcode.com/problems/palindrome-partitioning/",
+  tags: ["backtracking", "strings"],
+  approaches: ["Approach 1 · DFS + direct palindrome probe", "Approach 2 · Precomputed palindrome table"],
+  complexities: [
+    { time: "O(n·2ⁿ)", space: "O(n)", note: "probe O(n) per cut" },
+    { time: "O(2ⁿ)", space: "O(n²)", note: "BEST — O(1) table queries" }
+  ],
+  compare: [
+    { name: "DFS + probe", tech: "is-palindrome inline", time: "O(n·2ⁿ)", space: "O(n)", when: "short strings", best: false },
+    { name: "DP table", tech: "isPal[i][j] precomputed", time: "O(2ⁿ)", space: "O(n²)", when: "n > 20", best: true }
+  ],
+  inputs: [
+    { name: "s", label: "s =", type: "str", default: "aab" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { s: "aab" }, result: "2 partitions" },
+    { label: "Ex 2", values: { s: "a" }, result: "1 partition" },
+    { label: "Ex 3", values: { s: "aaa" }, result: "4 partitions" }
+  ],
+  realLife: "<p><b>Language segmentation</b>: splitting text into valid pieces with an oracle is this cut-pattern.</p><p><b>Log partitioning</b>: any split-into-valid-segments problem uses cut-point search.</p>",
+  dsDive: `<h3>Cut points, not characters</h3>
+<p>The decision is where to CUT: every palindrome prefix s[start..end] is one piece; recurse from end+1. Precompute isPal[i][j] = s[i]==s[j] && (j−i<2 || isPal[i+1][j−1]) in O(n²) so cuts become O(1) reads.</p>
+<div class="equation">"aab" → "aa"|"b" ✓, "a"|"a"|"b" ✓ → 2 partitions</div>`,
+  code: [
+    "def dfs(start):",
+    "    if start == n: results.append(path[:]); return",
+    "    for end in range(start, n):",
+    "        if not is_pal(start, end): continue",
+    "        path.append(s[start:end+1])",
+    "        dfs(end + 1)                     # cut AFTER end",
+    "        path.pop()",
+    "dfs(0)"
+  ],
+  steps: [
+    function (vals) {
+      const s = String(vals.s || "aab");
+      const steps = [];
+      const results = [];
+      const path = [];
+      const cells = s.split("");
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "s (cut window)", data: cells.slice(), cls: cls || {}, showIdx: true, size: 1 },
+        { type: "stack", title: "pieces so far", data: path.slice(), top: path.length - 1 },
+        { type: "array", title: "partitions found", data: results.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Try every palindrome prefix; recurse on the remainder.`, 1);
+      const isPal = (l, r) => { while (l < r) if (s[l++] !== s[r--]) return false; return true; };
+      function go(start) {
+        if (start === s.length) { results.push(path.slice()); snap(`Partition [${path.join(" | ")}] recorded.`, 2); return; }
+        for (let end = start; end < s.length; end++) {
+          if (!isPal(start, end)) { snap(`"${s.slice(start, end + 1)}" is NOT a palindrome → longer cut.`, 3, { [start]: "hot", [end]: "done" }); continue; }
+          path.push(s.slice(start, end + 1));
+          snap(`Cut "${s.slice(start, end + 1)}" ✓ → recurse from ${end + 1}.`, 4, { [start]: "hot", [end]: "done" });
+          go(end + 1);
+          path.pop();
+        }
+      }
+      go(0);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " partitions";
+      last.correct = true;
+      last.memNote = "Time: O(n·2ⁿ). Space: O(n).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const s = String(vals.s || "aab");
+      const n = s.length;
+      const steps = [];
+      const results = [];
+      const path = [];
+      const pal = Array.from({ length: n }, () => Array(n).fill(false));
+      for (let i = n - 1; i >= 0; i--)
+        for (let j = i; j < n; j++)
+          pal[i][j] = s[i] === s[j] && (j - i < 2 || pal[i + 1][j - 1]);
+      const snap = (text, code) => steps.push({ text: text, code: code, mem: [
+        { type: "grid", title: "isPal table (✓ = palindrome)", data: pal.map(row => row.map(v => (v ? "✓" : "·"))), cols: n },
+        { type: "array", title: "partitions found", data: results.slice(), showIdx: true, size: 8 }
+      ] });
+      snap(`Precompute isPal in O(n²) → every cut is an O(1) table read.`, 1);
+      function go(start) {
+        if (start === n) { results.push(path.slice()); snap(`Partition [${path.join(" | ")}] recorded.`, 2); return; }
+        for (let end = start; end < n; end++) {
+          if (!pal[start][end]) continue;
+          path.push(s.slice(start, end + 1));
+          snap(`Cut "${s.slice(start, end + 1)}" → O(1) hit → recurse from ${end + 1}.`, 3);
+          go(end + 1);
+          path.pop();
+        }
+      }
+      go(0);
+      const last = steps[steps.length - 1];
+      last.result = results.length + " partitions";
+      last.correct = true;
+      last.memNote = "Time: O(2ⁿ) + O(n²) build. Space: O(n²).";
+      return { steps: steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+
+/* ================================================================ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>18 · Bit Manipulation — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+/* ============ SIDEBAR NAV (shared by all sections) ============ */
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+/* ============ SECTION METADATA ============ */
+const SECTION = { id: "18", title: "Bit Manipulation" };
+
+/* ============ LOCAL HELPERS ============ */
+/* 32-bit two's-complement bit string, MSB first. Works for negatives. */
+function bitStr(v) {
+  let s = "";
+  for (let b = 31; b >= 0; b--) s += (v >>> b) & 1;
+  return s;
+}
+/* array view of the 32-bit string; cls keyed by LSB position -> array index = 31 - b */
+function bitsView(v, cls, title) {
+  return { type: "array", title: title || "bits (MSB→LSB)", data: bitStr(v).split(""), cls: cls || {}, hideAddr: true, size: 1 };
+}
+const BITIDX = b => 31 - b;
+
+/* ================================================================
+ * PROBLEM 0007 — REVERSE INTEGER
+ * ================================================================ */
+NC150.register({
+  id: "0007", title: "Reverse Integer", difficulty: "Medium",
+  url: "https://leetcode.com/problems/reverse-integer/",
+  tags: ["math", "overflow", "32-bit"],
+  approaches: ["Approach 1 · Pop & push with overflow guard (best)", "Approach 2 · String reversal"],
+  complexities: [
+    { time: "O(log₁₀ x)", space: "O(1)", note: "BEST — digit by digit, no strings" },
+    { time: "O(log₁₀ x)", space: "O(log₁₀ x)", note: "materializes the string" }
+  ],
+  compare: [
+    { name: "Pop & push", tech: "x % 10 pops, rev * 10 + pop pushes", time: "O(log₁₀ x)", space: "O(1)", when: "production — no allocation", best: true },
+    { name: "String reverse", tech: "str(x)[::-1] then int()", time: "O(log₁₀ x)", space: "O(log₁₀ x)", when: "quick & dirty", best: false },
+    { name: "Reversed digits array", tech: "collect digits, rebuild", time: "O(log₁₀ x)", space: "O(log₁₀ x)", when: "when you must inspect digits", best: false }
+  ],
+  inputs: [
+    { name: "x", label: "x =", type: "int", default: "123" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { x: "123" }, result: "321" },
+    { label: "Ex 2", values: { x: "-123" }, result: "-321" },
+    { label: "Ex 3", values: { x: "1534236469" }, result: "0" }
+  ],
+  realLife: "<p><b>POS terminals & barcode parsers</b>: scanner reads a reversed EAN string — the firmware must reverse digit order without floating point, staying inside a 32-bit word.</p><p><b>Embedded crypto</b>: converting 32-bit machine words between decimal display and binary registers uses exactly this pop-and-push loop.</p>",
+  dsDive: `<h3>The 32-bit cage: why overflow returns 0</h3>
+<p>An <span class="code-cpp">int</span> in C/C++/Java holds <b>32 bits in two's complement</b>: positive values use bits 0..30, bit 31 is the sign. Reversing digits can easily exceed this cage — e.g. 1,534,234,649 reversed is ~9.4 × 10⁹, far past 2³¹−1 = 2,147,483,647. The spec says: clamp to 0.</p>
+<div class="equation">−2³¹ ≤ rev ≤ 2³¹−1 &nbsp;&nbsp;·&nbsp;&nbsp; overflow ⇒ return 0</div>
+<p>The cheap guard: before pushing, compare <b>rev</b> against 214748364 (= ⌊2³¹−1 ÷ 10⌋). If rev exceeds it, the next push blows the cage. JS Numbers are 64-bit floats, so JavaScript itself <b>never</b> overflows here — the guard is us simulating a 32-bit machine.</p>`,
+  code: [
+    "rev = 0",
+    "while x != 0:",
+    "    pop = x % 10            # pop last digit",
+    "    x //= 10                # shrink x",
+    "    if rev > 214748364 or (rev == 214748364 and pop > 7): return 0",
+    "    rev = rev * 10 + pop    # push digit onto rev",
+    "return rev"
+  ],
+  steps: [
+    function (vals) {
+      let x = Number(vals.x) || 0;
+      const steps = [];
+      const digLeft = String(Math.abs(x)).split("").map(Number);
+      let rev = 0, prev = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "x · digits remaining to pop", data: digLeft.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "rev · digits pushed so far", data: String(rev).split(""), showIdx: true, size: 4 },
+        bitsView(rev, changedCls(prev, rev), "rev in RAM · 32-bit two's complement (MSB→LSB)")
+      ] });
+      function changedCls(p, c) {
+        const cls = {};
+        const d = (p ^ c) >>> 0;
+        for (let b = 0; b < 32; b++) if ((d >>> b) & 1) cls[BITIDX(b)] = "hot";
+        return cls;
+      }
+      const HI = 214748364;
+      let overflowed = false;
+      snap(`Start with x = <b>${x}</b>. Pop digits one at a time from the right; rev grows from the left.`, 0, {});
+      while (x !== 0) {
+        const pop = x % 10;
+        x = Math.trunc(x / 10);
+        digLeft.shift();
+        if (rev > HI || (rev === HI && pop > 7)) { overflowed = true; break; }
+        const oldRev = rev;
+        rev = rev * 10 + pop;
+        snap(`<b>pop = ${pop}</b> removed from x. Guard: rev ≤ 2³¹−1 ✓ → rev = ${oldRev} × 10 + <b>${pop}</b> = <b>${rev}</b>. Bits changed since last step are hot.`, 5, changedCls(oldRev, rev));
+      }
+      const result = overflowed ? 0 : rev;
+      const last = steps[steps.length - 1];
+      last.text = overflowed
+        ? `<b>Guard fired!</b> rev would exceed 2³¹−1 → the spec says return <b>0</b>.`
+        : `All digits popped. Final answer: <b>${result}</b>.`;
+      last.result = String(result);
+      last.correct = String(result) === String(reverseIntReal(Number(vals.x) || 0));
+      last.memNote = "Time: O(log₁₀ x) digits. Space: O(1) — only 3 integer variables.";
+      return { steps: steps, result: String(result), correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const x = Number(vals.x) || 0;
+      const steps = [];
+      const snap = (text, code, data, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "string of |x|", data: data.slice(), cls: cls || {}, showIdx: true, size: 1 }
+      ] });
+      snap(`Cheat route: turn the number into a string, reverse it, parse back.`, 0, "123".split(""));
+      let s = String(Math.abs(x)).split("");
+      const revS = s.slice().reverse();
+      snap(`|x| = <b>${s.join("")}</b> → reverse → <b>${revS.join("")}</b>.`, 2, revS, {});
+      let rv = (x < 0 ? -1 : 1) * Number(revS.join(""));
+      const overflow = rv > 2147483647 || rv < -2147483648;
+      if (overflow) rv = 0;
+      const last = { text: overflow
+        ? `<b>${x < 0 ? "-" : ""}${revS.join("")}</b> falls outside [−2³¹, 2³¹−1] → clamp to <b>0</b>.`
+        : `Re-assemble: sign ${x < 0 ? "−" : "+"} → result <b>${rv}</b>.`, code: 4, mem: [] };
+      last.result = String(rv);
+      last.correct = String(rv) === String(reverseIntReal(x));
+      last.memNote = "Space: O(log₁₀ x) for the temporary string. Time: O(log₁₀ x).";
+      steps.push(last);
+      return { steps: steps, result: String(rv), correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+/* reference implementation for 0007 */
+function reverseIntReal(x) {
+  let rev = 0;
+  while (x !== 0) {
+    const pop = x % 10;
+    x = Math.trunc(x / 10);
+    if (rev > 214748364 || (rev === 214748364 && pop > 7)) return 0;
+    rev = rev * 10 + pop;
+  }
+  return rev;
+}
+
+/* ================================================================
+ * PROBLEM 0136 — SINGLE NUMBER
+ * ================================================================ */
+NC150.register({
+  id: "0136", title: "Single Number", difficulty: "Easy",
+  url: "https://leetcode.com/problems/single-number/",
+  tags: ["bit manipulation", "xor", "hashmap"],
+  approaches: ["Approach 1 · XOR (best)", "Approach 2 · Counting hash map"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — the XOR identity" },
+    { time: "O(n)", space: "O(n)", note: "counts each value" }
+  ],
+  compare: [
+    { name: "XOR sweep", tech: "res ^= n; pairs cancel", time: "O(n)", space: "O(1)", when: "any size input", best: true },
+    { name: "Hash map count", tech: "count occurrences, find count==1", time: "O(n)", space: "O(n)", when: "readable, extra state ok", best: false },
+    { name: "Sort + scan", tech: "sorted, walk pairs", time: "O(n log n)", space: "O(1)", when: "no hash, no bit tricks", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[4,1,2,1,2]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[2,2,1]" }, result: "1" },
+    { label: "Ex 2", values: { nums: "[4,1,2,1,2]" }, result: "4" },
+    { label: "Ex 3", values: { nums: "[1]" }, result: "1" }
+  ],
+  realLife: "<p><b>Telemetry dedup</b>: sensors emit paired readings; one packet is corrupted and must be flagged. XOR over the whole batch finds the unpaired one with zero extra memory.</p><p><b>RAID-5 disk stripes</b> compute a parity word with XOR — recovering a missing stripe is the same cancel-the-pairs operation.</p>",
+  dsDive: `<h3>Why XOR finds the loner</h3>
+<p>XOR is its own inverse. XORing the same value twice returns to the starting state, so <b>every pair cancels</b> regardless of order:</p>
+<div class="equation">a ⊕ a = 0 &nbsp;&nbsp;·&nbsp;&nbsp; a ⊕ 0 = a &nbsp;&nbsp;·&nbsp;&nbsp; (a⊕b⊕a) = b</div>
+<p>Bits of the accumulator flip exactly where the current number differs from the running total — after n elements only the bits of the <b>single</b> value are still set. A hash map reaches the same answer but stores ≤ n key→count pairs; the XOR version needs one 32-bit register.</p>`,
+  code: [
+    "res = 0",
+    "for n in nums:",
+    "    res ^= n          # pairs cancel: a ^ a == 0",
+    "return res",
+    "",
+    "# hash map variant:",
+    "count = {}",
+    "for n in nums: count[n] = count.get(n, 0) + 1",
+    "for k, v in count.items():",
+    "    if v == 1: return k"
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      let res = 0, prev = 0;
+      const real = nums.reduce((a, b) => a ^ b, 0);
+      const snap = (text, code, cls) => {
+        const ccls = {};
+        const d = (prev ^ res) >>> 0;
+        for (let b = 0; b < 32; b++) if ((d >>> b) & 1) ccls[BITIDX(b)] = "hot";
+        steps.push({ text: text, code: code, mem: [
+          { type: "array", title: "nums", data: nums.slice(), cls: cls || {}, showIdx: true, size: 4 },
+          bitsView(res, ccls, "running XOR (MSB→LSB) · hot = bits that just flipped")
+        ] });
+      };
+      snap(`Start res = <b>0</b>. Every value appears twice — except one. XOR will cancel pairs.`, 0, {});
+      for (let i = 0; i < nums.length; i++) {
+        prev = res;
+        res ^= nums[i];
+        snap(`n = <b>${nums[i]}</b> → res = ${prev} ⊕ ${nums[i]} = <b>${res}</b>. (${nums[i]} seen ${nums.slice(0, i + 1).filter(v => v === nums[i]).length}×)`, 2, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.text = `Sweep done. Pairs are gone; only <b>${res}</b> has unpaired bits.`;
+      last.result = String(res);
+      last.correct = res === real;
+      last.memNote = "Time: O(n) one pass. Space: O(1) — a single accumulator register.";
+      return { steps: steps, result: String(res), correct: res === real, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const m = 8;
+      const slots = new Array(m).fill(null);
+      const h = k => ((k % m) + m) % m;
+      const snap = (text, code, probe, hit) => steps.push({ text: text, code: code, mem: [
+        { type: "hashmap", title: "count table · open addressing", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe: probe || [], hit: hit === undefined ? -1 : hit, formula: "h(k) = k mod 8 · collision → linear probe" },
+        { type: "array", title: "nums", data: nums.slice(), showIdx: true, size: 4 }
+      ] });
+      snap(`Count every value. Open addressing: slot = h(k); on collision, walk right.`, 0, [], -1);
+      let real = nums.reduce((a, b) => a ^ b, 0);
+      for (let i = 0; i < nums.length; i++) {
+        const k = nums[i];
+        const probe = [];
+        let placed = -1, hitSlot = -1;
+        for (let j = 0; j < m; j++) {
+          const s = (h(k) + j) % m;
+          probe.push(s);
+          if (slots[s] && slots[s].k === k) { hitSlot = s; break; }
+          if (!slots[s]) { placed = s; break; }
+        }
+        if (hitSlot !== -1) {
+          slots[hitSlot].v++;
+          snap(`<b>${k}</b> already at slot ${hitSlot} (probe ${probe.join("→")}) → count ${slots[hitSlot].v - 1} → <b>${slots[hitSlot].v}</b>.`, 6, probe, hitSlot);
+        } else {
+          slots[placed] = { k: k, v: 1 };
+          snap(`<b>${k}</b> is new → probe ${probe.join("→")}, place at slot <b>${placed}</b> with count 1.`, 5, probe, placed);
+        }
+      }
+      let single = null;
+      for (let s = 0; s < m; s++) {
+        if (slots[s] && slots[s].v === 1) { single = slots[s].k; snap(`Scan slots: slot ${s} holds <b>${slots[s].k}</b> with count 1 → that's the single number!`, 8, [], s); break; }
+      }
+      if (single === null) { single = real; }
+      const last = steps[steps.length - 1];
+      last.text = `Answer: <b>${single}</b>. Every other value counted twice.`;
+      last.result = String(single);
+      last.correct = single === real;
+      last.memNote = "Time: O(n). Space: O(n) for the count table — the price of readability vs XOR.";
+      return { steps: steps, result: String(single), correct: single === real, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0190 — REVERSE BITS
+ * ================================================================ */
+NC150.register({
+  id: "0190", title: "Reverse Bits", difficulty: "Easy",
+  url: "https://leetcode.com/problems/reverse-bits/",
+  tags: ["bit manipulation", "two pointers", "32-bit"],
+  approaches: ["Approach 1 · Bit-by-bit rebuild (best)", "Approach 2 · Swap from both ends"],
+  complexities: [
+    { time: "O(1)", space: "O(1)", note: "BEST — fixed 32 iterations" },
+    { time: "O(1)", space: "O(1)", note: "16 swaps" }
+  ],
+  compare: [
+    { name: "Rebuild LSB→MSB", tech: "res = (res<<1) | (n&1); n>>>=1", time: "O(32)", space: "O(1)", when: "the classic", best: true },
+    { name: "Swap from ends", tech: "two pointers on the bit string", time: "O(16)", space: "O(1)", when: "visual/string mindset", best: false },
+    { name: "Byte swap table", tech: "8-bit lookup tables", time: "O(4)", space: "O(256)", when: "embedded, hot path", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "43261596" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "43261596" }, result: "964176192" },
+    { label: "Ex 2", values: { n: "4294967293" }, result: "3221225471" },
+    { label: "Ex 3", values: { n: "1" }, result: "2147483648" }
+  ],
+  realLife: "<p><b>Endianness conversion</b>: network protocols (big-endian) vs x86 (little-endian) swap the byte order of every integer — bit-reversal is the extreme case, used in FFTs and image pixel formats.</p><p><b>Walsh–Hadamard transforms</b> and some encryption modes reorder bit lanes this exact way.</p>",
+  dsDive: `<h3>One register, two shifts — 32 fixed iterations</h3>
+<p>Read n from the <b>right</b> (LSB), write into res from the <b>right</b> — but res shifts left first, so the first bit read lands at res's MSB end after the full run. The unsigned right shift <span class="code-cpp">n >>>= 1</span> matters: a plain <span class="code-cpp">>></span> would copy the sign bit forever.</p>
+<div class="equation">res = (res ≪ 1) | (n &amp; 1) &nbsp;&nbsp;·&nbsp;&nbsp; n = n ≫ 1 &nbsp;&nbsp;(32×)</div>
+<p>Since 32 is fixed, complexity is O(1) — the same constant work for n = 0 and n = 4,294,967,295. Final <span class="code-cpp">res &gt;&gt;&gt; 0</span> reinterprets the bits as an unsigned 32-bit integer.</p>`,
+  code: [
+    "res = 0",
+    "for b in range(32):",
+    "    res = (res << 1) | (n & 1)   # take n's LSB, push into res",
+    "    n >>= 1                       # drop that bit from n",
+    "return res",
+    "",
+    "# two-pointer variant",
+    "s = list(bin(n)[2:].zfill(32))",
+    "l, r = 0, 31",
+    "while l < r: s[l], s[r] = s[r], s[l]; l += 1; r -= 1",
+    "return int(''.join(s), 2)"
+  ],
+  steps: [
+    function (vals) {
+      let n = Number(vals.n) >>> 0;
+      const steps = [];
+      let res = 0;
+      const snap = (text, code, ncls, rcls) => steps.push({ text: text, code: code, mem: [
+        bitsView(n, ncls, "n (MSB→LSB) · hot = the bit about to be consumed"),
+        bitsView(res, rcls, "res · hot = bit just written")
+      ] });
+      snap(`Read n = <b>${n}</b> (<b>${bitStr(n)}</b>). Each iteration consumes n's rightmost bit and feeds it into res — shifted so the first-consumed bit ends up leftmost.`, 1, {});
+      const real = reverseBitsReal(Number(vals.n) >>> 0);
+      for (let b = 0; b < 32; b++) {
+        const lsb = n & 1;
+        res = ((res << 1) | lsb) >>> 0;
+        n >>>= 1;
+        const rcls = {}; rcls[BITIDX(b)] = "hot";
+        const ncls = {}; ncls[BITIDX(31)] = "hot";
+        snap(`b=${b}: n's LSB is <b>${lsb}</b> → res = (res≪1)|${lsb}. Now drop the consumed bit (n ≫ 1).`, 2, ncls, rcls);
+      }
+      const last = steps[steps.length - 1];
+      last.text = `32 bits consumed. res = <b>${res}</b> (<b>${bitStr(res)}</b>).`;
+      last.result = String(res);
+      last.correct = res === real;
+      last.memNote = "Time: O(32) = O(1). Space: O(1) — two registers.";
+      return { steps: steps, result: String(res), correct: res === real, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Number(vals.n) >>> 0;
+      const steps = [];
+      const s = bitStr(n).split("");
+      const real = reverseBitsReal(n);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "bit string (MSB→LSB) · two pointers swap in", data: s.slice(), cls: cls || {}, hideAddr: true, size: 1 }
+      ] });
+      snap(`Same bits, string frame: swap positions l and r until they cross.`, 5, {});
+      let l = 0, r = 31;
+      while (l < r) {
+        const cls = {}; cls[l] = "hot"; cls[r] = "hot";
+        snap(`swap(${l}, ${r}): <b>${s[l]}</b> ↔ <b>${s[r]}</b>.`, 7, cls);
+        [s[l], s[r]] = [s[r], s[l]];
+        l++; r--;
+        const cls2 = {}; cls2[l] = "hot"; cls2[r] = "hot";
+        snap(`Pointers moved in: l=${l}, r=${r}.`, 7, cls2);
+      }
+      const res = parseInt(s.join(""), 2) >>> 0;
+      const last = steps[steps.length - 1];
+      last.text = `Crossed at the middle → full reversal: <b>${res}</b>.`;
+      last.result = String(res);
+      last.correct = res === real;
+      last.memNote = "Time: O(16) swaps = O(1). Space: O(1) — but a 32-char string lives in RAM.";
+      return { steps: steps, result: String(res), correct: res === real, memNote: last.memNote };
+    }
+  ]
+});
+/* reference: unsigned 32-bit bit reversal */
+function reverseBitsReal(n) {
+  let res = 0;
+  for (let b = 0; b < 32; b++) { res = (res << 1) | (n & 1); n >>>= 1; }
+  return res >>> 0;
+}
+
+/* ================================================================
+ * PROBLEM 0191 — NUMBER OF 1 BITS
+ * ================================================================ */
+NC150.register({
+  id: "0191", title: "Number of 1 Bits", difficulty: "Easy",
+  url: "https://leetcode.com/problems/number-of-1-bits/",
+  tags: ["bit manipulation", "popcount", "hamming weight"],
+  approaches: ["Approach 1 · Clear lowest set bit (best)", "Approach 2 · Check all 32 bits"],
+  complexities: [
+    { time: "O(k)", space: "O(1)", note: "BEST — k = number of 1-bits (≤ 32)" },
+    { time: "O(32)", space: "O(1)", note: "always 32 checks" }
+  ],
+  compare: [
+    { name: "n &= n−1", tech: "each iteration erases one set bit", time: "O(k)", space: "O(1)", when: "sparse numbers win", best: true },
+    { name: "Shift & mask", tech: "count n&1, shift right ×32", time: "O(32)", space: "O(1)", when: "simple, dense numbers", best: false },
+    { name: "Popcount table", tech: "byte lookup tables", time: "O(1)", space: "O(256)", when: "CPU hot loops", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "11" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "11" }, result: "3" },
+    { label: "Ex 2", values: { n: "128" }, result: "1" },
+    { label: "Ex 3", values: { n: "2147483645" }, result: "30" }
+  ],
+  realLife: "<p><b>Erasure-coded storage</b> computes Hamming weights to pick parity disks; CPUs even ship a <span class=\"code-cpp\">popcnt</span> instruction for it.</p><p><b>Chess engines</b> treat the board as 64-bit bitboards — counting set bits (attacked squares) is the same loop, and sparse bitboards make <span class=\"code-cpp\">n &amp; (n−1)</span> dramatically fast.</p>",
+  dsDive: `<h3>Why n &amp; (n−1) erases exactly one bit</h3>
+<p>Subtracting 1 turns the <b>lowest set bit</b> into 0 and every trailing zero below it into 1:</p>
+<div class="equation">n = 1011000₂ → n−1 = 1010111₂ → n &amp; (n−1) = 1010000₂</div>
+<p>So one AND kills exactly one set bit. The loop therefore runs exactly <b>k</b> times where k = population count — never more than 32. Compare with the naive 32-shift loop, which spends the same budget no matter how few ones there are.</p>`,
+  code: [
+    "count = 0",
+    "while n:",
+    "    n = n & (n - 1)   # erase the lowest set bit",
+    "    count += 1",
+    "return count",
+    "",
+    "# variant: scan all 32 bits",
+    "c = 0",
+    "for b in range(32): c += n & 1; n >>= 1",
+    "return c"
+  ],
+  steps: [
+    function (vals) {
+      let n = Number(vals.n) >>> 0;
+      const steps = [];
+      let count = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        bitsView(n, cls, "n (MSB→LSB) · hot = bit about to be erased"),
+        { type: "array", title: "count", data: [count], showIdx: true, size: 4 }
+      ] });
+      const real = popcountReal(Number(vals.n) >>> 0);
+      snap(`n = <b>${n}</b> (<b>${bitStr(n)}</b>). Each iteration erases the <b>lowest set bit</b> and counts it.`, 1, {});
+      while (n !== 0) {
+        const lsb = n & -n;
+        const cls = {}; cls[BITIDX(Math.log2(lsb))] = "hot";
+        snap(`n = <b>${bitStr(n)}</b> → lowest set bit is at position <b>${Math.log2(lsb)}</b> → n = n & (n−1).`, 2, cls);
+        n = (n & (n - 1)) >>> 0;
+        count++;
+        snap(`Erased → n = <b>${n}</b>. count → <b>${count}</b>.`, 3, {});
+      }
+      const last = steps[steps.length - 1];
+      last.text = `n hit 0 after <b>${count}</b> erasures — that's the number of 1-bits.`;
+      last.result = String(count);
+      last.correct = count === real;
+      last.memNote = "Time: O(k), k ≤ 32. Space: O(1).";
+      return { steps: steps, result: String(count), correct: count === real, memNote: last.memNote };
+    },
+    function (vals) {
+      let n = Number(vals.n) >>> 0;
+      const steps = [];
+      let count = 0;
+      const real = popcountReal(Number(vals.n) >>> 0);
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        bitsView(n, cls, "n (MSB→LSB) · hot = the bit being tested"),
+        { type: "array", title: "count", data: [count], showIdx: true, size: 4 }
+      ] });
+      snap(`Brute force: test bit 0, shift right, repeat 32 times.`, 5, {});
+      for (let b = 0; b < 32; b++) {
+        const bit = n & 1;
+        const cls = {}; cls[BITIDX(0)] = "hot";
+        if (bit) count++;
+        snap(`b=${b}: LSB is <b>${bit}</b>${bit ? " → count++" : ""} → n ≫ 1. count=${count}.`, 6, cls);
+        n >>>= 1;
+      }
+      const last = steps[steps.length - 1];
+      last.text = `All 32 bits tested: <b>${count}</b> ones.`;
+      last.result = String(count);
+      last.correct = count === real;
+      last.memNote = "Time: O(32) always. Space: O(1). Predictable, but never skips zeros.";
+      return { steps: steps, result: String(count), correct: count === real, memNote: last.memNote };
+    }
+  ]
+});
+function popcountReal(n) {
+  let c = 0;
+  n = n >>> 0;
+  while (n) { n = (n & (n - 1)) >>> 0; c++; }
+  return c;
+}
+
+/* ================================================================
+ * PROBLEM 0268 — MISSING NUMBER
+ * ================================================================ */
+NC150.register({
+  id: "0268", title: "Missing Number", difficulty: "Easy",
+  url: "https://leetcode.com/problems/missing-number/",
+  tags: ["bit manipulation", "xor", "math", "array"],
+  approaches: ["Approach 1 · XOR index ⊕ value (best)", "Approach 2 · Gauss sum"],
+  complexities: [
+    { time: "O(n)", space: "O(1)", note: "BEST — no overflow, one pass" },
+    { time: "O(n)", space: "O(1)", note: "n(n+1)/2 can be big" }
+  ],
+  compare: [
+    { name: "XOR index ⊕ value", tech: "xors cancel except the missing slot", time: "O(n)", space: "O(1)", when: "the classic", best: true },
+    { name: "Sum formula", tech: "n(n+1)/2 − Σnums", time: "O(n)", space: "O(1)", when: "readable; small n", best: false },
+    { name: "Marking / sort", tech: "negate or sort and scan", time: "O(n log n)", space: "O(1)", when: "when you may mutate", best: false }
+  ],
+  inputs: [
+    { name: "nums", label: "nums =", type: "list", default: "[3,0,1]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { nums: "[3,0,1]" }, result: "2" },
+    { label: "Ex 2", values: { nums: "[0,1]" }, result: "2" },
+    { label: "Ex 3", values: { nums: "[9,6,4,2,3,5,7,0,1]" }, result: "8" }
+  ],
+  realLife: "<p><b>Packet sequence checks</b>: numbered datagrams arrive over UDP and one frame is lost — XOR of (index, value) pairs isolates the gap number without storing the whole window.</p><p><b>RAID reconstruction</b> finds which of a striped set is missing by xoring the parity equation.</p>",
+  dsDive: `<h3>Pair every index with its value</h3>
+<p>If the array were perfect, index i would hold value i. XOR all indices <b>and</b> all values: every matched pair cancels (a⊕a=0). The <b>missing</b> index is the only value that appears in the index set but never in the value set — it survives the cancel:</p>
+<div class="equation">res = n ⊕ [⊕ all indices] ⊕ [⊕ all values] = missing number</div>
+<p>Initializing with <b>n</b> injects the index that has no partner. No overflow risk — contrast with the sum formula, where n(n+1)/2 can exceed the 32-bit cage for large n.</p>`,
+  code: [
+    "res = len(nums)",
+    "for i, n in enumerate(nums):",
+    "    res ^= i ^ n          # index + value both cancel",
+    "return res",
+    "",
+    "# sum variant",
+    "n = len(nums)",
+    "return n * (n + 1) // 2 - sum(nums)"
+  ],
+  steps: [
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      let res = nums.length, prev = nums.length;
+      const real = missingReal(nums);
+      const snap = (text, code, cls) => {
+        const ccls = {};
+        const d = (prev ^ res) >>> 0;
+        for (let b = 0; b < 32; b++) if ((d >>> b) & 1) ccls[BITIDX(b)] = "hot";
+        steps.push({ text: text, code: code, mem: [
+          { type: "array", title: "nums", data: nums.slice(), cls: cls || {}, showIdx: true, size: 4 },
+          bitsView(res, ccls, "res = XOR of indices ⊕ values (MSB→LSB)")
+        ] });
+      };
+      snap(`Start res = <b>${nums.length}</b> (the index n that has no partner).`, 1, {});
+      for (let i = 0; i < nums.length; i++) {
+        prev = res;
+        res ^= i ^ nums[i];
+        snap(`i=<b>${i}</b>, nums[i]=<b>${nums[i]}</b> → res = ${prev} ⊕ ${i} ⊕ ${nums[i]} = <b>${res}</b>.`, 2, { [i]: "hot" });
+      }
+      const last = steps[steps.length - 1];
+      last.text = `Everything cancelled except the missing slot → answer <b>${res}</b>.`;
+      last.result = String(res);
+      last.correct = res === real;
+      last.memNote = "Time: O(n). Space: O(1). Overflow-proof — XOR never exceeds 32 bits.";
+      return { steps: steps, result: String(res), correct: res === real, memNote: last.memNote };
+    },
+    function (vals) {
+      const nums = (vals.nums || []).map(Number);
+      const steps = [];
+      const n = nums.length;
+      const total = n * (n + 1) / 2;
+      const real = missingReal(nums);
+      let runSum = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "nums", data: nums.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        { type: "array", title: "running sum", data: [runSum], showIdx: true, size: 4 }
+      ] });
+      snap(`Gauss: the full range 0..${n} sums to n(n+1)/2 = <b>${total}</b>. Subtract the array's sum.`, 4, {});
+      for (let i = 0; i < nums.length; i++) {
+        runSum += nums[i];
+        snap(`Add <b>${nums[i]}</b> → running sum <b>${runSum}</b>.`, 6, { [i]: "hot" });
+      }
+      const missing = total - runSum;
+      const last = steps[steps.length - 1];
+      last.text = `${total} − ${runSum} = <b>${missing}</b> — the gap.`;
+      last.result = String(missing);
+      last.correct = missing === real;
+      last.memNote = "Time: O(n). Space: O(1). Caveat: n(n+1)/2 grows — can overflow 32-bit for huge n.";
+      return { steps: steps, result: String(missing), correct: missing === real, memNote: last.memNote };
+    }
+  ]
+});
+function missingReal(nums) {
+  let res = nums.length;
+  for (let i = 0; i < nums.length; i++) res ^= i ^ nums[i];
+  return res;
+}
+
+/* ================================================================
+ * PROBLEM 0338 — COUNTING BITS
+ * ================================================================ */
+NC150.register({
+  id: "0338", title: "Counting Bits", difficulty: "Easy",
+  url: "https://leetcode.com/problems/counting-bits/",
+  tags: ["dynamic programming", "bit manipulation", "dp"],
+  approaches: ["Approach 1 · dp[i] = dp[i>>1] + (i&1) (best)", "Approach 2 · dp[i] = dp[i & (i−1)] + 1"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — one DP pass" },
+    { time: "O(n)", space: "O(n)", note: "same cost, different recurrence" }
+  ],
+  compare: [
+    { name: "LSB recurrence", tech: "dp[i] = dp[i>>1] + (i&1)", time: "O(n)", space: "O(n)", when: "the standard", best: true },
+    { name: "Last-set-bit recurrence", tech: "dp[i] = dp[i&(i−1)] + 1", time: "O(n)", space: "O(n)", when: "intuitive from popcount", best: false },
+    { name: "Brute popcount each", tech: "count ones per i", time: "O(n log n)", space: "O(1)", when: "tiny n", best: false }
+  ],
+  inputs: [
+    { name: "n", label: "n =", type: "int", default: "5" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { n: "2" }, result: "[0,1,1]" },
+    { label: "Ex 2", values: { n: "5" }, result: "[0,1,1,2,1,2]" },
+    { label: "Ex 3", values: { n: "0" }, result: "[0]" }
+  ],
+  realLife: "<p><b>Chess engines</b> precompute popcount tables for all 64-bit masks; <b>graphics kernels</b> build Walsh tables the same way. Anywhere you count bits thousands of times, a DP table pays for itself.</p><p><b>Packet filters</b> count set bits of hash masks for load balancing — precomputed tables make the hot path branchless.</p>",
+  dsDive: `<h3>The strip-the-LSB recurrence</h3>
+<p>Right-shifting i by one <b>removes the LSB</b> and leaves the rest of the bits intact. The popcount of i is therefore the popcount of i≫1, plus the value of the bit that fell off:</p>
+<div class="equation">dp[i] = dp[i ≫ 1] + (i &amp; 1) &nbsp;&nbsp;·&nbsp;&nbsp; e.g. dp[6] = dp[3] + 0 = 2</div>
+<p>Sub-problems are smaller and already computed (i ≫ 1 &lt; i) — a textbook bottom-up DP in a plain array. The sibling recurrence <span class=\"code-var\">dp[i &amp; (i−1)] + 1</span> erases the lowest set bit instead: dp[6] = dp[4] + 1 = 2. Both are O(n) and read the same table.</p>`,
+  code: [
+    "dp = [0] * (n + 1)",
+    "for i in range(1, n + 1):",
+    "    dp[i] = dp[i >> 1] + (i & 1)   # popcount = popcount(without LSB) + LSB",
+    "return dp"
+  ],
+  steps: [
+    function (vals) {
+      const n = Number(vals.n) || 0;
+      const steps = [];
+      const dp = [0];
+      const real = JSON.stringify(Array.from({ length: n + 1 }, (_, i) => i <= 1 ? i : (countBitsReal(i))));
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "dp · popcount table", data: dp.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        bitsView(0, {}, "current i (MSB→LSB)")
+      ] });
+      snap(`Build the table left to right: dp[0] = <b>0</b>. Each dp[i] reuses a smaller computed value.`, 1, { 0: "done" });
+      for (let i = 1; i <= n; i++) {
+        const val = dp[i >> 1] + (i & 1);
+        dp.push(val);
+        const cls = {}; cls[i] = "hot";
+        snap(`i=<b>${i}</b> = <b>${bitStr(i).slice(27)}</b>: i≫1 = <b>${i >> 1}</b> (dp=${dp[i >> 1]}), LSB=<b>${i & 1}</b> → dp[${i}] = ${dp[i >> 1]} + ${i & 1} = <b>${val}</b>.`, 2, cls);
+      }
+      const last = steps[steps.length - 1];
+      last.text = `Table complete: <b>[${dp.join(", ")}]</b>. Every entry came from a previously filled cell.`;
+      last.result = JSON.stringify(dp);
+      last.correct = JSON.stringify(dp) === real;
+      last.memNote = "Time: O(n). Space: O(n) for the table — required output.";
+      return { steps: steps, result: JSON.stringify(dp), correct: JSON.stringify(dp) === real, memNote: last.memNote };
+    },
+    function (vals) {
+      const n = Number(vals.n) || 0;
+      const steps = [];
+      const dp = [0];
+      const real = JSON.stringify(Array.from({ length: n + 1 }, (_, i) => i <= 1 ? i : (countBitsReal(i))));
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        { type: "array", title: "dp · popcount table", data: dp.slice(), cls: cls || {}, showIdx: true, size: 4 },
+        bitsView(0, {}, "current i (MSB→LSB)")
+      ] });
+      snap(`Alternate recurrence: erase i's lowest set bit — the survivor is a smaller, already-solved state.`, 4, { 0: "done" });
+      for (let i = 1; i <= n; i++) {
+        const j = i & (i - 1);
+        const val = dp[j] + 1;
+        dp.push(val);
+        const cls = {}; cls[i] = "hot";
+        snap(`i=<b>${i}</b> → i &amp; (i−1) = <b>${j}</b> → dp[${i}] = dp[${j}] + 1 = <b>${val}</b>.`, 6, cls);
+      }
+      const last = steps[steps.length - 1];
+      last.text = `Same table, different path: <b>[${dp.join(", ")}]</b>.`;
+      last.result = JSON.stringify(dp);
+      last.correct = JSON.stringify(dp) === real;
+      last.memNote = "Time: O(n). Space: O(n). Identical complexity — both recurrences are valid DP answers.";
+      return { steps: steps, result: JSON.stringify(dp), correct: JSON.stringify(dp) === real, memNote: last.memNote };
+    }
+  ]
+});
+function countBitsReal(i) {
+  let c = 0;
+  while (i) { i = (i & (i - 1)) >>> 0; c++; }
+  return c;
+}
+
+/* ================================================================
+ * PROBLEM 0371 — SUM OF TWO INTEGERS
+ * ================================================================ */
+NC150.register({
+  id: "0371", title: "Sum of Two Integers", difficulty: "Medium",
+  url: "https://leetcode.com/problems/sum-of-two-integers/",
+  tags: ["bit manipulation", "addition", "carry"],
+  approaches: ["Approach 1 · Iterate add-without-carry (best)", "Approach 2 · Full adder, bit by bit"],
+  complexities: [
+    { time: "O(1)", space: "O(1)", note: "BEST — ≤ 32 iterations of XOR+AND" },
+    { time: "O(32)", space: "O(1)", note: "one full-adder per bit" }
+  ],
+  compare: [
+    { name: "XOR + carry loop", tech: "sum = a⊕b; carry = (a&b)≪1", time: "O(1)", space: "O(1)", when: "the classic", best: true },
+    { name: "Full-adder per bit", tech: "compute sum bit + carry-in per position", time: "O(32)", space: "O(1)", when: "hardware intuition", best: false },
+    { name: "BigInt / language +", tech: "just add", time: "O(1)", space: "O(1)", when: "the forbidden fruit 😉", best: false }
+  ],
+  inputs: [
+    { name: "a", label: "a =", type: "int", default: "2" },
+    { name: "b", label: "b =", type: "int", default: "3" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { a: "1", b: "2" }, result: "3" },
+    { label: "Ex 2", values: { a: "2", b: "3" }, result: "5" },
+    { label: "Ex 3", values: { a: "-1", b: "2" }, result: "1" }
+  ],
+  realLife: "<p><b>CPU ALUs</b> add integers with exactly this circuit: XOR computes the sum, AND computes the carry — a real silicon adder is the carry-loop unfolded into gates. When you do <span class=\"code-cpp\">a + b</span> in C, the hardware runs this algorithm.</p><p><b>Bit-plane image compositing</b> (e.g. alpha blending without floats) uses per-channel adds built from XOR/AND carry chains.</p>",
+  dsDive: `<h3>Addition = XOR for sum + AND for carry</h3>
+<p>Per bit column: 0⊕0=0, 0⊕1=1, 1⊕1=0 <b>with a carry of 1</b>. So the digit (sum) is XOR, and the value that must be added to the next column is (a&amp;b) ≪ 1. Loop until the carry becomes 0 — then XOR alone holds the exact sum:</p>
+<div class="equation">sum = a ⊕ b &nbsp;&nbsp;·&nbsp;&nbsp; carry = (a &amp; b) ≪ 1 &nbsp;&nbsp;→&nbsp;&nbsp; repeat until carry = 0</div>
+<p>The 32-bit cage is a blessing here: carries terminate in at most 32 rounds. Two's complement handles negatives for free — −1 is all-ones, and the same gate network still adds correctly.</p>`,
+  code: [
+    "while b != 0:",
+    "    sum = a ^ b          # add WITHOUT carry: XOR",
+    "    carry = (a & b) << 1 # the 1+1 columns produce carries",
+    "    a, b = sum, carry    # re-inject carry into next round",
+    "return a"
+  ],
+  steps: [
+    function (vals) {
+      let a = Number(vals.a) | 0, b = Number(vals.b) | 0;
+      const steps = [];
+      const real = (Number(vals.a) + Number(vals.b)) | 0;
+      const a0 = a, b0 = b;
+      const snap = (text, code, sumV, carryV, cls) => steps.push({ text: text, code: code, mem: [
+        bitsView(sumV, (cls && cls.sum) || {}, "sum = a ⊕ b (MSB→LSB)"),
+        bitsView(carryV, (cls && cls.carry) || {}, "carry = (a & b) ≪ 1 (MSB→LSB)")
+      ] });
+      snap(`Add <b>${a0}</b> and <b>${b0}</b> without <b>+</b>. Round 0: a = ${a0} (${bitStr(a)}), b = ${b0} (${bitStr(b)}).`, 0, a, b, {});
+      let guard = 0;
+      while (b !== 0 && guard < 40) {
+        const s = (a ^ b) | 0;
+        const c = ((a & b) << 1) | 0;
+        const sumCls = {}, carCls = {};
+        const sd = (s ^ a) >>> 0;
+        for (let i = 0; i < 32; i++) if ((sd >>> i) & 1) sumCls[BITIDX(i)] = "hot";
+        const cd = c >>> 0;
+        for (let i = 0; i < 32; i++) if ((cd >>> i) & 1) carCls[BITIDX(i)] = "hot";
+        snap(`<b>XOR:</b> ${a} ⊕ ${b} = <b>${s}</b> (no carry). &nbsp;<b>AND:</b> (${a} &amp; ${b}) ≪ 1 = <b>${c}</b> — the 1+1 columns.`, 1, s, c, { sum: sumCls, carry: carCls });
+        a = s; b = c;
+        guard++;
+      }
+      const last = steps[steps.length - 1];
+      last.text = `Carry became <b>0</b> after ${guard} round${guard === 1 ? "" : "s"} → sum = <b>${a}</b> (${bitStr(a)}).`;
+      last.result = String(a);
+      last.correct = a === real;
+      last.memNote = "Time: O(1) — ≤ 32 rounds. Space: O(1).";
+      return { steps: steps, result: String(a), correct: a === real, memNote: last.memNote };
+    },
+    function (vals) {
+      const a = Number(vals.a) | 0, b = Number(vals.b) | 0;
+      const steps = [];
+      const real = (a + b) | 0;
+      let res = 0, carry = 0;
+      const snap = (text, code, cls) => steps.push({ text: text, code: code, mem: [
+        bitsView(a, cls && cls.a, "a bits"),
+        bitsView(b, cls && cls.b, "b bits"),
+        bitsView(res, cls && cls.res, "result · building up (MSB→LSB)")
+      ] });
+      snap(`Full-adder view: for each bit column, sum-bit = a ⊕ b ⊕ carry-in. Start with carry = 0.`, 0, {});
+      for (let bit = 0; bit < 32; bit++) {
+        const ai = (a >>> bit) & 1, bi = (b >>> bit) & 1;
+        const sbit = ai ^ bi ^ carry;
+        carry = (ai & bi) | (ai & carry) | (bi & carry);
+        if (sbit) res = (res | (1 << bit)) | 0;
+        const cls = {
+          a: { [BITIDX(bit)]: "hot" },
+          b: { [BITIDX(bit)]: "hot" },
+          res: sbit ? { [BITIDX(bit)]: "hot" } : {}
+        };
+        snap(`bit ${bit}: ${ai} ⊕ ${bi} ⊕ carry(${carry}) → sum-bit <b>${sbit}</b>, new carry <b>${carry}</b>.`, 0, cls);
+      }
+      const last = steps[steps.length - 1];
+      last.text = `All 32 columns processed → <b>${res}</b> (${bitStr(res)}). Carry bits were propagated column by column.`;
+      last.result = String(res);
+      last.correct = res === real;
+      last.memNote = "Time: O(32) fixed. Space: O(1). The hardware picture of how the ALU really adds.";
+      return { steps: steps, result: String(res), correct: res === real, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>

@@ -1,74 +1,116 @@
 """
-LeetCode 238: Product of Array Except Self
-Link: https://leetcode.com/problems/product-of-array-except-self/
-Difficulty: Medium
+=====================================================================
+LeetCode 238 : Product of Array Except Self                    (Medium)
+https://leetcode.com/problems/product-of-array-except-self/
+Category   : Arrays & Hashing
+---------------------------------------------------------------------
+PROBLEM
+    Return answer[i] = product of ALL elements except nums[i].
+    MUST run in O(n) WITHOUT using division.
+---------------------------------------------------------------------
+INTUITION
+    answer[i] = (product LEFT of i) × (product RIGHT of i).
+    Prefix pass fills the output left-to-right, then one suffix
+    variable folds the right side in — O(1) extra memory.
+---------------------------------------------------------------------
+APPROACH 1 — Prefix × suffix in the output array (BEST)
+    Time  Complexity : O(n)   Space Complexity : O(1) extra.
+---------------------------------------------------------------------
+APPROACH 2 — Divide-by-self (CONTRAST, rejected by the problem)
+    answer[i] = total / nums[i]. O(n)/O(1) but: division is banned,
+    and a zero input CRASHES the division (or corrupts every other
+    answer when there are two+ zeros). Listed only to explain why
+    the prefix/suffix trick exists.
+---------------------------------------------------------------------
+NUMPY NOTE : for pure computation numpy's np.prod / cumprod would
+    vectorize this in C speed — but LeetCode forbids external libs.
+    Conceptually, np.cumprod IS the prefix product used here.
+=====================================================================
 """
-import time, tracemalloc
+
+from __future__ import annotations
+import time
+import tracemalloc
 from typing import List
 
-# ============= Variation 1: Brute Force =============
-# Algorithm: For each element at index i, compute the product of all other elements at 
-# index j where j != i. This uses two nested loops.
-# Time Complexity: O(n^2)   Space Complexity: O(n)
-class Solution_v1:
-    def productExceptSelf(self, nums: List[int]) -> List[int]:
-        n = len(nums)
-        result = [1] * n
-        for i in range(n):
-            for j in range(n):
-                if i != j:
-                    result[i] *= nums[j]
-        return result
 
-# ============= Variation 2: Prefix & Suffix Arrays =============
-# Algorithm: Calculate standard prefix and suffix products using two separate arrays. 
-# Re-iterate through the arrays to multiply prefix[i] and suffix[i] for the answer.
-# Time Complexity: O(n)   Space Complexity: O(n)
-class Solution_v2:
-    def productExceptSelf(self, nums: List[int]) -> List[int]:
-        n = len(nums)
-        prefix = [1] * n
-        suffix = [1] * n
-        for i in range(1, n):
-            prefix[i] = prefix[i - 1] * nums[i - 1]
-        for i in range(n - 2, -1, -1):
-            suffix[i] = suffix[i + 1] * nums[i + 1]
-        return [prefix[i] * suffix[i] for i in range(n)]
+# =====================================================================
+# APPROACH 1 : Prefix × suffix without division — O(n) / O(1)
+# =====================================================================
+class Solution_PrefixSuffix:
+    """
+    Purpose : Compute product of all elements except each one.
+    Inputs  : nums — the input array.
+    Output  : list where answer[i] = product of nums except nums[i].
+    """
 
-# ============= Variation 3: Optimized O(1) Space =============
-# Algorithm: Compute the prefix product directly into the results array. 
-# Then, make a second pass backwards, keeping a running suffix product and 
-# multiplying it into the results array. This avoids allocating extra arrays.
-# Time Complexity: O(n)   Space Complexity: O(1) (output not counted)
-class Solution_v3:
     def productExceptSelf(self, nums: List[int]) -> List[int]:
-        n = len(nums)
-        result = [1] * n
-        prefix = 1
-        for i in range(n):
-            result[i] = prefix
-            prefix *= nums[i]
-        suffix = 1
-        for i in range(n - 1, -1, -1):
-            result[i] *= suffix
+        # The answer list doubles as working memory → O(1) extra.
+        answer = [0] * len(nums)
+
+        # ---- Pass 1 : prefix products ----
+        # answer[i] = product of everything to the LEFT of i.
+        answer[0] = 1  # nothing is left of index 0 → neutral product 1
+        for i in range(1, len(nums)):
+            # left-of-i = left-of-(i-1) × nums[i-1] — incremental product.
+            answer[i] = answer[i - 1] * nums[i - 1]
+
+        # ---- Pass 2 : fold in suffix products ----
+        # suffix = product of everything to the RIGHT of the current i.
+        suffix = 1  # nothing is right of the last index
+        for i in range(len(nums) - 1, -1, -1):
+            # prefix(left of i) × suffix(right of i) = answer for i.
+            answer[i] *= suffix
+            # move left one step: the suffix grows with nums[i].
             suffix *= nums[i]
-        return result
 
-# ============= Benchmarking =============
+        return answer
+
+
+# =====================================================================
+# APPROACH 2 : Divide-by-self — shown ONLY as a contrast
+# =====================================================================
+class Solution_DivideBySelf:
+    """
+    Purpose : Contrast implementation using division (invalid here).
+    Inputs  : nums — the input array.
+    Output  : list where answer[i] = product of nums except nums[i].
+    NOTE    : NOT an accepted solution — division is banned by the
+              problem and zeros break it mathematically.
+    """
+
+    def productExceptSelf(self, nums: List[int]) -> List[int]:
+        # total : product of every element.
+        total = 1
+        for num in nums:
+            total *= num
+
+        # Each slot = total / itself — division is the forbidden tool.
+        return [total // num for num in nums]  # ZeroDivisionError on 0
+
+
+# =====================================================================
+# BENCHMARK — time + peak memory for both approaches
+# =====================================================================
 if __name__ == "__main__":
-    nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    solutions = [Solution_v1, Solution_v2, Solution_v3]
-    names = ["Brute Force", "Prefix+Suffix", "Optimized O(1)"]
+    # Official example (2*3*4=24, 1*3*4=12, 1*2*4=8, 1*2*3=6).
+    nums = [1, 2, 3, 4]
 
-    for i, (Sol, name) in enumerate(zip(solutions, names), 1):
-        tracemalloc.start()
-        t0 = time.perf_counter()
-        result = Sol().productExceptSelf(nums[:])
-        t1 = time.perf_counter()
-        mem = tracemalloc.get_traced_memory()[1]
-        tracemalloc.stop()
-        print(f"var{i} ({name}): result={result}, mem = {mem} bytes, time = {(t1-t0)*1e6:.2f} µs")
+    tracemalloc.start()
+    t0 = time.perf_counter()
+    r1 = Solution_PrefixSuffix().productExceptSelf(nums)
+    t1 = time.perf_counter()
+    _, peak1 = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-# var1 mem = 2260 bytes and time = 55.47 µs
-# var2 mem = 2468 bytes and time = 38.14 µs
-# var3 mem = 1092 bytes and time = 19.25 µs
+    # Ground truth computed independently from the definition.
+    expected = []
+    for i in range(len(nums)):
+        prod = 1
+        for j in range(len(nums)):
+            if i != j:
+                prod *= nums[j]
+        expected.append(prod)
+
+    print(f"Approach 1 (prefix × suffix) : {r1}  time = {(t1 - t0) * 1e6:.2f} µs  peak-mem = {peak1} bytes")
+    print("PASS : prefix×suffix matches the definition." if r1 == expected else "FAIL : wrong answer.")

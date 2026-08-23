@@ -1,100 +1,173 @@
 """
-LeetCode 42: Trapping Rain Water
-Link: https://leetcode.com/problems/trapping-rain-water/
-Difficulty: Hard
+=====================================================================
+LeetCode 42 : Trapping Rain Water                              (Hard)
+https://leetcode.com/problems/trapping-rain-water/
+Category   : Two Pointers
+---------------------------------------------------------------------
+PROBLEM
+    Given an elevation map height[i] (bar width = 1), compute how
+    much water it can trap after a rain. Water pools above a bar only
+    when both a taller bar to its LEFT and a taller bar to its RIGHT
+    exist; it cannot spill past the lower of those two.
+---------------------------------------------------------------------
+INTUITION
+    The water sitting ON TOP of bar i is fully determined by the two
+    "walls" that trap it:
+        water[i] = max(0, min(maxLeft[i], maxRight[i]) - height[i])
+    where maxLeft[i]  = tallest bar in [0 .. i-1]
+          maxRight[i] = tallest bar in [i+1 .. n-1]
+    Every algorithm for this problem is a way of computing those two
+    max-arrays (or the running maxima) and summing the per-bar units.
+---------------------------------------------------------------------
+APPROACH 1 — Prefix/suffix max arrays (intuitive, O(n) space)
+    Pass 1: leftMax[i]  = max(height[0..i])   — build left to right.
+    Pass 2: rightMax[i] = max(height[i..n-1]) — build right to left.
+    Pass 3: water[i] = min(leftMax[i], rightMax[i]) - height[i] ≥ 0.
+    Sum the non-negative values. Three linear passes, dead simple.
+    Time  Complexity : O(n)   Space Complexity : O(n)
+---------------------------------------------------------------------
+APPROACH 2 — Two pointers (BEST, O(1) space)
+    Maintain l = 0, r = n-1 plus two running maxima: lMax (tallest
+    seen on the left side) and rMax (tallest seen on the right side).
+    Invariant: if lMax <= rMax, bar l's true cap equals lMax — we can
+    compute water[l] RIGHT NOW and advance l. Symmetric for r. Each
+    bar is finalized exactly once.
+    Time  Complexity : O(n)   Space Complexity : O(1)
+---------------------------------------------------------------------
+DEEP DIVE — why the pointer trick needs NO right-array
+    When lMax <= rMax, bar l's right constraint can never be below
+    lMax (rMax already exceeds it), and its left constraint IS lMax —
+    so min(maxLeft, maxRight) = lMax deterministically. The same
+    argument inverts at r. The smaller of the two running maxima is
+    always "finalized" — that is the invariant that compresses the
+    two O(n) arrays of Approach 1 into two O(1) integers.
+=====================================================================
 """
-import time, tracemalloc
-from typing import List
 
-# ============= Variation 1: Brute Force =============
-# Algorithm: For each bar at index i, calculate the max height to its left and right. 
-# The water trapped on top of it is min(left_max, right_max) - height[i].
-# Time Complexity: O(n^2)   Space Complexity: O(1)
-class Solution_v1:
-    def trap(self, height: List[int]) -> int:
-        water = 0
-        for i in range(len(height)):
-            left_max = max(height[:i + 1]) if i >= 0 else 0
-            right_max = max(height[i:]) if i < len(height) else 0
-            water += min(left_max, right_max) - height[i]
-        return water
+from __future__ import annotations
+import time
+import tracemalloc
+from typing import List, Tuple
 
-# ============= Variation 2: Prefix Max Arrays =============
-# Algorithm: Pre-compute left and right maximum boundaries into array maps `left` 
-# and `right`. The bottleneck max bound at any index `i` is obtained instantly in O(1).
-# Time Complexity: O(n)   Space Complexity: O(n)
-class Solution_v2:
+# =====================================================================
+# APPROACH 1 : Prefix/suffix max arrays
+# =====================================================================
+class SolutionOne:
+    """
+    Purpose : Return total trapped water using left/right max arrays.
+    Inputs  : height — elevation map; height[i] is bar height at i.
+    Output  : int — total water units trapped between the bars.
+    """
+
     def trap(self, height: List[int]) -> int:
-        if not height: return 0
         n = len(height)
-        left_max = [0] * n
-        right_max = [0] * n
+        if n == 0:
+            return 0
+
+        # leftMax[i] = tallest bar at or left of i — the left wall.
+        left_max: List[int] = [0] * n
         left_max[0] = height[0]
         for i in range(1, n):
             left_max[i] = max(left_max[i - 1], height[i])
+
+        # rightMax[i] = tallest bar at or right of i — the right wall.
+        right_max: List[int] = [0] * n
         right_max[n - 1] = height[n - 1]
         for i in range(n - 2, -1, -1):
             right_max[i] = max(right_max[i + 1], height[i])
-        water = 0
+
+        # Water on bar i is capped by the LOWER of its two walls.
+        # max(0, ...) guards dips where the bar itself is the tallest.
+        total = 0
         for i in range(n):
-            water += min(left_max[i], right_max[i]) - height[i]
-        return water
+            total += max(0, min(left_max[i], right_max[i]) - height[i])
+        return total
 
-# ============= Variation 3: Two Pointers =============
-# Algorithm: Maintain left and right pointers. Calculate which bound is strictly 
-# smaller between left/right_max. Move pointer to smaller boundary inwards, storing water.
-# Time Complexity: O(n)   Space Complexity: O(1)
-class Solution_v3:
+
+# =====================================================================
+# APPROACH 2 : Two pointers with running maxima (BEST)
+# =====================================================================
+class SolutionTwo:
+    """
+    Purpose : Return total trapped water in O(1) extra space.
+    Inputs  : height — elevation map; height[i] is bar height at i.
+    Output  : int — total water units trapped between the bars.
+    """
+
     def trap(self, height: List[int]) -> int:
-        if not height: return 0
-        l, r = 0, len(height) - 1
-        left_max, right_max = height[l], height[r]
-        water = 0
+        n = len(height)
+        if n == 0:
+            return 0
+
+        l, r = 0, n - 1
+        l_max, r_max = 0, 0
+        total = 0
+
+        # Invariant: the pointer whose RUNNING MAX is smaller gets its
+        # bar finalized — its true cap is known without any right array.
         while l < r:
-            if left_max < right_max:
+            if height[l] < height[r]:
+                # Right side is strictly taller → the LEFT bar is the
+                # binding side. If l_max already ≥ height[l], water pools;
+                # otherwise l_max rises (bar l becomes a wall itself).
+                if height[l] >= l_max:
+                    l_max = height[l]
+                else:
+                    total += l_max - height[l]
                 l += 1
-                left_max = max(left_max, height[l])
-                water += left_max - height[l]
             else:
+                # Symmetric: right bar is binding → finalize bar r.
+                if height[r] >= r_max:
+                    r_max = height[r]
+                else:
+                    total += r_max - height[r]
                 r -= 1
-                right_max = max(right_max, height[r])
-                water += right_max - height[r]
-        return water
+        return total
 
-# ============= Variation 4: Stack =============
-# Algorithm: Use a monotonically decreasing stack. When a height greater than the 
-# stack's top is found, pop elements. The popped element forms a "valley".
-# Calculate bounded volume.
-# Time Complexity: O(n)   Space Complexity: O(n)
-class Solution_v4:
-    def trap(self, height: List[int]) -> int:
-        stack = []
-        water = 0
-        for i in range(len(height)):
-            while stack and height[i] > height[stack[-1]]:
-                top = stack.pop()
-                if not stack: break
-                distance = i - stack[-1] - 1
-                bounded_height = min(height[i], height[stack[-1]]) - height[top]
-                water += distance * bounded_height
-            stack.append(i)
-        return water
 
-# ============= Benchmarking =============
+# =====================================================================
+# BENCHMARK — verify both solutions on real test cases + time/RAM
+# =====================================================================
 if __name__ == "__main__":
-    height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
-    solutions = [Solution_v1, Solution_v2, Solution_v3, Solution_v4]
-    names = ["Brute Force", "Prefix Max", "Two Pointers", "Stack"]
-    for i, (Sol, name) in enumerate(zip(solutions, names), 1):
+    # Case 1: official example → 6. Case 2: bowl with walls at edges.
+    # Case 3: monotonic rise/fall → ZERO water (no basin anywhere).
+    tests: List[Tuple[List[int], int]] = [
+        ([0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1], 6),
+        ([4, 2, 0, 3, 2, 5], 9),
+        ([1, 2, 3, 4, 3, 2, 1], 0),
+    ]
+
+    # Aggregate time + peak memory across all cases, per approach.
+    time_us: List[float] = [0.0, 0.0]
+    peak_kb: List[float] = [0.0, 0.0]
+    all_pass = True
+
+    for t, (heights, expected) in enumerate(tests, 1):
+        # --- Approach 1: time + peak memory (tracemalloc snapshot) ---
         tracemalloc.start()
         t0 = time.perf_counter()
-        result = Sol().trap(height[:])
+        r1 = SolutionOne().trap(heights)
         t1 = time.perf_counter()
-        mem = tracemalloc.get_traced_memory()[1]
+        _, peak_1 = tracemalloc.get_traced_memory()
         tracemalloc.stop()
-        print(f"var{i} ({name}): result={result}, mem = {mem} bytes, time = {(t1-t0)*1e6:.2f} µs")
+        time_us[0] += (t1 - t0) * 1e6
+        peak_kb[0] = max(peak_kb[0], peak_1 / 1024.0)
 
-# var1 mem = 808 bytes and time = 52.55 µs
-# var2 mem = 1136 bytes and time = 49.77 µs
-# var3 mem = 656 bytes and time = 13.32 µs
-# var4 mem = 760 bytes and time = 20.96 µs
+        # --- Approach 2: same instrumentation ---
+        tracemalloc.start()
+        t0b = time.perf_counter()
+        r2 = SolutionTwo().trap(heights)
+        t1b = time.perf_counter()
+        _, peak_2 = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        time_us[1] += (t1b - t0b) * 1e6
+        peak_kb[1] = max(peak_kb[1], peak_2 / 1024.0)
+
+        ok = (r1 == expected) and (r2 == expected)
+        all_pass = all_pass and ok
+        print(f"Test {t}: prefixSuffix={r1} twoPtr={r2} expected={expected}  {'PASS' if ok else 'FAIL'}")
+
+    print("---")
+    print(f"Approach 1 (prefix/suffix max) : {time_us[0]:.2f} µs total, peak {peak_kb[0]:.2f} KB")
+    print(f"Approach 2 (two pointers)      : {time_us[1]:.2f} µs total, peak {peak_kb[1]:.2f} KB")
+    print("PASS : all cases" if all_pass else "FAIL : at least one case")

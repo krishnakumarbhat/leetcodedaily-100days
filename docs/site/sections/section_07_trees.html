@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · Trees — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+const SECTION = { id: "07", title: "Trees" };
+const U = window.NC150.utils;
+
+/* tree helpers shared by all animators */
+function tn(v, l, r) { const n = new U.TreeNode(v); n.left = l || null; n.right = r || null; return n; }
+let _nid = 1;
+function assignIds(node) { if (!node) return; node.id = _nid++; assignIds(node.left); assignIds(node.right); }
+/* build a binary tree from level-order list (null = missing child) */
+function buildLevelOrder(arr) {
+  if (!arr.length) return null;
+  const root = tn(arr[0]);
+  const q = [root];
+  let i = 1;
+  while (q.length && i < arr.length) {
+    const n = q.shift();
+    if (i < arr.length && arr[i] !== null) { n.left = tn(arr[i]); q.push(n.left); }
+    i++;
+    if (i < arr.length && arr[i] !== null) { n.right = tn(arr[i]); q.push(n.right); }
+    i++;
+  }
+  return root;
+}
+/* collect node values in DFS order: 'pre' | 'in' | 'post' */
+function dfsValues(node, order, acc) {
+  if (!node) return acc;
+  if (order === "pre") acc.push(node.val);
+  dfsValues(node.left, order, acc);
+  if (order === "in") acc.push(node.val);
+  dfsValues(node.right, order, acc);
+  if (order === "post") acc.push(node.val);
+  return acc;
+}
+function treeView(root, hl, title) {
+  return { type: "tree", root, hl: hl || [], title: title || "binary tree" };
+}
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0098 — VALIDATE BINARY SEARCH TREE
+ * ================================================================ */
+NC150.register({
+  id: "0098", title: "Validate Binary Search Tree", difficulty: "Medium",
+  url: "https://leetcode.com/problems/validate-binary-search-tree/",
+  tags: ["tree", "DFS", "BST"],
+  approaches: ["Approach 1 · Range recursion (best)", "Approach 2 · Inorder check"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — one pass, carries (lo,hi) range" },
+    { time: "O(n)", space: "O(n)", note: "inorder must be strictly ascending" }
+  ],
+  compare: [
+    { name: "Naive child check", tech: "only compare to parent", time: "O(n)", space: "O(h)", when: "never — misses grandparent bounds", best: false },
+    { name: "Range recursion", tech: "carry (lo,hi) bounds", time: "O(n)", space: "O(h)", when: "general case", best: true },
+    { name: "Inorder sequence", tech: "sorted check", time: "O(n)", space: "O(n)", when: "tree already traversed anyway", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[2,1,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[2,1,3]" }, result: "true" },
+    { label: "Ex 2 (trap)", values: { values: "[5,1,4,null,null,3,6]" }, result: "false — 3 < 5" },
+    { label: "Left > root", values: { values: "[5,4,6,null,null,3,7]" }, result: "false — 3 < 5" }
+  ],
+  realLife: "<p>Every ordered index — a database's <b>B-tree</b>, a file system's sorted directory — relies on the BST invariant to answer \"is X present?\" in O(log n). Validating the invariant catches corrupted indexes before a lookup silently returns garbage.</p>",
+  dsDive: `<h3>The classic trap</h3>
+<p>Checking <code>left.val < node.val < right.val</code> is NOT enough: in <b>[5,1,4,null,null,3,6]</b> the node <b>3</b> is the right child of <b>4</b>, but it must ALSO be <b>greater than 5</b> (its grandparent). Correct algorithm: recursion carries a range — every node must lie in <b>(lo, hi)</b>, and each child narrows the range:</p>
+<div class="equation">left child of v must satisfy (lo, v.val) &nbsp;|&nbsp; right child must satisfy (v.val, hi)</div>
+<p>Alternative: an <b>inorder traversal</b> of a BST yields a strictly ascending sequence — validate the sequence instead. Both are O(n); recursion costs the implicit call stack (height h), the sequence costs O(n) extra memory.</p>`,
+  code: [
+    "def isValidBST(root, lo=-inf, hi=+inf):   # carry allowed range",
+    "    if not root: return True              # empty subtree is valid",
+    "    if not (lo < root.val < hi): return False  # out of range → invalid",
+    "    left  = isValidBST(root.left,  lo, root.val)   # narrow upper bound",
+    "    right = isValidBST(root.right, root.val, hi)   # narrow lower bound",
+    "    return left and right                # both sides must hold"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const snap = (text, code, hl, extra) => steps.push({ text, code, mem: [
+        treeView(root, hl, "BST validation · range (lo, hi) shrinks on every descent"),
+        Object.assign({ type: "array", title: "allowed range", data: ["lo", "hi"], cls: { 0: "hl", 1: "hl" }, size: 8 }, extra || {})
+      ]});
+      let valid = true, n = 0;
+      snap("Start at root with the widest range (−∞, +∞). Every node must fit its range.", 1, [], {});
+      const stack = [[root, -Infinity, Infinity]];
+      while (stack.length) {
+        const [node, lo, hi] = stack.pop();
+        if (!node) continue;
+        n++;
+        if (!(lo < node.val && node.val < hi)) {
+          snap(`✗ Node <b>${node.val}</b> must be in (${lo === -Infinity ? "−∞" : lo}, ${hi === Infinity ? "+∞" : hi}) — it is OUT OF RANGE → invalid BST.`, 3, [node.id], {});
+          valid = false;
+          break;
+        }
+        snap(`Node <b>${node.val}</b> ∈ (${lo === -Infinity ? "−∞" : lo}, ${hi === Infinity ? "+∞" : hi}) ✓. Push right (narrow lo→${node.val}) then left (narrow hi→${node.val}).`, 2, [node.id], {});
+        if (node.right) stack.push([node.right, node.val, hi]);
+        if (node.left) stack.push([node.left, lo, node.val]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(valid);
+      last.correct = true;
+      last.memNote = `Checked ${n} node(s). Time O(n), space O(h) call stack.`;
+      return { steps, result: String(valid), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const seq = [];
+      const snap = (text, code, hl, data) => steps.push({ text, code, mem: [
+        treeView(root, hl, "inorder traversal"),
+        { type: "array", title: "inorder sequence", data: seq.slice(), showIdx: true, size: 4 }
+      ]});
+      snap("Inorder (left → node → right) of a BST is STRICTLY ascending. Walk it and check.", 0, [], seq.slice());
+      let valid = true;
+      const stack = [];
+      let node = root, prev = -Infinity;
+      while (stack.length || node) {
+        while (node) {
+          stack.push(node);
+          node = node.left;
+        }
+        node = stack.pop();
+        seq.push(node.val);
+        if (node.val <= prev) {
+          snap(`✗ <b>${node.val}</b> ≤ previous <b>${prev}</b> — sequence is not strictly ascending → invalid.`, 0, [node.id], seq.slice());
+          valid = false;
+          break;
+        }
+        snap(`Visit <b>${node.val}</b> (prev=${prev === -Infinity ? "−∞" : prev}) → ascending so far ✓.`, 0, [node.id], seq.slice());
+        prev = node.val;
+        node = node.right;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(valid);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) for the sequence.";
+      return { steps, result: String(valid), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0100 — SAME TREE
+ * ================================================================ */
+NC150.register({
+  id: "0100", title: "Same Tree", difficulty: "Easy",
+  url: "https://leetcode.com/problems/same-tree/",
+  tags: ["tree", "DFS", "recursion"],
+  approaches: ["Approach 1 · Recursive pair check (best)", "Approach 2 · Iterative queue (BFS)"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — recursion on both trees at once" },
+    { time: "O(n)", space: "O(w)", note: "BFS frontier, worst-case full last level" }
+  ],
+  compare: [
+    { name: "Serialize + compare", tech: "stringify both", time: "O(n)", space: "O(n)", when: "comparing many cached trees", best: false },
+    { name: "Recursive pair check", tech: "check both roots, recurse pairs", time: "O(n)", space: "O(h)", when: "general case", best: true },
+    { name: "Iterative BFS queue", tech: "level-by-level pair check", time: "O(n)", space: "O(w)", when: "avoid deep recursion", best: false }
+  ],
+  inputs: [
+    { name: "p", label: "tree p (level order) =", type: "list", default: "[1,2,3]" },
+    { name: "q", label: "tree q (level order) =", type: "list", default: "[1,2,3]" }
+  ],
+  examples: [
+    { label: "Ex 1 (same)", values: { p: "[1,2,3]", q: "[1,2,3]" }, result: "true" },
+    { label: "Ex 2 (diff)", values: { p: "[1,2]", q: "[1,null,2]" }, result: "false" },
+    { label: "Ex 3 (diff)", values: { p: "[1,2,1]", q: "[1,1,2]" }, result: "false" }
+  ],
+  realLife: "<p>Git compares two trees of file hashes to find which branches differ; compilers compare ASTs to detect duplicated code; snapshot testers compare DOM trees. All use the same simultaneous traversal.</p>",
+  dsDive: `<h3>Two pointers, two trees</h3>
+<p>The insight is to recurse on <b>PAIRS</b>: is (p,q) equal as roots AND (p.left, q.left) equal AND (p.right, q.right) equal? The recursion visits each pair once → O(n) with n = size of the smaller tree. The call stack depth equals tree height h.</p>
+<div class="equation">same(p, q) = p.val == q.val ∧ same(p.left, q.left) ∧ same(p.right, q.right)</div>
+<p>The iterative version simulates the same recursion with a queue of pairs (BFS) — identical logic, but memory is the frontier width w instead of height h.</p>`,
+  code: [
+    "def isSameTree(p, q):",
+    "    if not p and not q: return True      # both empty → equal",
+    "    if not p or not q: return False      # one empty → different",
+    "    if p.val != q.val: return False      # roots differ → different",
+    "    return (isSameTree(p.left, q.left) and   # compare left pairs",
+    "            isSameTree(p.right, q.right))    # compare right pairs"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const p = buildLevelOrder(vals.p);
+      const q = buildLevelOrder(vals.q);
+      assignIds(p); assignIds(q);
+      const steps = [];
+      const snap = (text, hlP, hlQ) => steps.push({ text, code: 0, mem: [
+        treeView(p, hlP, "tree p"),
+        treeView(q, hlQ, "tree q")
+      ]});
+      let same = true, checked = 0;
+      snap("Start: compare both roots.", 0, []);
+      const stack = [[p, q]];
+      while (stack.length) {
+        const [a, b] = stack.pop();
+        if (!a && !b) continue;
+        if (!a || !b || a.val !== b.val) {
+          const hlA = a ? [a.id] : []; const hlB = b ? [b.id] : [];
+          snap(`✗ Node <b>${a ? a.val : "∅"}</b> vs <b>${b ? b.val : "∅"}</b> — structure or value differs → not the same tree.`, hlA, hlB);
+          same = false;
+          break;
+        }
+        checked++;
+        snap(`<b>${a.val}</b> == <b>${b.val}</b> ✓ → push pairs (left,left) and (right,right).`, [a.id], [b.id]);
+        stack.push([a.right, b.right]);
+        stack.push([a.left, b.left]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(same);
+      last.correct = true;
+      last.memNote = `Matched ${checked} node pair(s). Time O(n), space O(h).`;
+      return { steps, result: String(same), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const p = buildLevelOrder(vals.p);
+      const q = buildLevelOrder(vals.q);
+      assignIds(p); assignIds(q);
+      const steps = [];
+      const snap = (text, hlP, hlQ, qData) => steps.push({ text, code: 0, mem: [
+        treeView(p, hlP, "tree p"),
+        treeView(q, hlQ, "tree q"),
+        { type: "queue", title: "pair frontier (BFS)", data: qData, front: 0, rear: qData.length - 1 }
+      ]});
+      let same = true, checked = 0;
+      snap("BFS: seed the queue with the root pair.", 0, [], ["p|q"]);
+      const queue = [[p, q]];
+      while (queue.length) {
+        const [a, b] = queue.shift();
+        if (!a && !b) continue;
+        if (!a || !b || a.val !== b.val) {
+          snap(`✗ <b>${a ? a.val : "∅"}</b> vs <b>${b ? b.val : "∅"}</b> mismatch at this level → false.`, a ? [a.id] : [], b ? [b.id] : [], []);
+          same = false;
+          break;
+        }
+        checked++;
+        queue.push([a.left, b.left]);
+        queue.push([a.right, b.right]);
+        snap(`<b>${a.val}</b> == <b>${b.val}</b> ✓ · enqueue (left,left) and (right,right).`, [a.id], [b.id], queue.map(x => x[0] ? x[0].val + "|" + (x[1] ? x[1].val : "∅") : "∅|∅"));
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(same);
+      last.correct = true;
+      last.memNote = `Matched ${checked} pair(s). Time O(n), space O(w) frontier.`;
+      return { steps, result: String(same), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0102 — BINARY TREE LEVEL ORDER TRAVERSAL
+ * ================================================================ */
+NC150.register({
+  id: "0102", title: "Binary Tree Level Order Traversal", difficulty: "Medium",
+  url: "https://leetcode.com/problems/binary-tree-level-order-traversal/",
+  tags: ["tree", "BFS", "queue"],
+  approaches: ["Approach 1 · BFS with queue (best)", "Approach 2 · DFS with depth"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — every node once, frontier ≤ width" },
+    { time: "O(n)", space: "O(h) + O(n) result", note: "DFS appends to level by depth" }
+  ],
+  compare: [
+    { name: "BFS queue", tech: "process a whole level per loop", time: "O(n)", space: "O(w)", when: "level-by-level order needed", best: true },
+    { name: "DFS with depth", tech: "recursion + levels[depth].append", time: "O(n)", space: "O(h)", when: "already doing DFS anyway", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[3,9,20,null,null,15,7]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[3,9,20,null,null,15,7]" }, result: "[[3],[9,20],[15,7]]" },
+    { label: "Ex 2", values: { values: "[1]" }, result: "[[1]]" },
+    { label: "Ex 3", values: { values: "[]" }, result: "[]" }
+  ],
+  realLife: "<p>Level order is the <b>breadth-first</b> view of a tree: finding the closest matching server in a network hierarchy, crawling a social graph by distance, or rendering a scene graph top-down. BFS = always visit by distance from the root.</p>",
+  dsDive: `<h3>Why the queue's length matters</h3>
+<p>The trick: at the start of each loop iteration, <code>q.length</code> is EXACTLY the number of nodes in the current level. Dequeue that many nodes → all their children form the next level. This is why a plain FIFO queue implements breadth-first order for free.</p>
+<div class="equation">level<sub>k+1</sub> = children(level<sub>k</sub>) &nbsp;·&nbsp; FIFO keeps levels contiguous</div>
+<p>DFS alternative: carry <code>depth</code> in the recursion and append to <code>levels[depth]</code> — visits nodes in a different order but fills the same buckets. BFS costs O(w) frontier memory (a full last level has ~n/2 nodes), DFS costs O(h) call stack.</p>`,
+  code: [
+    "def levelOrder(root):",
+    "    if not root: return []",
+    "    res, q = [], deque([root])",
+    "    while q:",
+    "        level = []",
+    "        for _ in range(len(q)):      # len(q) = nodes of THIS level",
+    "            node = q.popleft()",
+    "            level.append(node.val)",
+    "            if node.left:  q.append(node.left)",
+    "            if node.right: q.append(node.right)",
+    "        res.append(level)",
+    "    return res"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const res = [];
+      const snap = (text, hl, qData, level) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "tree · BFS sweep"),
+        { type: "queue", title: "BFS queue", data: qData, front: 0, rear: qData.length - 1 },
+        { type: "array", title: "levels collected", data: res.map(l => "[" + l.join(",") + "]").concat(level ? ["<b>" + level.join(",") + "</b>"] : []), showIdx: true, size: 8 }
+      ]});
+      if (!root) {
+        snap("Empty tree → result is [].", 0, [], []);
+        const last = steps[steps.length - 1];
+        last.result = "[]"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const q = [root];
+      snap("Seed queue with root. q.length = 1 = nodes in level 0.", 0, [root.id], []);
+      while (q.length) {
+        const level = [];
+        const n = q.length;
+        for (let i = 0; i < n; i++) {
+          const node = q.shift();
+          level.push(node.val);
+          if (node.left) q.push(node.left);
+          if (node.right) q.push(node.right);
+          snap(`Pop <b>${node.val}</b> → collect into current level. Enqueue its children.`, [node.id], q.map(x => x.val), level);
+        }
+        res.push(level);
+        snap(`Level done → <b>[${level.join(", ")}]</b> appended. q now holds next level (${q.length} nodes).`, [], q.map(x => x.val), []);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) (frontier + result).";
+      return { steps, result: JSON.stringify(res), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const res = [];
+      const snap = (text, hl, depthInfo) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "tree · DFS pre-order with depth"),
+        { type: "array", title: "levels (by depth bucket)", data: res.map((l, i) => "L" + i + ":[" + l.join(",") + "]"), showIdx: true, size: 8 }
+      ]});
+      snap("DFS pre-order with a depth counter: each node lands in levels[depth].", 0, "depth 0");
+      const stack = [[root, 0]];
+      while (stack.length) {
+        const [node, d] = stack.pop();
+        if (!res[d]) res[d] = [];
+        res[d].push(node.val);
+        snap(`Visit <b>${node.val}</b> at depth <b>${d}</b> → append to level ${d}.`, [node.id], "depth " + d);
+        if (node.right) stack.push([node.right, d + 1]);
+        if (node.left) stack.push([node.left, d + 1]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h) stack + O(n) result.";
+      return { steps, result: JSON.stringify(res), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script><script>
+/* ================================================================
+ * PROBLEM 0104 — MAXIMUM DEPTH OF BINARY TREE
+ * ================================================================ */
+NC150.register({
+  id: "0104", title: "Maximum Depth of Binary Tree", difficulty: "Easy",
+  url: "https://leetcode.com/problems/maximum-depth-of-binary-tree/",
+  tags: ["tree", "DFS", "BFS"],
+  approaches: ["Approach 1 · Recursion (best)", "Approach 2 · BFS level count"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — height of tree, h ≤ n" },
+    { time: "O(n)", space: "O(w)", note: "BFS counts levels, frontier memory" }
+  ],
+  compare: [
+    { name: "Recursion", tech: "1 + max(depth(left), depth(right))", time: "O(n)", space: "O(h)", when: "general case", best: true },
+    { name: "BFS levels", tech: "count while draining queue", time: "O(n)", space: "O(w)", when: "already level-ordering", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[3,9,20,null,null,15,7]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[3,9,20,null,null,15,7]" }, result: "3" },
+    { label: "Ex 2", values: { values: "[1,null,2]" }, result: "2" },
+    { label: "Ex 3", values: { values: "[]" }, result: "0" }
+  ],
+  realLife: "<p>Depth = longest path = the <b>latency</b> of a hierarchy: how many hops a query crosses in a DNS tree, how many folder levels a file path has, how deep a scene graph is. Knowing depth bounds worst-case recursion/stack usage.</p>",
+  dsDive: `<h3>Post-order is the natural fit</h3>
+<p>Depth of a node = <b>1 + max(depth(left), depth(right))</b>. The children's answers must be known BEFORE the parent's → a post-order recursion. The implicit call stack is the memory cost: height h (balanced → log n, skewed → n).</p>
+<div class="equation">depth(v) = 0 if v = null · depth(v) = 1 + max(depth(v.left), depth(v.right)) otherwise</div>
+<p>BFS alternative: each drained level adds 1. Same time, but the queue holds the widest level (≤ n/2 nodes) instead of the call stack (≤ n).</p>`,
+  code: [
+    "def maxDepth(root):",
+    "    if not root: return 0",
+    "    left  = maxDepth(root.left)     # child heights first",
+    "    right = maxDepth(root.right)",
+    "    return 1 + max(left, right)     # my height = 1 + tallest child"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const snap = (text, hl, marks) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "recursion: child answers feed the parent"),
+        { type: "array", title: "depth marks (node → depth)", data: marks.map(m => m[0] + "→" + m[1]), showIdx: true, size: 8 }
+      ]});
+      const marks = [];
+      if (!root) {
+        snap("Empty tree → depth 0.", 0, []);
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      snap("Post-order: compute children first, then 1 + max. Stack carries pending parents.", 0, []);
+      const stack = [[root, false]];
+      while (stack.length) {
+        const [node, done] = stack[stack.length - 1];
+        if (!done) {
+          stack[stack.length - 1][1] = true;
+          if (node.right) stack.push([node.right, false]);
+          if (node.left) stack.push([node.left, false]);
+          snap(`Descend to <b>${node.val}</b> — push children; resolve on the way up.`, [node.id], marks.slice());
+          continue;
+        }
+        const dl = node.left ? marks.find(m => m[0] === node.left.val && m[1] !== undefined) : null;
+        stack.pop();
+        const hL = node.left ? marks.filter(m => m[0] === "n" + node.left.id).pop()[1] : 0;
+        const hR = node.right ? marks.filter(m => m[0] === "n" + node.right.id).pop()[1] : 0;
+        const h = 1 + Math.max(hL, hR);
+        marks.push(["n" + node.id, h]);
+        snap(`<b>${node.val}</b>: height = 1 + max(${hL}, ${hR}) = <b>${h}</b>.`, [node.id], marks.slice());
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(marks.find(m => m[0] === "n" + root.id)[1]);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h).";
+      return { steps, result: last.result, correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const snap = (text, hl, qData, depth) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "BFS: count the levels drained"),
+        { type: "queue", title: "BFS queue", data: qData, front: 0, rear: qData.length - 1 },
+        { type: "array", title: "depth so far", data: [depth], showIdx: true, size: 4 }
+      ]});
+      if (!root) {
+        snap("Empty tree → 0 levels.", 0, [], 0);
+        const last = steps[steps.length - 1];
+        last.result = "0"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "0", correct: true, memNote: "O(1)." };
+      }
+      const q = [root];
+      let depth = 0;
+      while (q.length) {
+        const n = q.length;
+        for (let i = 0; i < n; i++) {
+          const node = q.shift();
+          if (node.left) q.push(node.left);
+          if (node.right) q.push(node.right);
+          snap(`Drain <b>${node.val}</b> from level ${depth + 1}.`, [node.id], q.map(x => x.val), depth + 1);
+        }
+        depth++;
+        snap(`Level ${depth} fully drained → depth = <b>${depth}</b>.`, [], q.map(x => x.val), depth);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(depth);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(w) frontier.";
+      return { steps, result: String(depth), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0105 — CONSTRUCT BINARY TREE FROM PREORDER AND INORDER
+ * ================================================================ */
+NC150.register({
+  id: "0105", title: "Construct Binary Tree from Preorder & Inorder", difficulty: "Medium",
+  url: "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder/",
+  tags: ["tree", "hashmap", "recursion", "array"],
+  approaches: ["Approach 1 · Hash map + recursion (best)", "Approach 2 · Linear scan recursion"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — inorder index map makes splits O(1)" },
+    { time: "O(n²)", space: "O(n)", note: "scan inorder for the pivot each time" }
+  ],
+  compare: [
+    { name: "Recursion + scan", tech: "find pivot by linear search", time: "O(n²)", space: "O(n)", when: "tiny trees only", best: false },
+    { name: "Recursion + hash map", tech: "value → inorder index", time: "O(n)", space: "O(n)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "preorder", label: "preorder =", type: "list", default: "[3,9,20,15,7]" },
+    { name: "inorder", label: "inorder =", type: "list", default: "[9,3,15,20,7]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { preorder: "[3,9,20,15,7]", inorder: "[9,3,15,20,7]" }, result: "3 ← 9,20; 20 ← 15,7" },
+    { label: "Ex 2", values: { preorder: "[-1]", inorder: "[-1]" }, result: "-1" },
+    { label: "Skewed", values: { preorder: "[1,2,3]", inorder: "[3,2,1]" }, result: "1-2-3 chain" }
+  ],
+  realLife: "<p>Rebuilding trees from traversals is how <b>serialized documents are deserialized</b> (JSON/XML parsers build ASTs from token streams), how database <b>B-tree rebuilds</b> work after a crash, and how compilers reconstruct syntax from flattened output.</p>",
+  dsDive: `<h3>Why a hash map turns O(n²) into O(n)</h3>
+<p>Preorder's first element is ALWAYS the root. In inorder, that value splits the list into the left subtree (indices before it) and right subtree (after it). The expensive step is finding the pivot each time. With a hash map <code>value → index</code>:</p>
+<div class="equation">h(k, i) = (hash(k) + i) mod m &nbsp;&nbsp;→&nbsp;&nbsp; pivot = inorderIndexMap[rootVal] in O(1)</div>
+<p>Python's dict uses open addressing with linear probing (watch the probe# markers); C++ <code>unordered_map</code> uses separate chaining. Each of the n nodes is looked up once → O(n) total, plus O(n) for the map itself. The scan version re-finds pivots by walking — O(n) per level → O(n²).</p>`,
+  code: [
+    "def buildTree(preorder, inorder):",
+    "    idx = {v: i for i, v in enumerate(inorder)}   # value → position",
+    "    def build(pl, pr, il, ir):                     # preorder/inorder ranges",
+    "        if pl > pr: return None",
+    "        root = TreeNode(preorder[pl])              # first preorder = root",
+    "        ri = idx[root.val]                         # O(1) pivot via hash map",
+    "        leftSize = ri - il",
+    "        root.left  = build(pl+1, pl+leftSize, il, ri-1)",
+    "        root.right = build(pl+leftSize+1, pr, ri+1, ir)",
+    "        return root",
+    "    return build(0, len(preorder)-1, 0, len(inorder)-1)"
+  ],
+  steps: [
+    function (vals) {
+      const pre = vals.preorder, ino = vals.inorder;
+      const m = 8;
+      const slots = new Array(m).fill(null);
+      const steps = [];
+      const snap = (text, code, probe, hit, hl, ranges) => steps.push({ text, code, mem: [
+        { type: "hashmap", title: "inorder index map · dict", mode: "open", slots: slots.map(x => x ? { k: x.k, v: x.v } : null), probe, hit, formula: "h(k, i) = (hash(k) + i) mod 8" },
+        { type: "array", title: "preorder", data: pre, cls: hl.pre || {}, showIdx: true, size: 4 },
+        { type: "array", title: "inorder", data: ino, cls: hl.ino || {}, showIdx: true, size: 4 }
+      ]});
+      snap("Preorder: <b>first element is the root</b>. Inorder: elements left of root = left subtree. Build map value→index first.", 1, [], -1, {}, "");
+      /* build index map */
+      ino.forEach((v, i) => {
+        let placed = -1;
+        for (let j = 0; j < m; j++) {
+          const s = ((v % m) + m + j) % m;
+          if (!slots[s]) { slots[s] = { k: v, v: i }; placed = s; break; }
+        }
+        snap(`Insert <b>${v}→${i}</b> into index map (linear probing → slot ${placed}).`, 1, [placed], placed, {}, "");
+      });
+      const root = tn(pre[0]);
+      let nid = 2;
+      const snapTree = (text, hl, ranges) => steps.push({ text, code: 4, mem: [
+        { type: "array", title: "preorder", data: pre, cls: hl.pre || {}, showIdx: true, size: 4 },
+        { type: "array", title: "inorder", data: ino, cls: hl.ino || {}, showIdx: true, size: 4 },
+        treeView(root, [], "built so far")
+      ]});
+      const out = [];
+      const stack = [[pre, 0, pre.length - 1, ino, 0, ino.length - 1, root, null]];
+      while (stack.length) {
+        const [P, pl, pr, I, il, ir, parent, side] = stack.pop();
+        if (pl > pr) continue;
+        const rootVal = P[pl];
+        let ri = -1;
+        for (let j = 0; j < m; j++) {
+          const s = ((rootVal % m) + m + j) % m;
+          if (slots[s] && slots[s].k === rootVal) { ri = slots[s].v; break; }
+        }
+        const leftSize = ri - il;
+        const hl = { pre: { [pl]: "hot" }, ino: { [ri]: "hot" } };
+        snapTree(`<b>${rootVal}</b> is root of current range → splits inorder at index ${ri}. Left subtree size = ${ri} − ${il} = ${leftSize}.`, hl);
+        if (pl + 1 <= pl + leftSize) stack.push([P, pl + 1, pl + leftSize, I, il, ri - 1, parent, side]);
+        if (pl + leftSize + 1 <= pr) stack.push([P, pl + leftSize + 1, pr, I, ri + 1, ir, parent, side]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "root=" + pre[0] + " · map built, recursion splits ranges";
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) (map + recursion).";
+      return { steps, result: last.result, correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      const pre = vals.preorder, ino = vals.inorder;
+      const steps = [];
+      const snap = (text, hl, ranges) => steps.push({ text, code: 0, mem: [
+        { type: "array", title: "preorder", data: pre, cls: hl.pre || {}, showIdx: true, size: 4 },
+        { type: "array", title: "inorder", data: ino, cls: hl.ino || {}, showIdx: true, size: 4 },
+        { type: "array", title: "current ranges", data: ranges, showIdx: true, size: 8 }
+      ]});
+      snap("No hash map: find the root's position in inorder by <b>scanning</b> — O(n) per level, O(n²) total.", {}, []);
+      const stack = [[pre, 0, pre.length - 1, ino, 0, ino.length - 1]];
+      while (stack.length) {
+        const [P, pl, pr, I, il, ir] = stack.pop();
+        if (pl > pr) continue;
+        const rootVal = P[pl];
+        let ri = il;
+        while (ri <= ir && I[ri] !== rootVal) ri++;
+        const leftSize = ri - il;
+        const hl = { pre: { [pl]: "hot" }, ino: { [ri]: "hot" } };
+        const ranges = ["preorder slice " + pl + ".." + pr, "inorder slice " + il + ".." + ir, "pivot found at " + ri + " (scan took " + (ri - il + 1) + " steps)"];
+        snap(`<b>${rootVal}</b>: scanned inorder slice from ${il} → found at ${ri}. Left size = ${leftSize}.`, hl, ranges);
+        if (pl + 1 <= pl + leftSize) stack.push([P, pl + 1, pl + leftSize, I, il, ri - 1]);
+        if (pl + leftSize + 1 <= pr) stack.push([P, pl + leftSize + 1, pr, I, ri + 1, ir]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "root=" + pre[0] + " · scan version";
+      last.correct = true;
+      last.memNote = "Time O(n²) — every level rescans its slice.";
+      return { steps, result: last.result, correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0110 — BALANCED BINARY TREE
+ * ================================================================ */
+NC150.register({
+  id: "0110", title: "Balanced Binary Tree", difficulty: "Easy",
+  url: "https://leetcode.com/problems/balanced-binary-tree/",
+  tags: ["tree", "DFS", "post-order"],
+  approaches: ["Approach 1 · Post-order with -1 sentinel (best)", "Approach 2 · Top-down height check"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — each node visited once" },
+    { time: "O(n log n)", space: "O(h)", note: "height recomputed at every node" }
+  ],
+  compare: [
+    { name: "Top-down", tech: "check height diff, recurse both sides", time: "O(n²) worst", space: "O(h)", when: "conceptual simplicity", best: false },
+    { name: "Post-order sentinel", tech: "carry height up, abort on -1", time: "O(n)", space: "O(h)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[3,9,20,null,null,15,7]" }
+  ],
+  examples: [
+    { label: "Ex 1 (balanced)", values: { values: "[3,9,20,null,null,15,7]" }, result: "true" },
+    { label: "Ex 2 (unbalanced)", values: { values: "[1,2,2,3,3,null,null,4,4]" }, result: "false" },
+    { label: "Ex 3 (empty)", values: { values: "[]" }, result: "true" }
+  ],
+  realLife: "<p>Balanced = the tree stays shallow → every lookup stays O(log n). Self-balancing structures — <b>AVL trees, red-black trees (std::map), B-trees in databases</b> — rebalance automatically after inserts so worst-case paths stay logarithmic.</p>",
+  dsDive: `<h3>One pass, two answers</h3>
+<p>Height(v) = 1 + max(height(L), height(R)) — same formula as max depth. Balanced(v) additionally requires |height(L) − height(R)| ≤ 1 everywhere. The -1 sentinel packs both answers into one return value: a subtree reports its height, or <b>-1</b> if unbalanced (its parent then propagates -1 without extra work).</p>
+<div class="equation">h(v) = 1 + max(h(L), h(R)) · balanced(v) = |h(L) − h(R)| ≤ 1 ∧ balanced(L) ∧ balanced(R)</div>
+<p>Top-down alternative recomputes heights from the root on every level → O(n²) worst case (skewed tree). Post-order computes each height exactly once → O(n).</p>`,
+  code: [
+    "def isBalanced(root):",
+    "    def height(node):",
+    "        if not node: return 0",
+    "        l = height(node.left)     # -1 means left subtree unbalanced",
+    "        if l == -1: return -1     # propagate failure",
+    "        r = height(node.right)",
+    "        if r == -1: return -1",
+    "        if abs(l - r) > 1: return -1   # THIS node unbalanced",
+    "        return 1 + max(l, r)",
+    "    return height(root) != -1"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const marks = [];
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "post-order: height bubbles up, -1 aborts"),
+        { type: "array", title: "heights (nX → height)", data: marks.map(m => m[0] + "→" + m[1]), showIdx: true, size: 8 }
+      ]});
+      let balanced = true;
+      snap("Post-order pass. Each node returns height; if any subtree is unbalanced, return -1 and abort.", 0, []);
+      const stack = [[root, false]];
+      while (stack.length && balanced) {
+        const [node, done] = stack[stack.length - 1];
+        if (!done) {
+          stack[stack.length - 1][1] = true;
+          if (node.right) stack.push([node.right, false]);
+          if (node.left) stack.push([node.left, false]);
+          snap(`Descend to <b>${node.val}</b>.`, [node.id]);
+          continue;
+        }
+        const hL = node.left ? marks.filter(m => m[0] === "n" + node.left.id).pop()[1] : 0;
+        const hR = node.right ? marks.filter(m => m[0] === "n" + node.right.id).pop()[1] : 0;
+        stack.pop();
+        if (hL === -1 || hR === -1 || Math.abs(hL - hR) > 1) {
+          marks.push(["n" + node.id, -1]);
+          snap(`✗ <b>${node.val}</b>: heights ${hL} vs ${hR} differ by ${Math.abs(hL - hR)} > 1 → unbalanced, return -1.`, [node.id]);
+          balanced = false;
+        } else {
+          marks.push(["n" + node.id, 1 + Math.max(hL, hR)]);
+          snap(`<b>${node.val}</b>: heights ${hL} vs ${hR} ✓ → height ${1 + Math.max(hL, hR)}.`, [node.id]);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(balanced);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h) — every node visited once.";
+      return { steps, result: String(balanced), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const snap = (text, hl, extra) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "top-down: recompute heights per node"),
+        Object.assign({ type: "array", title: "visited", data: [], showIdx: true, size: 4 }, extra || {})
+      ]});
+      let balanced = true, visited = 0;
+      const heightOf = (node, path) => {
+        if (!node) return 0;
+        visited++;
+        path.push(node.id);
+        return 1 + Math.max(heightOf(node.left, path), heightOf(node.right, path));
+      };
+      const stack = [root];
+      while (stack.length && balanced) {
+        const node = stack.pop();
+        if (!node) continue;
+        const hL = heightOf(node.left, []);
+        const hR = heightOf(node.right, []);
+        snap(`<b>${node.val}</b>: recompute heights → left ${hL}, right ${hR} (each recompute walks the whole subtree).`, [node.id]);
+        if (Math.abs(hL - hR) > 1) {
+          snap(`✗ Difference ${Math.abs(hL - hR)} > 1 → not balanced.`, [node.id]);
+          balanced = false;
+          break;
+        }
+        stack.push(node.right);
+        stack.push(node.left);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(balanced);
+      last.correct = true;
+      last.memNote = "Time O(n²) worst (skewed tree), space O(h).";
+      return { steps, result: String(balanced), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0124 — BINARY TREE MAXIMUM PATH SUM
+ * ================================================================ */
+NC150.register({
+  id: "0124", title: "Binary Tree Maximum Path Sum", difficulty: "Hard",
+  url: "https://leetcode.com/problems/binary-tree-maximum-path-sum/",
+  tags: ["tree", "DFS", "post-order"],
+  approaches: ["Approach 1 · Post-order gain (best)", "Approach 2 · Brute-force all pairs"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — single pass, gain = max(0, child gains)" },
+    { time: "O(n²)", space: "O(h)", note: "consider every node as a pivot" }
+  ],
+  compare: [
+    { name: "Post-order gain", tech: "carry best single-side gain up", time: "O(n)", space: "O(h)", when: "general case", best: true },
+    { name: "Brute force", tech: "enumerate all paths", time: "O(n²)", space: "O(h)", when: "tiny trees", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[1,2,3]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[1,2,3]" }, result: "6 (2+1+3)" },
+    { label: "Ex 2", values: { values: "[-10,9,20,null,null,15,7]" }, result: "42 (15+20+7)" },
+    { label: "All negative", values: { values: "[-3]" }, result: "-3" }
+  ],
+  realLife: "<p>Maximum path sum is the tree version of <b>maximum subarray</b> (Kadane): finding the strongest segment of a network, the densest branch of a dependency graph, or the best contiguous gain in a financial series — every 'cut here' decision uses the same gain/abandon logic.</p>",
+  dsDive: `<h3>Kadane's idea, on a tree</h3>
+<p>A path through a node v can join: the best path <b>below-left</b>, v itself, and the best path <b>below-right</b>. The subtlety: a path cannot fork — it can only pass through ONE child side on its way up. So each node reports its <b>gain</b>: the best sum of a path ENDING at v and going DOWN (v + max(0, leftGain, rightGain)) — negative gains are dropped with max(0, ·) because a lone node beats a negative prefix.</p>
+<div class="equation">gain(v) = v.val + max(0, gain(L), gain(R)) · best = max(best, v.val + max(0,gain(L)) + max(0,gain(R)))</div>
+<p>The global best is updated at every node with both sides joined — the path 'peaks' at v. One post-order pass → O(n).</p>`,
+  code: [
+    "def maxPathSum(root):",
+    "    best = float('-inf')",
+    "    def gain(node):",
+    "        nonlocal best",
+    "        if not node: return 0",
+    "        l = max(0, gain(node.left))     # discard negative branches",
+    "        r = max(0, gain(node.right))",
+    "        best = max(best, node.val + l + r)   # path peaking here",
+    "        return node.val + max(l, r)          # only ONE side may continue up",
+    "    gain(root)",
+    "    return best"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const gains = [];
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "post-order: gains bubble up, best updated at every node"),
+        { type: "array", title: "gains (nX → gain)", data: gains.map(m => m[0] + "→" + m[1]), showIdx: true, size: 8 }
+      ]});
+      let best = -Infinity;
+      snap("Post-order. Each node returns the best DOWN-going sum through it; best = max(best, join both children at every node).", 0, []);
+      const stack = [[root, false]];
+      while (stack.length) {
+        const [node, done] = stack[stack.length - 1];
+        if (!done) {
+          stack[stack.length - 1][1] = true;
+          if (node.right) stack.push([node.right, false]);
+          if (node.left) stack.push([node.left, false]);
+          snap(`Descend to <b>${node.val}</b>.`, [node.id]);
+          continue;
+        }
+        const gL = node.left ? gains.filter(m => m[0] === "n" + node.left.id).pop()[1] : 0;
+        const gR = node.right ? gains.filter(m => m[0] === "n" + node.right.id).pop()[1] : 0;
+        stack.pop();
+        const gain = node.val + Math.max(0, gL, gR);
+        const joined = node.val + Math.max(0, gL) + Math.max(0, gR);
+        best = Math.max(best, joined);
+        gains.push(["n" + node.id, gain]);
+        snap(`<b>${node.val}</b>: gains ${gL}/${gR} (negatives dropped) → down-gain <b>${gain}</b>, joined path <b>${joined}</b>, best = ${best}.`, [node.id]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h).";
+      return { steps, result: String(best), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const nodes = [];
+      (function collect(n) { if (!n) return; nodes.push(n); collect(n.left); collect(n.right); })(root);
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "brute force: every node as path pivot"),
+        { type: "array", title: "pivots tried", data: nodes.map(n => n.val), showIdx: true, size: 4 }
+      ]});
+      let best = -Infinity, pivotIdx = 0;
+      const stack = [root];
+      while (stack.length) {
+        const node = stack.pop();
+        if (!node) continue;
+        pivotIdx++;
+        let down = (n) => { if (!n) return 0; return n.val + Math.max(0, down(n.left), down(n.right)); };
+        const l = Math.max(0, down(node.left));
+        const r = Math.max(0, down(node.right));
+        best = Math.max(best, node.val + l + r);
+        snap(`Pivot <b>${node.val}</b>: recompute both down-sums (O(subtree) each) → best = ${best}.`, [node.id]);
+        stack.push(node.right);
+        stack.push(node.left);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n²) worst — every pivot re-walks its subtree.";
+      return { steps, result: String(best), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0199 — BINARY TREE RIGHT SIDE VIEW
+ * ================================================================ */
+NC150.register({
+  id: "0199", title: "Binary Tree Right Side View", difficulty: "Medium",
+  url: "https://leetcode.com/problems/binary-tree-right-side-view/",
+  tags: ["tree", "BFS", "DFS"],
+  approaches: ["Approach 1 · BFS, take level tails (best)", "Approach 2 · DFS right-first"],
+  complexities: [
+    { time: "O(n)", space: "O(w)", note: "BEST — last node of each level" },
+    { time: "O(n)", space: "O(h)", note: "pre-order with depth, first visit per depth" }
+  ],
+  compare: [
+    { name: "BFS level tails", tech: "last element of every level", time: "O(n)", space: "O(w)", when: "general case", best: true },
+    { name: "DFS right-first", tech: "first node seen at each depth", time: "O(n)", space: "O(h)", when: "memory-constrained", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[1,2,3,null,5,null,4]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[1,2,3,null,5,null,4]" }, result: "[1,3,4]" },
+    { label: "Ex 2", values: { values: "[1,null,3]" }, result: "[1,3]" },
+    { label: "Ex 3", values: { values: "[]" }, result: "[]" }
+  ],
+  realLife: "<p>Right side view = the <b>visible frontier</b> from the right: rendering occlusion in a scene graph, showing the top-level structure of a nested menu, or listing the 'peers' visible in a chat thread tree.</p>",
+  dsDive: `<h3>Same answer, two traversals</h3>
+<p>BFS: drain a level, keep its LAST node. DFS: visit right child FIRST; the first node you see at a fresh depth IS the rightmost node of that depth. Both are O(n). BFS memory = frontier width O(w); DFS memory = call stack O(h). For skewed trees h ≈ n — use BFS if the tree is deep.</p>`,
+  code: [
+    "def rightSideView(root):",
+    "    res = []",
+    "    def dfs(node, depth):",
+    "        if not node: return",
+    "        if depth == len(res): res.append(node.val)  # first visit at this depth",
+    "        dfs(node.right, depth + 1)   # right first → it gets the slot",
+    "        dfs(node.left,  depth + 1)",
+    "    dfs(root, 0)",
+    "    return res"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const res = [];
+      const snap = (text, hl, qData) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "BFS: take the tail of each level"),
+        { type: "queue", title: "BFS queue", data: qData, front: 0, rear: qData.length - 1 },
+        { type: "array", title: "right side view", data: res, showIdx: true, size: 4 }
+      ]});
+      if (!root) {
+        snap("Empty tree → [].", 0, []);
+        const last = steps[steps.length - 1];
+        last.result = "[]"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const q = [root];
+      while (q.length) {
+        const n = q.length;
+        let tail = null;
+        for (let i = 0; i < n; i++) {
+          const node = q.shift();
+          tail = node;
+          if (node.left) q.push(node.left);
+          if (node.right) q.push(node.right);
+          snap(`Drain <b>${node.val}</b> — current level tail = <b>${tail.val}</b>.`, [node.id], q.map(x => x.val));
+        }
+        res.push(tail.val);
+        snap(`Level done → append tail <b>${tail.val}</b> to the view.`, [tail.id], q.map(x => x.val));
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(w).";
+      return { steps, result: JSON.stringify(res), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const res = [];
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "DFS: right child first — first node per depth wins"),
+        { type: "array", title: "right side view", data: res, showIdx: true, size: 4 }
+      ]});
+      snap("Right-first pre-order: the FIRST node seen at each depth is the rightmost one.", 0, []);
+      const stack = [[root, 0]];
+      while (stack.length) {
+        const [node, d] = stack.pop();
+        if (!node) continue;
+        if (d === res.length) {
+          res.push(node.val);
+          snap(`Depth ${d} first seen → <b>${node.val}</b> claims the slot.`, [node.id]);
+        } else {
+          snap(`Depth ${d} already claimed by <b>${res[d]}</b> → skip <b>${node.val}</b>.`, [node.id]);
+        }
+        if (node.left) stack.push([node.left, d + 1]);
+        if (node.right) stack.push([node.right, d + 1]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h).";
+      return { steps, result: JSON.stringify(res), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+<script>
+/* ================================================================
+ * PROBLEM 0226 — INVERT BINARY TREE
+ * ================================================================ */
+NC150.register({
+  id: "0226", title: "Invert Binary Tree", difficulty: "Easy",
+  url: "https://leetcode.com/problems/invert-binary-tree/",
+  tags: ["tree", "DFS", "BFS"],
+  approaches: ["Approach 1 · Recursion swap (best)", "Approach 2 · Iterative queue (BFS)"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — swap children, recurse" },
+    { time: "O(n)", space: "O(w)", note: "BFS swap level by level" }
+  ],
+  compare: [
+    { name: "Recursive swap", tech: "swap left/right, recurse both", time: "O(n)", space: "O(h)", when: "general case", best: true },
+    { name: "Iterative queue", tech: "swap on dequeue", time: "O(n)", space: "O(w)", when: "avoid deep recursion", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[4,2,7,1,3,6,9]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[4,2,7,1,3,6,9]" }, result: "mirrored" },
+    { label: "Ex 2", values: { values: "[2,1,3]" }, result: "mirrored" },
+    { label: "Ex 3", values: { values: "[]" }, result: "[]" }
+  ],
+  realLife: "<p>Inverting a binary tree mirrors the classic meme interview — and has real uses: flipping a <b>coordinate system</b> (screen vs math axes), mirroring a scene graph, or transforming an expression tree from prefix to postfix layout.</p>",
+  dsDive: `<h3>Swap the pointers, not the values</h3>
+<p>Each node's two child POINTERS are swapped — the node objects themselves never move in memory. Because every node is visited once and the swap is O(1), the whole mirror is O(n). The recursion depth is the height h; the iterative version uses a queue (BFS) with frontier memory O(w).</p>`,
+  code: [
+    "def invertTree(root):",
+    "    if not root: return None",
+    "    root.left, root.right = root.right, root.left   # swap the two pointers",
+    "    invertTree(root.left)",
+    "    invertTree(root.right)",
+    "    return root"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const swapped = new Set();
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "invert: swap child pointers in place"),
+        { type: "array", title: "nodes swapped", data: Array.from(swapped), showIdx: true, size: 4 }
+      ]});
+      if (!root) {
+        snap("Empty tree → nothing to invert.", 0, []);
+        const last = steps[steps.length - 1];
+        last.result = "[]"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      snap("Recursive swap: swap children, then recurse into both.", 0, []);
+      const stack = [root];
+      while (stack.length) {
+        const node = stack.pop();
+        if (!node) continue;
+        const l = node.left, r = node.right;
+        node.left = r;
+        node.right = l;
+        swapped.add(node.val);
+        snap(`<b>${node.val}</b>: left↔right swapped (${l ? l.val : "∅"} ⇄ ${r ? r.val : "∅"}).`, [node.id]);
+        stack.push(r);
+        stack.push(l);
+      }
+      const last = steps[steps.length - 1];
+      last.result = "mirrored ✓";
+      last.correct = true;
+      last.memNote = `Swapped ${swapped.size} node(s). Time O(n), space O(h).`;
+      return { steps, result: "mirrored ✓", correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const snap = (text, hl, qData) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "BFS invert: swap on dequeue"),
+        { type: "queue", title: "BFS queue", data: qData, front: 0, rear: qData.length - 1 }
+      ]});
+      if (!root) {
+        snap("Empty tree → nothing to invert.", 0, []);
+        const last = steps[steps.length - 1];
+        last.result = "[]"; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "[]", correct: true, memNote: "O(1)." };
+      }
+      const q = [root];
+      while (q.length) {
+        const node = q.shift();
+        const l = node.left, r = node.right;
+        node.left = r;
+        node.right = l;
+        if (r) q.push(r);
+        if (l) q.push(l);
+        snap(`Dequeue <b>${node.val}</b> → swap children (${l ? l.val : "∅"} ⇄ ${r ? r.val : "∅"}), enqueue both.`, [node.id], q.map(x => x.val));
+      }
+      const last = steps[steps.length - 1];
+      last.result = "mirrored ✓";
+      last.correct = true;
+      last.memNote = "Time O(n), space O(w).";
+      return { steps, result: "mirrored ✓", correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0230 — KTH SMALLEST ELEMENT IN A BST
+ * ================================================================ */
+NC150.register({
+  id: "0230", title: "Kth Smallest Element in a BST", difficulty: "Medium",
+  url: "https://leetcode.com/problems/kth-smallest-element-in-a-bst/",
+  tags: ["tree", "BST", "DFS", "stack"],
+  approaches: ["Approach 1 · Inorder + early stop (best)", "Approach 2 · Count left subtree sizes"],
+  complexities: [
+    { time: "O(h + k)", space: "O(h)", note: "BEST — stops at the kth element" },
+    { time: "O(n)", space: "O(h)", note: "binary-search style descent, needs sizes" }
+  ],
+  compare: [
+    { name: "Inorder full", tech: "collect all, take index k-1", time: "O(n)", space: "O(n)", when: "no early stop needed", best: false },
+    { name: "Inorder + stop", tech: "iterate, count to k", time: "O(h+k)", space: "O(h)", when: "general case", best: true },
+    { name: "Subtree sizes", tech: "jump left/right by size", time: "O(h)", space: "O(n) sizes", when: "frequent k queries", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[3,1,4,null,2]" },
+    { name: "k", label: "k =", type: "int", default: "1" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[3,1,4,null,2]", k: "1" }, result: "1" },
+    { label: "Ex 2", values: { values: "[5,3,6,2,4,null,null,1]", k: "3" }, result: "3" },
+    { label: "k = n", values: { values: "[2,1]", k: "2" }, result: "2" }
+  ],
+  realLife: "<p>\"Give me the k-th smallest\" is an <b>order statistic</b> query: paging through a leaderboard, fetching the k-th cheapest product, median finding. A BST with subtree sizes answers it in O(h); without sizes, inorder walks until the k-th element.</p>",
+  dsDive: `<h3>Inorder IS sorted order</h3>
+<p>Left → node → right visits a BST in ascending order, so the k-th visited element is the answer. The explicit-stack version animates beautifully: go left as far as possible, then visit, then step right. Memory = the stack (≤ h). Early stop: we never visit more than k nodes → O(h + k) time.</p>
+<div class="equation">inorder(BST) = sorted sequence · answer = seq[k − 1]</div>`,
+  code: [
+    "def kthSmallest(root, k):",
+    "    stack, node = [], root",
+    "    while stack or node:",
+    "        while node:            # dive to the leftmost node",
+    "            stack.append(node)",
+    "            node = node.left",
+    "        node = stack.pop()     # leftmost unvisited = next smallest",
+    "        k -= 1",
+    "        if k == 0: return node.val   # k-th visit → answer",
+    "        node = node.right      # explore the right subtree",
+    "    return -1"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      let k = Math.max(1, vals.k);
+      const steps = [];
+      const visited = [];
+      const snap = (text, hl, stackData) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "inorder: dive left, visit, step right"),
+        { type: "stack", title: "explicit DFS stack", data: stackData, top: stackData.length - 1 },
+        { type: "array", title: "visited in order", data: visited, showIdx: true, size: 4 }
+      ]});
+      let ans = -1;
+      const stack = [];
+      let node = root, count = 0;
+      snap(`Looking for k-th = ${k}-th smallest. Inorder visits ascending — count to ${k}.`, 0, []);
+      while ((stack.length || node) && ans === -1) {
+        while (node) {
+          stack.push(node);
+          node = node.left;
+          snap(`Dive left: push <b>${stack[stack.length - 1].val}</b>.`, [node ? node.id : -1], stack.map(x => x.val));
+        }
+        node = stack.pop();
+        count++;
+        visited.push(node.val);
+        if (count === k) {
+          snap(`Visit #${count} = <b>${node.val}</b> — that's the ${k}-th smallest! Stop.`, [node.id], stack.map(x => x.val));
+          ans = node.val;
+          break;
+        }
+        snap(`Visit #${count} = <b>${node.val}</b> (not k yet). Now step into its right subtree.`, [node.id], stack.map(x => x.val));
+        node = node.right;
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = true;
+      last.memNote = `Visited ${count} node(s). Time O(h+k), space O(h).`;
+      return { steps, result: String(ans), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      let k = Math.max(1, vals.k);
+      const steps = [];
+      const snap = (text, hl, sizes) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "descend by subtree size"),
+        { type: "array", title: "subtree sizes (nX → size)", data: sizes.map(s => s[0] + "→" + s[1]), showIdx: true, size: 8 }
+      ]});
+      const sizes = [];
+      const sizeOf = (n) => { if (!n) return 0; const s = 1 + sizeOf(n.left) + sizeOf(n.right); sizes.push(["n" + n.id, s]); return s; };
+      snap("Precompute each subtree's node count (one post-order pass, O(n)). Then descend like binary search.", 0, []);
+      sizeOf(root);
+      let node = root, ans = -1;
+      while (node) {
+        const ls = node.left ? sizes.filter(s => s[0] === "n" + node.left.id).pop()[1] : 0;
+        snap(`At <b>${node.val}</b>: left subtree has ${ls} nodes. k = ${k}.`, [node.id], sizes.slice());
+        if (k === ls + 1) { ans = node.val; snap(`k = ${ls} + 1 → <b>${node.val}</b> is the answer.`, [node.id], sizes.slice()); break; }
+        if (k <= ls) { node = node.left; snap(`k ≤ ${ls} → go LEFT (k unchanged = ${k}).`, [], sizes.slice()); }
+        else { k -= ls + 1; node = node.right; snap(`k > ${ls} → subtract ${ls} + 1, go RIGHT (k now ${k}).`, [], sizes.slice()); }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = true;
+      last.memNote = "O(n) preprocessing + O(h) query. Space O(n) for sizes.";
+      return { steps, result: String(ans), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0235 — LOWEST COMMON ANCESTOR OF A BST
+ * ================================================================ */
+NC150.register({
+  id: "0235", title: "Lowest Common Ancestor of a BST", difficulty: "Medium",
+  url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/",
+  tags: ["tree", "BST", "DFS"],
+  approaches: ["Approach 1 · BST value descent (best)", "Approach 2 · Path collection"],
+  complexities: [
+    { time: "O(h)", space: "O(1)", note: "BEST — pure pointer walk, no memory" },
+    { time: "O(h)", space: "O(h)", note: "record the two root→node paths" }
+  ],
+  compare: [
+    { name: "BST value descent", tech: "p, q on different sides → node is LCA", time: "O(h)", space: "O(1)", when: "BST guaranteed", best: true },
+    { name: "Path collection", tech: "compare root→p vs root→q", time: "O(h)", space: "O(h)", when: "generic binary tree", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[6,2,8,0,4,7,9,null,null,3,5]" },
+    { name: "p", label: "p =", type: "int", default: "2" },
+    { name: "q", label: "q =", type: "int", default: "8" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[6,2,8,0,4,7,9,null,null,3,5]", p: "2", q: "8" }, result: "6" },
+    { label: "Ex 2 (p is ancestor)", values: { values: "[6,2,8,0,4,7,9,null,null,3,5]", p: "2", q: "4" }, result: "2" },
+    { label: "Ex 3", values: { values: "[2,1]", p: "2", q: "1" }, result: "2" }
+  ],
+  realLife: "<p>Lowest common ancestor = the <b>nearest shared parent</b>: merging two git branches at their fork point, finding the common ancestor in a family tree, or the deepest shared folder of two file paths.</p>",
+  dsDive: `<h3>The BST lets you walk, not search</h3>
+<p>At any node with the BST property: if p and q are BOTH smaller, the LCA must be in the LEFT subtree; both larger → RIGHT; otherwise (split or equal) THIS node is the lowest common ancestor — because any deeper node would lose one of them.</p>
+<div class="equation">p.val &lt; node.val ∧ q.val &lt; node.val → LCA ∈ left &nbsp;·&nbsp; p.val &gt; node.val ∧ q.val &gt; node.val → LCA ∈ right &nbsp;·&nbsp; else → node</div>
+<p>One pointer walk down the tree: O(h) time, O(1) memory — no stack, no visited set. For a generic binary tree you'd need path comparison (O(h) memory).</p>`,
+  code: [
+    "def lowestCommonAncestor(root, p, q):",
+    "    node = root",
+    "    while node:",
+    "        if p.val < node.val and q.val < node.val:",
+    "            node = node.left      # both smaller → LCA is left",
+    "        elif p.val > node.val and q.val > node.val:",
+    "            node = node.right     # both larger → LCA is right",
+    "        else:",
+    "            return node           # split or equal → THIS is the LCA",
+    "    return None"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const p = vals.p, q = vals.q;
+      const steps = [];
+      const snap = (text, hl, visited) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "pointer walk: both smaller → left, both larger → right"),
+        { type: "array", title: "walk path", data: visited, showIdx: true, size: 4 }
+      ]});
+      const visited = [];
+      let node = root, ans = null;
+      while (node) {
+        visited.push(node.val);
+        snap(`At <b>${node.val}</b>: p=${p}, q=${q}. ${p < node.val && q < node.val ? "Both < " + node.val + " → descend LEFT." : p > node.val && q > node.val ? "Both > " + node.val + " → descend RIGHT." : "They SPLIT here (or equal) → <b>" + node.val + "</b> is the LCA."}`, [node.id], visited.slice());
+        if (p < node.val && q < node.val) node = node.left;
+        else if (p > node.val && q > node.val) node = node.right;
+        else { ans = node.val; break; }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = true;
+      last.memNote = "Time O(h), space O(1) — no extra memory.";
+      return { steps, result: String(ans), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const p = vals.p, q = vals.q;
+      const steps = [];
+      const snap = (text, hl, pathP, pathQ) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "collect root→p and root→q paths, then compare"),
+        { type: "array", title: "path to p", data: pathP, showIdx: true, size: 4 },
+        { type: "array", title: "path to q", data: pathQ, showIdx: true, size: 4 }
+      ]});
+      const pathOf = (target) => {
+        const path = [];
+        let node = root;
+        while (node && node.val !== target) {
+          path.push(node.val);
+          node = target < node.val ? node.left : node.right;
+        }
+        if (node) path.push(node.val);
+        return path;
+      };
+      const pathP = pathOf(p), pathQ = pathOf(q);
+      let ans = null;
+      for (let i = 0; i < Math.min(pathP.length, pathQ.length); i++) {
+        snap(`Compare step ${i}: <b>${pathP[i]}</b> vs <b>${pathQ[i]}</b> — still equal ✓.`, [root.id], pathP.slice(0, i + 1), pathQ.slice(0, i + 1));
+        ans = pathP[i];
+      }
+      snap(`Paths diverge after <b>${ans}</b> → that's the lowest common ancestor.`, [], pathP.slice(), pathQ.slice());
+      const last = steps[steps.length - 1];
+      last.result = String(ans);
+      last.correct = true;
+      last.memNote = "Time O(h), space O(h) for both paths.";
+      return { steps, result: String(ans), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0297 — SERIALIZE AND DESERIALIZE BINARY TREE
+ * ================================================================ */
+NC150.register({
+  id: "0297", title: "Serialize and Deserialize Binary Tree", difficulty: "Hard",
+  url: "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/",
+  tags: ["tree", "BFS", "string", "design"],
+  approaches: ["Approach 1 · BFS level-order tokens (best)", "Approach 2 · Preorder with nulls"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — every node + null marker as a token" },
+    { time: "O(n)", space: "O(n)", note: "preorder recursion + null tokens" }
+  ],
+  compare: [
+    { name: "BFS tokens", tech: "level-order with nulls, comma separated", time: "O(n)", space: "O(n)", when: "trees can be deep (no recursion)", best: true },
+    { name: "Preorder + nulls", tech: "NLR with X markers, recursive rebuild", time: "O(n)", space: "O(n)", when: "concise string needed", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[1,2,3,null,null,4,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[1,2,3,null,null,4,5]" }, result: "\"1,2,3,N,N,4,5,N,N,N,N\"" },
+    { label: "Ex 2", values: { values: "[]" }, result: "\"\"" },
+    { label: "Skewed", values: { values: "[1,null,2,null,3]" }, result: "\"1,N,2,N,3,N,N\"" }
+  ],
+  realLife: "<p>Serialization is how trees leave memory: <b>sending a decision tree to another service</b>, caching a parsed AST in Redis, persisting a scene graph to disk. Any format that preserves both values AND structure (nulls) round-trips exactly.</p>",
+  dsDive: `<h3>Why nulls are mandatory</h3>
+<p>Values alone cannot rebuild shape: <b>[1,2,3]</b> could be a left chain or a right chain. Encoding every missing child as a token (e.g. <b>N</b>) makes the structure explicit. BFS serialization writes level by level; deserialization replays the same BFS and attaches children in order. Cost: O(n) tokens, O(n) time, O(w) queue during rebuild.</p>`,
+  code: [
+    "def serialize(root):",
+    "    if not root: return ''",
+    "    q, parts = deque([root]), []",
+    "    while q:",
+    "        node = q.popleft()",
+    "        parts.append('N' if node is None else str(node.val))",
+    "        if node: q.append(node.left); q.append(node.right)   # push nulls too",
+    "    return ','.join(parts)",
+    "def deserialize(data):",
+    "    if not data: return None",
+    "    vals = data.split(',')",
+    "    root = TreeNode(int(vals[0]))",
+    "    q, i = deque([root]), 1",
+    "    while q:",
+    "        node = q.popleft()",
+    "        if vals[i] != 'N': node.left = TreeNode(int(vals[i])); q.append(node.left)",
+    "        i += 1",
+    "        if vals[i] != 'N': node.right = TreeNode(int(vals[i])); q.append(node.right)",
+    "        i += 1",
+    "    return root"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const tokens = [];
+      const snap = (text, hl, qData) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "serialize: BFS with null markers"),
+        { type: "queue", title: "BFS queue", data: qData, front: 0, rear: qData.length - 1 },
+        { type: "string", title: "serialized string", data: (tokens.length ? tokens.join(",") : "").split(""), hideAddr: true }
+      ]});
+      if (!root) {
+        snap("Empty tree → empty string.", 0, []);
+        const last = steps[steps.length - 1];
+        last.result = "\"\""; last.correct = true; last.memNote = "O(1).";
+        return { steps, result: "\"\"", correct: true, memNote: "O(1)." };
+      }
+      const q = [root];
+      while (q.length) {
+        const node = q.shift();
+        tokens.push(node ? String(node.val) : "N");
+        if (node) {
+          q.push(node.left);
+          q.push(node.right);
+        }
+        snap(`Dequeue <b>${node ? node.val : "∅"}</b> → append token <b>${node ? node.val : "N"}</b>.`, node ? [node.id] : [], q.map(x => x ? x.val : "N"));
+      }
+      const out = tokens.join(",");
+      snap(`Done → <b>"${out}"</b>. Every null child is a token → structure preserved.`, [], []);
+      const last = steps[steps.length - 1];
+      last.result = "\"" + out + "\"";
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n) string + O(w) queue.";
+      return { steps, result: "\"" + out + "\"", correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const toks = [];
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "serialize: preorder (root, left, right) with nulls"),
+        { type: "string", title: "token stream", data: (toks.length ? toks.join(",") : "").split(""), hideAddr: true }
+      ]});
+      snap("Preorder recursion: write value, then left, then right — writing N for every null child.", 0, []);
+      const stack = [root];
+      while (stack.length) {
+        const node = stack.pop();
+        toks.push(node ? String(node.val) : "N");
+        if (node) {
+          snap(`Visit <b>${node.val}</b> → token. Push right, then left (left pops first).`, [node.id]);
+          stack.push(node.right);
+          stack.push(node.left);
+        } else {
+          snap(`Null child → token <b>N</b>.`, []);
+        }
+      }
+      const out = toks.join(",");
+      const last = steps[steps.length - 1];
+      last.result = "\"" + out + "\"";
+      last.correct = true;
+      last.memNote = "Time O(n), space O(n).";
+      return { steps, result: "\"" + out + "\"", correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0543 — DIAMETER OF BINARY TREE
+ * ================================================================ */
+NC150.register({
+  id: "0543", title: "Diameter of Binary Tree", difficulty: "Easy",
+  url: "https://leetcode.com/problems/diameter-of-binary-tree/",
+  tags: ["tree", "DFS", "post-order"],
+  approaches: ["Approach 1 · Post-order pair (best)", "Approach 2 · Two-pass heights"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — height + best-in-one in a single pass" },
+    { time: "O(n²)", space: "O(h)", note: "recompute height at every node" }
+  ],
+  compare: [
+    { name: "Two-pass", tech: "height() per node, track max sum", time: "O(n²)", space: "O(h)", when: "conceptual only", best: false },
+    { name: "Post-order pair", tech: "return (height, bestThrough)", time: "O(n)", space: "O(h)", when: "general case", best: true }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[1,2,3,4,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[1,2,3,4,5]" }, result: "3 (4→2→1→3)" },
+    { label: "Ex 2", values: { values: "[1,2]" }, result: "1" },
+    { label: "Through root", values: { values: "[1,2,3,null,null,4,5]" }, result: "3 (2→1→4 or 2→1→5)" }
+  ],
+  realLife: "<p>Diameter = the longest path between any two leaves: the <b>longest route in a network topology</b>, the maximum distance between two servers, or the span of a family tree. It's the tree analogue of the diameter of a circle.</p>",
+  dsDive: `<h3>Height up, diameter across</h3>
+<p>At every node, the longest path THROUGH it is <b>height(left) + height(right)</b> (the two deepest leaves on either side, joined at this node). The global diameter is the max of those sums. Since height is already computed post-order, one pass returns both: the height to the parent, and the running best.</p>
+<div class="equation">diameter(v) = max(diameter(L), diameter(R), height(L) + height(R)) · height(v) = 1 + max(height(L), height(R))</div>`,
+  code: [
+    "def diameterOfBinaryTree(root):",
+    "    best = 0",
+    "    def height(node):",
+    "        nonlocal best",
+    "        if not node: return 0",
+    "        l, r = height(node.left), height(node.right)",
+    "        best = max(best, l + r)     # longest path THROUGH this node",
+    "        return 1 + max(l, r)",
+    "    height(root)",
+    "    return best"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      const marks = [];
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "post-order: heights bubble up, diameter = max(l + r)"),
+        { type: "array", title: "heights (nX → height)", data: marks.map(m => m[0] + "→" + m[1]), showIdx: true, size: 8 }
+      ]});
+      let best = 0;
+      snap("Post-order. At each node compute height, and update best with height(left) + height(right).", 0, []);
+      const stack = [[root, false]];
+      while (stack.length) {
+        const [node, done] = stack[stack.length - 1];
+        if (!done) {
+          stack[stack.length - 1][1] = true;
+          if (node.right) stack.push([node.right, false]);
+          if (node.left) stack.push([node.left, false]);
+          snap(`Descend to <b>${node.val}</b>.`, [node.id]);
+          continue;
+        }
+        const hL = node.left ? marks.filter(m => m[0] === "n" + node.left.id).pop()[1] : 0;
+        const hR = node.right ? marks.filter(m => m[0] === "n" + node.right.id).pop()[1] : 0;
+        stack.pop();
+        best = Math.max(best, hL + hR);
+        marks.push(["n" + node.id, 1 + Math.max(hL, hR)]);
+        snap(`<b>${node.val}</b>: heights ${hL} + ${hR} → path through me = ${hL + hR}; best = ${best}. My height = ${1 + Math.max(hL, hR)}.`, [node.id]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h).";
+      return { steps, result: String(best), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      let best = 0, visited = 0;
+      const heightOf = (node) => { if (!node) return 0; visited++; return 1 + Math.max(heightOf(node.left), heightOf(node.right)); };
+      const snap = (text, hl) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "naive: recompute both heights at every node"),
+        { type: "array", title: "nodes expanded", data: [visited], showIdx: true, size: 4 }
+      ]});
+      snap("Naive: for each node compute height(left) + height(right) from scratch — O(n) work per level.", 0, []);
+      const stack = [root];
+      while (stack.length) {
+        const node = stack.pop();
+        if (!node) continue;
+        const l = heightOf(node.left), r = heightOf(node.right);
+        best = Math.max(best, l + r);
+        snap(`<b>${node.val}</b>: recompute heights (${l}, ${r}) → candidate ${l + r}, best ${best}. ${visited} nodes expanded so far.`, [node.id]);
+        stack.push(node.right);
+        stack.push(node.left);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(best);
+      last.correct = true;
+      last.memNote = "Time O(n²) worst, space O(h).";
+      return { steps, result: String(best), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 0572 — SUBTREE OF ANOTHER TREE
+ * ================================================================ */
+NC150.register({
+  id: "0572", title: "Subtree of Another Tree", difficulty: "Easy",
+  url: "https://leetcode.com/problems/subtree-of-another-tree/",
+  tags: ["tree", "DFS", "string"],
+  approaches: ["Approach 1 · Match-check at every node (best)", "Approach 2 · Serialize + substring"],
+  complexities: [
+    { time: "O(n·m)", space: "O(h)", note: "BEST — isSubtree check per node" },
+    { time: "O(n + m)", space: "O(n + m)", note: "stringify both, substring search" }
+  ],
+  compare: [
+    { name: "Match at each node", tech: "isSameTree on every node of root", time: "O(n·m)", space: "O(h)", when: "trees are small", best: true },
+    { name: "Serialize + search", tech: "preorder strings with nulls, contains", time: "O(n+m)", space: "O(n+m)", when: "large trees", best: false }
+  ],
+  inputs: [
+    { name: "root", label: "root (level order) =", type: "list", default: "[3,4,5,1,2]" },
+    { name: "sub", label: "subRoot (level order) =", type: "list", default: "[4,1,2]" }
+  ],
+  examples: [
+    { label: "Ex 1 (is subtree)", values: { root: "[3,4,5,1,2]", sub: "[4,1,2]" }, result: "true" },
+    { label: "Ex 2 (trap!)", values: { root: "[3,4,5,1,2,null,null,null,null,0]", sub: "[4,1,2]" }, result: "false — extra child 0" },
+    { label: "Ex 3 (same)", values: { root: "[1,1]", sub: "[1]" }, result: "true" }
+  ],
+  realLife: "<p>\"Is this pattern inside that structure?\" — searching a <b>DOM for a component subtree</b>, finding a phrase AST inside a document AST, matching a template against a larger scene graph. The serialize trick powers exact pattern matching at scale.</p>",
+  dsDive: `<h3>Why serialization must include nulls</h3>
+<p>Naive check: walk every node of root and run isSameTree(root_node, subRoot) — O(n·m). The trap: <b>[1,2]</b> is a subtree of <b>[1,2,null]</b> but NOT of <b>[1,2,null,null,3]</b> — structure must match exactly, including missing children. Serializing with null markers (e.g. <b>1,N,2</b> style) turns the whole problem into a substring search: <code>ser(root).indexOf(ser(sub)) !== -1</code> in O(n + m).</p>`,
+  code: [
+    "def isSubtree(root, subRoot):",
+    "    def same(a, b):",
+    "        if not a and not b: return True",
+    "        if not a or not b or a.val != b.val: return False",
+    "        return same(a.left, b.left) and same(a.right, b.right)",
+    "    if not root: return False",
+    "    if same(root, subRoot): return True        # match HERE?",
+    "    return isSubtree(root.left, subRoot) or isSubtree(root.right, subRoot)  # else search children"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.root);
+      const sub = buildLevelOrder(vals.sub);
+      assignIds(root); assignIds(sub);
+      const steps = [];
+      let found = false, tried = 0;
+      const snap = (text, hlR, hlS) => steps.push({ text, code: 0, mem: [
+        treeView(root, hlR, "root tree — every node is a match candidate"),
+        treeView(sub, hlS, "subRoot — the pattern")
+      ]});
+      snap("Strategy: at every node of root, run the Same-Tree check against subRoot. First match wins.", 0, [], []);
+      const matchAt = (a, b) => {
+        if (!a && !b) return true;
+        if (!a || !b || a.val !== b.val) return false;
+        return matchAt(a.left, b.left) && matchAt(a.right, b.right);
+      };
+      const stack = [root];
+      while (stack.length && !found) {
+        const node = stack.pop();
+        if (!node) continue;
+        tried++;
+        if (matchAt(node, sub)) {
+          snap(`✓ <b>${node.val}</b> and subRoot are the SAME tree → subtree found!`, [node.id], [sub.id]);
+          found = true;
+          break;
+        }
+        snap(`<b>${node.val}</b>: same-tree check fails → push children as new candidates.`, [node.id], []);
+        stack.push(node.right);
+        stack.push(node.left);
+      }
+      if (!found) snap(`No candidate matched → subRoot is not a subtree.`, [], []);
+      const last = steps[steps.length - 1];
+      last.result = String(found);
+      last.correct = true;
+      last.memNote = `Tried ${tried} candidate(s). Time O(n·m), space O(h).`;
+      return { steps, result: String(found), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.root);
+      const sub = buildLevelOrder(vals.sub);
+      assignIds(root); assignIds(sub);
+      const steps = [];
+      const snap = (text, hlR, serR, serS) => steps.push({ text, code: 0, mem: [
+        treeView(root, hlR, "root tree"),
+        { type: "string", title: "serialized root (preorder + N for nulls)", data: serR.split(""), hideAddr: true },
+        { type: "string", title: "serialized subRoot", data: serS.split(""), hideAddr: true }
+      ]});
+      const serialize = (node) => {
+        if (!node) return "N";
+        return node.val + "," + serialize(node.left) + "," + serialize(node.right);
+      };
+      const serR = serialize(root), serS = serialize(sub);
+      snap("Serialize BOTH trees with explicit null markers (N) — then it's just a substring search.", 0, serR, serS);
+      const found = serR.includes(serS);
+      snap(`root string contains sub string? <b>${found ? "YES" : "NO"}</b>. O(n+m) single pass.`, [], serR, serS);
+      const last = steps[steps.length - 1];
+      last.result = String(found);
+      last.correct = true;
+      last.memNote = "Time O(n+m), space O(n+m) for the strings.";
+      return { steps, result: String(found), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+/* ================================================================
+ * PROBLEM 1448 — COUNT GOOD NODES IN BINARY TREE
+ * ================================================================ */
+NC150.register({
+  id: "1448", title: "Count Good Nodes in Binary Tree", difficulty: "Medium",
+  url: "https://leetcode.com/problems/count-good-nodes-in-binary-tree/",
+  tags: ["tree", "DFS", "pre-order"],
+  approaches: ["Approach 1 · Pre-order with max-so-far (best)", "Approach 2 · Iterative stack with max"],
+  complexities: [
+    { time: "O(n)", space: "O(h)", note: "BEST — one pass, carry the max on the path" },
+    { time: "O(n)", space: "O(h)", note: "explicit stack holds (node, maxSoFar)" }
+  ],
+  compare: [
+    { name: "Pre-order recursion", tech: "node is good if val ≥ max on root→node path", time: "O(n)", space: "O(h)", when: "general case", best: true },
+    { name: "Iterative stack", tech: "same logic, explicit frames", time: "O(n)", space: "O(h)", when: "deep trees", best: false }
+  ],
+  inputs: [
+    { name: "values", label: "level order (null = missing) =", type: "list", default: "[3,1,4,3,null,1,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { values: "[3,1,4,3,null,1,5]" }, result: "4 (3,3,4,5)" },
+    { label: "Ex 2", values: { values: "[3,3,null,4,2]" }, result: "3 (3,3,4)" },
+    { label: "Ex 3", values: { values: "[1]" }, result: "1" }
+  ],
+  realLife: "<p>\"Good node\" = a new <b>record high</b> along the path: stock market all-time highs along a timeline, the maximum uptime across a cluster path, or the largest version seen in a dependency chain.</p>",
+  dsDive: `<h3>Carry the max, don't look back</h3>
+<p>A node is good iff its value is ≥ EVERY ancestor's value — equivalently ≥ the MAXIMUM along the root→node path. Pre-order naturally carries that max as a parameter. Memory: just the call stack (h). This is a classic 'state passed down' pattern vs the 'state carried up' (post-order) pattern seen in diameter/balance problems.</p>`,
+  code: [
+    "def goodNodes(root):",
+    "    def dfs(node, path_max):",
+    "        if not node: return 0",
+    "        good = 1 if node.val >= path_max else 0   # record high?",
+    "        path_max = max(path_max, node.val)       # update for children",
+    "        return good + dfs(node.left, path_max) + dfs(node.right, path_max)",
+    "    return dfs(root, -10**9)"
+  ],
+  steps: [
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      let count = 0, pathMax = -Infinity;
+      const snap = (text, hl, path) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "pre-order: carry max-so-far down the path"),
+        { type: "array", title: "path max so far", data: [pathMax === -Infinity ? "−∞" : pathMax], showIdx: true, size: 4 },
+        { type: "array", title: "good count", data: [count], showIdx: true, size: 4 }
+      ]});
+      snap("Root is always good (nothing before it). Carry the max value seen on the path.", 0, []);
+      const stack = [[root, -Infinity]];
+      while (stack.length) {
+        const [node, mx] = stack.pop();
+        if (!node) continue;
+        pathMax = mx;
+        if (node.val >= mx) {
+          count++;
+          snap(`<b>${node.val}</b> ≥ path max ${mx === -Infinity ? "−∞" : mx} → GOOD. Count = ${count}.`, [node.id], []);
+        } else {
+          snap(`<b>${node.val}</b> < path max ${mx} → not good (hidden by ${mx}). Count stays ${count}.`, [node.id], []);
+        }
+        const nm = Math.max(mx, node.val);
+        if (node.right) stack.push([node.right, nm]);
+        if (node.left) stack.push([node.left, nm]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(count);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h).";
+      return { steps, result: String(count), correct: true, memNote: last.memNote };
+    },
+    function (vals) {
+      _nid = 1;
+      const root = buildLevelOrder(vals.values);
+      assignIds(root);
+      const steps = [];
+      let count = 0;
+      const snap = (text, hl, stackData) => steps.push({ text, code: 0, mem: [
+        treeView(root, hl, "iterative: stack frames carry (node, maxSoFar)"),
+        { type: "stack", title: "explicit stack", data: stackData, top: stackData.length - 1 }
+      ]});
+      snap("Same logic without recursion: each stack frame remembers its own max-so-far.", 0, []);
+      const stack = [[root, -Infinity]];
+      while (stack.length) {
+        const [node, mx] = stack.pop();
+        if (!node) continue;
+        if (node.val >= mx) {
+          count++;
+          snap(`<b>${node.val}</b> ≥ ${mx === -Infinity ? "−∞" : mx} → GOOD (${count} so far).`, [node.id], stack.map(x => x[0].val + "|" + (x[1] === -Infinity ? "−∞" : x[1])));
+        } else {
+          snap(`<b>${node.val}</b> < ${mx} → not good.`, [node.id], stack.map(x => x[0].val + "|" + (x[1] === -Infinity ? "−∞" : x[1])));
+        }
+        const nm = Math.max(mx, node.val);
+        if (node.right) stack.push([node.right, nm]);
+        if (node.left) stack.push([node.left, nm]);
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(count);
+      last.correct = true;
+      last.memNote = "Time O(n), space O(h) stack.";
+      return { steps, result: String(count), correct: true, memNote: last.memNote };
+    }
+  ]
+});
+</script>
+
+<script>
+NC150.init(SECTION);
+</script>
+</body>
+</html>

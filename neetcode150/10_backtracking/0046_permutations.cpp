@@ -1,24 +1,104 @@
-#include <bits/stdc++.h>
+/*
+ * =====================================================================
+ * LeetCode 46  : Permutations                                        (Medium)
+ * https://leetcode.com/problems/permutations/
+ * Category   : Backtracking
+ * ---------------------------------------------------------------------
+ * PROBLEM
+ *   Return ALL permutations of a distinct-integer array (n! results).
+ * ---------------------------------------------------------------------
+ * INTUITION
+ *   Build permutations slot by slot: at each level pick an unused
+ *   element — the set of choices shrinks by one each step. A swap
+ *   trick avoids an extra "used[]" array.
+ * ---------------------------------------------------------------------
+ * APPROACH 1 · Swap-based DFS (best)
+ *   dfs(pos): if pos == n, record. Else for j in pos..n-1: swap(pos,j),
+ *   recurse(pos+1), swap back. The array itself carries the state.
+ * APPROACH 2 · Used[] + fresh copy
+ *   Classic: keep a used[] bitmap; append unused values to a running
+ *   permutation; backtrack by popping and un-marking.
+ * ---------------------------------------------------------------------
+ * DEEP DIVE · Swap vs used[] — same tree, different state encoding
+ *   The swap version permutes IN PLACE: after fixing position pos, the
+ *   "used" elements live left of pos — encoded by position, no extra
+ *   memory. Each full permutation costs n swaps to unwind. The used[]
+ *   version copies n elements per leaf (O(n) extra per permutation)
+ *   but reads more naturally. Both enumerate exactly n! leaves; total
+ *   work O(n · n!) because every leaf must be materialized.
+ * ---------------------------------------------------------------------
+ * TIME COMPLEXITY : O(n · n!).
+ * MEMORY COMPLEXITY: O(n) — recursion depth (output not counted).
+ * =====================================================================
+ */
+#include <iostream>
+#include <vector>
+#include <algorithm>
 #include <chrono>
-using namespace std;
-/* LeetCode 46: Permutations - Medium */
-// var1: swap in-place
-void bt(vector<int>& n, int s, vector<vector<int>>& res){
-    if(s==(int)n.size()){ res.push_back(n); return; }
-    for(int i=s;i<(int)n.size();i++){ swap(n[s],n[i]); bt(n,s+1,res); swap(n[s],n[i]); }
+#include <sys/resource.h>
+
+class Solution_1 {
+    std::vector<std::vector<int>> out_;
+    std::vector<int>* a_;
+    int n_;
+    void dfs(int pos) {
+        if (pos == n_) { out_.push_back(*a_); return; }
+        for (int j = pos; j < n_; ++j) {
+            std::swap((*a_)[pos], (*a_)[j]);
+            dfs(pos + 1);
+            std::swap((*a_)[pos], (*a_)[j]);          // backtrack
+        }
+    }
+public:
+    std::vector<std::vector<int>> permute(std::vector<int>& nums) {
+        a_ = &nums;
+        n_ = static_cast<int>(nums.size());
+        dfs(0);
+        return out_;
+    }
+};
+
+class Solution_2 {
+    std::vector<std::vector<int>> out_;
+    std::vector<int> cur_;
+    std::vector<int>* a_;
+    std::vector<bool> used_;
+    void dfs() {
+        if (cur_.size() == a_->size()) { out_.push_back(cur_); return; }
+        for (size_t i = 0; i < a_->size(); ++i) {
+            if (used_[i]) continue;
+            used_[i] = true;
+            cur_.push_back((*a_)[i]);
+            dfs();
+            cur_.pop_back();                          // backtrack
+            used_[i] = false;
+        }
+    }
+public:
+    std::vector<std::vector<int>> permute(std::vector<int>& nums) {
+        a_ = &nums;
+        used_.assign(nums.size(), false);
+        dfs();
+        return out_;
+    }
+};
+
+static long long nowUs() {
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
 }
-// var2: next_permutation
-vector<vector<int>> v2(vector<int> n){
-    sort(n.begin(),n.end()); vector<vector<int>> res;
-    do { res.push_back(n); } while(next_permutation(n.begin(),n.end()));
-    return res;
+static long memKb() { struct rusage r{}; getrusage(RUSAGE_SELF, &r); return r.ru_maxrss; }
+
+int main() {
+    std::vector<int> nums = {1, 2, 3};
+    const long mem0 = memKb();
+    auto t0 = nowUs();
+    auto r1 = Solution_1().permute(nums);
+    nums = {1, 2, 3};
+    auto r2 = Solution_2().permute(nums);
+    auto t1 = nowUs();
+    std::cout << "A1 size=" << r1.size() << " A2 size=" << r2.size()
+              << " (want 6) " << (r1.size() == 6 && r2.size() == 6 ? "PASS" : "FAIL")
+              << " | time: " << (t1 - t0) << " us | mem: " << (memKb() - mem0) << " KB\n";
+    return 0;
 }
-int main(){
-    vector<int> nums={1,2,3};
-    auto t1=chrono::high_resolution_clock::now(); vector<vector<int>> r1; bt(nums,0,r1); cout<<"var1: "<<r1.size()<<" perms"<<endl;
-    auto t2=chrono::high_resolution_clock::now(); cout<<"v1 time="<<chrono::duration_cast<chrono::nanoseconds>(t2-t1).count()/1000.0<<"us"<<endl;
-    auto t3=chrono::high_resolution_clock::now(); auto r2=v2(nums); cout<<"var2: "<<r2.size()<<" perms"<<endl;
-    auto t4=chrono::high_resolution_clock::now(); cout<<"v2 time="<<chrono::duration_cast<chrono::nanoseconds>(t4-t3).count()/1000.0<<"us"<<endl;
-}
-// var1 mem = {} and time = {}
-// var2 mem = {} and time = {}

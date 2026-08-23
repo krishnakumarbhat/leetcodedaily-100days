@@ -1,28 +1,91 @@
-#include <bits/stdc++.h>
+/*
+ * =====================================================================
+ * LeetCode 215 : Kth Largest Element in an Array                    (Medium)
+ * https://leetcode.com/problems/kth-largest-element-in-an-array/
+ * Category   : Heap / Priority queue
+ * ---------------------------------------------------------------------
+ * PROBLEM
+ *   Given an integer array nums and an integer k, return the k-th
+ *   largest element (1-indexed) without sorting the whole array.
+ * ---------------------------------------------------------------------
+ * INTUITION
+ *   Sorting gives O(n log n) but we only need ONE element. A min-heap
+ *   of size k keeps the k LARGEST values seen so far — its top is the
+ *   k-th largest. Alternatively quickselect partitions in O(n) average.
+ * ---------------------------------------------------------------------
+ * APPROACH 1 · Min-heap of size k (best)
+ *   Push every value; whenever the heap exceeds k, pop the smallest.
+ *   After the sweep the heap holds the k largest values, top = answer.
+ * APPROACH 2 · std::nth_element (quickselect in libstdc++)
+ *   nth_element puts the n-k-th smallest exactly where it belongs.
+ * ---------------------------------------------------------------------
+ * DEEP DIVE · Why a MIN-heap and not a max-heap?
+ *   Heap of size k: a max-heap can only answer "largest 1"; popping
+ *   its root discards the largest and keeps... the wrong side. The
+ *   min-heap keeps the SMALLEST of the k best — exactly the k-th
+ *   largest. In C++ std::priority_queue is a max-heap by default, so
+ *   we use std::greater<int> to flip it. Every push is O(log k);
+ *   total O(n log k) — faster than O(n log n) sort when k < n.
+ * ---------------------------------------------------------------------
+ * TIME COMPLEXITY : O(n log k) — n pushes, each O(log k).
+ * MEMORY COMPLEXITY: O(k)         — the heap holds at most k values.
+ * =====================================================================
+ */
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <functional>    // std::greater — min-heap comparator
+#include <algorithm>     // std::nth_element
 #include <chrono>
-using namespace std;
-/* LeetCode 215: Kth Largest Element in an Array - Medium */
-// var1: sort
-int v1(vector<int> n, int k){ sort(n.rbegin(),n.rend()); return n[k-1]; }
-// var2: min-heap
-int v2(vector<int>& n, int k){ priority_queue<int,vector<int>,greater<int>> pq; for(int x:n){pq.push(x);if((int)pq.size()>k)pq.pop();} return pq.top(); }
-// var3: nth_element (QuickSelect in STL)
-int v3(vector<int> n, int k){ nth_element(n.begin(),n.begin()+n.size()-k,n.end()); return n[n.size()-k]; }
-int main(){
-    vector<int> nums={3,2,1,5,6,4};
-    auto t1=chrono::high_resolution_clock::now(); cout<<"var1: "<<v1(nums,2)<<endl;
-    auto t2=chrono::high_resolution_clock::now(); cout<<"v1 time="<<chrono::duration_cast<chrono::nanoseconds>(t2-t1).count()/1000.0<<"us"<<endl;
-    auto t3=chrono::high_resolution_clock::now(); cout<<"var2: "<<v2(nums,2)<<endl;
-    auto t4=chrono::high_resolution_clock::now(); cout<<"v2 time="<<chrono::duration_cast<chrono::nanoseconds>(t4-t3).count()/1000.0<<"us"<<endl;
-    auto t5=chrono::high_resolution_clock::now(); cout<<"var3: "<<v3(nums,2)<<endl;
-    auto t6=chrono::high_resolution_clock::now(); cout<<"v3 time="<<chrono::duration_cast<chrono::nanoseconds>(t6-t5).count()/1000.0<<"us"<<endl;
+#include <sys/resource.h>
+
+class Solution_1 {
+public:
+    int findKthLargest(std::vector<int>& nums, int k) {
+        std::priority_queue<int, std::vector<int>, std::greater<int>> heap;
+        for (int x : nums) {
+            heap.push(x);                     // candidate for top-k
+            if (heap.size() > static_cast<size_t>(k)) heap.pop();  // drop smallest
+        }
+        return heap.top();                    // k-th largest = min of top-k
+    }
+};
+
+class Solution_2 {
+public:
+    int findKthLargest(std::vector<int>& nums, int k) {
+        std::nth_element(nums.begin(), nums.begin() + nums.size() - k, nums.end());
+        return nums[nums.size() - k];         // element at its sorted position
+    }
+};
+
+static long long nowUs() {
+    return std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
 }
-// var1 mem = {} and time = {}
-// var2 mem = {} and time = {}
-// var3 mem = {} and time = {}
+static long memKb() { struct rusage r{}; getrusage(RUSAGE_SELF, &r); return r.ru_maxrss; }
 
-
-what is this radom quik sort 
-
-
-
+int main() {
+    struct Case { std::vector<int> nums; int k; int expect; };
+    const Case cases[] = {
+        {{3,2,1,5,6,4}, 2, 5},
+        {{3,2,3,1,2,4,5,5,6}, 4, 4},
+        {{1}, 1, 1}
+    };
+    const long mem0 = memKb();
+    auto t0 = nowUs();
+    bool allOk = true;
+    for (const auto& c : cases) {
+        std::vector<int> a = c.nums, b = c.nums;
+        int r1 = Solution_1().findKthLargest(a, c.k);
+        int r2 = Solution_2().findKthLargest(b, c.k);
+        bool ok = r1 == c.expect && r2 == c.expect;
+        allOk = allOk && ok;
+        std::cout << "k=" << c.k << " → A1=" << r1 << " A2=" << r2
+                  << " (want " << c.expect << ") " << (ok ? "PASS" : "FAIL") << "\n";
+    }
+    auto t1 = nowUs();
+    std::cout << (allOk ? "PASS : all cases" : "FAIL") << " | time: " << (t1 - t0)
+              << " us | mem: " << (memKb() - mem0) << " KB\n";
+    return 0;
+}

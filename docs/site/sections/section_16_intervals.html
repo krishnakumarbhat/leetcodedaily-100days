@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16 · Intervals — NeetCode 150 Interactive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<nav id="topnav" class="topnav"></nav>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <h3>Problems</h3>
+    <ul id="problemList" class="problem-list"></ul>
+  </aside>
+
+  <main class="content">
+
+    <div class="panel problem-header">
+      <h1 id="problemTitle"></h1>
+      <div class="sub" id="problemSub"></div>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="panel">
+      <h2>🧪 Try it yourself</h2>
+      <div class="input-area" id="inputForm"></div>
+      <div class="example-tags" id="exampleTags"></div>
+      <div class="controls">
+        <button id="btnRun" class="primary">▶ Run</button>
+        <button id="btnPlay">▶ Play</button>
+        <button id="btnStep">⏭ Step</button>
+        <button id="btnBack">⏮ Back</button>
+        <button id="btnReset">↺ Reset</button>
+        <label>speed <input type="range" id="speed" min="200" max="2500" value="900"></label>
+        <label><span id="stepCounter">0</span> · <input type="range" id="scrub" min="0" max="0" value="0" style="width:140px"></label>
+      </div>
+      <div class="step-text" id="stepText"></div>
+      <div class="viz" id="memoryView"></div>
+      <div class="result-box" id="resultBox">
+        <div class="res-label">Output</div>
+        <div class="res-value"></div>
+        <div class="mem-line"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⚙ Approaches</h2>
+      <div class="tabs" id="tabs"></div>
+      <div class="code-panel" id="codePanel"></div>
+      <div id="approachTable" style="margin-top:12px"></div>
+    </div>
+
+    <div class="panel dive">
+      <h2>🔬 Data-structure deep dive</h2>
+      <div id="dsDive"></div>
+    </div>
+
+    <div class="panel real-life">
+      <h2>🌍 Where is this used in real life?</h2>
+      <div id="realLife"></div>
+    </div>
+
+  </main>
+</div>
+
+<footer>NeetCode 150 · Interactive learning playground — every solution shows time + memory complexity and animates data movement in memory.</footer>
+
+<script>
+/* ============ SIDEBAR NAV (shared by all sections) ============ */
+window.NC150_NAV = [
+  { id: "01", short: "01 Arrays/Hash", file: "section_01_arrays_and_hashing.html" },
+  { id: "02", short: "02 Two Pointers", file: "section_02_two_pointers.html" },
+  { id: "03", short: "03 Sliding Win", file: "section_03_sliding_window.html" },
+  { id: "04", short: "04 Stack", file: "section_04_stack.html" },
+  { id: "05", short: "05 Binary Search", file: "section_05_binary_search.html" },
+  { id: "06", short: "06 Linked List", file: "section_06_linked_list.html" },
+  { id: "07", short: "07 Trees", file: "section_07_trees.html" },
+  { id: "08", short: "08 Tries", file: "section_08_tries.html" },
+  { id: "09", short: "09 Heap/PQ", file: "section_09_heap.html" },
+  { id: "10", short: "10 Backtracking", file: "section_10_backtracking.html" },
+  { id: "11", short: "11 Graphs", file: "section_11_graphs.html" },
+  { id: "12", short: "12 Adv Graphs", file: "section_12_advanced_graphs.html" },
+  { id: "13", short: "13 1D DP", file: "section_13_1d_dp.html" },
+  { id: "14", short: "14 2D DP", file: "section_14_2d_dp.html" },
+  { id: "15", short: "15 Greedy", file: "section_15_greedy.html" },
+  { id: "16", short: "16 Intervals", file: "section_16_intervals.html" },
+  { id: "17", short: "17 Math/Geo", file: "section_17_math_geometry.html" },
+  { id: "18", short: "18 Bit Manip", file: "section_18_bit_manipulation.html" }
+];
+</script>
+
+<script src="../assets/engine.js"></script>
+<script>
+/* ============ SECTION METADATA ============ */
+const SECTION = { id: "16", title: "Intervals" };
+
+/* ============ SHARED HELPERS ============ */
+function ivStr(iv) { return "[" + iv.join(",") + "]"; }
+function sortIv(a) { return a.slice().sort((x, y) => x[0] - y[0] || x[1] - y[1]); }
+function sortIvEnd(a) { return a.slice().sort((x, y) => x[1] - y[1] || x[0] - y[0]); }
+function arrView(ivs, cls, title) {
+  return { type: "array", title: title || "intervals", data: (ivs || []).map(ivStr), cls: cls || {}, showIdx: true, size: 8 };
+}
+function heapPush(arr, item) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) {
+    const m = (lo + hi) >> 1, a = arr[m];
+    if (a[0] < item[0] || (a[0] === item[0] && a[1] < item[1])) lo = m + 1; else hi = m;
+  }
+  arr.splice(lo, 0, item);
+  return lo;
+}
+function heapPop(arr) { return arr.shift(); }
+function heapView(heap, title) {
+  return { type: "queue", title: title || "min-heap", data: heap.map(x => x[0] === x[1] ? String(x[0]) : x[0] + "·e" + x[1]), front: heap.length ? 0 : -1, rear: heap.length ? heap.length - 1 : -1 };
+}
+function refMergeAll(ivs) {
+  const a = sortIv(ivs), r = [];
+  for (const iv of a) {
+    if (!r.length || iv[0] > r[r.length - 1][1]) r.push([iv[0], iv[1]]);
+    else r[r.length - 1][1] = Math.max(r[r.length - 1][1], iv[1]);
+  }
+  return r;
+}
+function refCanAttend(ivs) {
+  const ev = [];
+  for (const iv of ivs) { ev.push([iv[0], 1]); ev.push([iv[1], -1]); }
+  ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let act = 0;
+  for (const e of ev) { act += e[1]; if (act > 1) return false; }
+  return true;
+}
+function refAdjacent(ivs) {
+  const a = sortIv(ivs);
+  for (let i = 1; i < a.length; i++) if (a[i][0] < a[i - 1][1]) return false;
+  return true;
+}
+function refRoomsHeap(ivs) {
+  const a = sortIv(ivs), ends = [];
+  let rooms = 0;
+  for (const iv of a) {
+    if (ends.length && ends[0][0] <= iv[0]) ends.shift();
+    heapPush(ends, [iv[1], iv[1]]);
+    rooms = Math.max(rooms, ends.length);
+  }
+  return rooms;
+}
+function refRooms2(ivs) {
+  const a = sortIv(ivs);
+  const starts = a.map(x => x[0]), ends = a.map(x => x[1]).sort((x, y) => x - y);
+  let rooms = 0, e = 0;
+  for (const s of starts) { if (s >= ends[e]) e++; else rooms++; }
+  return rooms;
+}
+function refKeep(ivs) {
+  const a = sortIvEnd(ivs);
+  const dp = [];
+  let best = 0;
+  for (let i = 0; i < a.length; i++) {
+    let v = 1;
+    for (let j = 0; j < i; j++) if (a[j][1] <= a[i][0]) v = Math.max(v, dp[j] + 1);
+    dp[i] = v; best = Math.max(best, v);
+  }
+  return best;
+}
+function refBrute(ivs, qs) {
+  return qs.map(q => {
+    let b = Infinity;
+    for (const iv of ivs) if (iv[0] <= q && q <= iv[1]) b = Math.min(b, iv[1] - iv[0] + 1);
+    return b === Infinity ? -1 : b;
+  });
+}
+
+/* ================================================================
+ * PROBLEM 0056 — MERGE INTERVALS
+ * ================================================================ */
+NC150.register({
+  id: "0056", title: "Merge Intervals", difficulty: "Medium",
+  url: "https://leetcode.com/problems/merge-intervals/",
+  tags: ["sorting", "array"],
+  approaches: ["Approach 1 · Sort + merge sweep (best)", "Approach 2 · In-place merge — O(1) space"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — sort once, then linear sweep" },
+    { time: "O(n log n)", space: "O(1)", note: "overwrites input, no result array" }
+  ],
+  compare: [
+    { name: "Brute pairwise", tech: "check every pair, union", time: "O(n²)", space: "O(n)", when: "tiny n only", best: false },
+    { name: "Sort + sweep", tech: "sort by start, absorb overlaps", time: "O(n log n)", space: "O(n)", when: "general case", best: true },
+    { name: "In-place merge", tech: "write pointer over input", time: "O(n log n)", space: "O(1)", when: "memory-critical", best: false }
+  ],
+  inputs: [
+    { name: "intervals", label: "intervals =", type: "list", default: "[[1,3],[2,6],[8,10],[15,18]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { intervals: "[[1,3],[2,6],[8,10],[15,18]]" }, result: "[[1,6],[8,10],[15,18]]" },
+    { label: "Ex 2", values: { intervals: "[[1,4],[4,5]]" }, result: "[[1,5]]" },
+    { label: "Ex 3", values: { intervals: "[[1,4],[0,4]]" }, result: "[[0,4]]" }
+  ],
+  realLife: "<p><b>Calendar apps</b>: bookings from different sources (email invites, calendar feeds) arrive unsorted — 'merge my day into free blocks' is literally this algorithm.</p><p><b>Log/telemetry pipelines</b>: collapse overlapping uptime windows or error bursts into one contiguous event before reporting.</p>",
+  dsDive: `<h3>Sorting turns a 2D problem into a 1D sweep</h3>
+<p>Two intervals <b>[a,b]</b> and <b>[c,d]</b> overlap iff <span class="code-var">c ≤ b</span> (after sorting by start). Once sorted, overlap is <b>local</b> — only the last merged interval can touch the current one, so one pass suffices.</p>
+<div class="equation">overlap ⇔ c ≤ b &nbsp;&nbsp;→&nbsp;&nbsp; merged = [a, max(b, d)]</div>
+<p>The sweep maintains a single invariant: <b>res[last] is the interval that could still grow</b>. Every later interval either starts inside it (extend the end) or after it (finalize and open a new one). No interval is ever revisited — the sort does all the heavy lifting, <span class="code-var">O(n log n)</span>.</p>`,
+  code: [
+    "def merge(intervals):",
+    "    intervals.sort(key=lambda x: x[0])     # sort by start → O(n log n)",
+    "    res = []",
+    "    for s, e in intervals:                 # one sweep",
+    "        if not res or s > res[-1][1]:      # disjoint from last merged",
+    "            res.append([s, e])",
+    "        else:",
+    "            res[-1][1] = max(res[-1][1], e) # overlap → extend end",
+    "    return res"
+  ],
+  steps: [
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const snap = (text, code, mem) => steps.push({ text, code, mem });
+      snap("Raw input as given. Step 1: <b>sort by start time</b> — O(n log n) once, then one linear sweep.", 0, [arrView(ivs, {}, "input intervals")]);
+      const sorted = sortIv(ivs);
+      snap("Sorted by start (ties broken by end). Now sweep left→right: touching or overlapping neighbors merge.", 1, [arrView(sorted, {}, "sorted by start")]);
+      const res = [];
+      snap("Sweep start: maintain <b>res[last]</b> — the only interval that can still absorb what follows.", 3, [arrView(sorted, {}, "sorted by start"), arrView(res, {}, "merged result")]);
+      for (let i = 0; i < sorted.length; i++) {
+        const s = sorted[i][0], e = sorted[i][1];
+        if (res.length === 0 || s > res[res.length - 1][1]) {
+          res.push([s, e]);
+          const prevEnd = res.length > 1 ? res[res.length - 2][1] : "—";
+          snap(`<b>[${s},${e}]</b>: start ${s} is AFTER last merged end ${prevEnd} → disjoint. Append as a new merged interval.`, 5, [arrView(sorted, { [i]: "hot" }, "sorted by start"), arrView(res, { [res.length - 1]: "done" }, "merged result")]);
+        } else {
+          const oldEnd = res[res.length - 1][1];
+          res[res.length - 1][1] = Math.max(oldEnd, e);
+          snap(`<b>[${s},${e}]</b>: start ${s} ≤ last merged end ${oldEnd} → <b>overlap</b>. Absorb it: end ${oldEnd} → <b>${res[res.length - 1][1]}</b>.`, 7, [arrView(sorted, { [i]: "hot" }, "sorted by start"), arrView(res, { [res.length - 1]: "done" }, "merged result")]);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(refMergeAll(ivs));
+      last.memNote = "Time: O(n log n) sort + O(n) sweep. Space: O(n) for the result array.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const data = sortIv(ivs);
+      const steps = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [arrView(data, cls, "intervals — merged IN PLACE")] });
+      snap("Same sort, but no result array: a <b>write pointer w</b> rebuilds the merged list inside the input. Read pointer r sweeps ahead.", 1, {});
+      let w = 0;
+      for (let r = 1; r < data.length; r++) {
+        if (data[r][0] <= data[w][1]) {
+          const old = data[w][1];
+          data[w][1] = Math.max(data[w][1], data[r][1]);
+          snap(`r=${r} <b>[${data[r].join(",")}]</b> overlaps w=${w} <b>[${data[w][0]},${old}]</b> → absorb: end → <b>${data[w][1]}</b>. (cell ${w} mutated in place)`, 5, { [w]: "hot", [r]: "hl" });
+        } else {
+          w++;
+          data[w] = data[r];
+          snap(`r=${r} <b>[${data[r].join(",")}]</b> is disjoint → keep it: w ${w - 1} → <b>${w}</b>, copy interval to cell ${w}.`, 8, { [w]: "hot", [r]: "hl" });
+        }
+      }
+      const res = data.slice(0, w + 1);
+      const cls = {};
+      res.forEach((_, i) => cls[i] = "done");
+      snap(`Done: result lives in cells 0..${w} → ${JSON.stringify(res)}. No extra array was ever allocated.`, 9, cls);
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(refMergeAll(ivs));
+      last.memNote = "Time: O(n log n). Space: O(1) extra — the input array is reused.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0057 — INSERT INTERVAL
+ * ================================================================ */
+NC150.register({
+  id: "0057", title: "Insert Interval", difficulty: "Medium",
+  url: "https://leetcode.com/problems/insert-interval/",
+  tags: ["interval", "binary search"],
+  approaches: ["Approach 1 · 3-phase linear scan (best)", "Approach 2 · Binary-search insert + merge"],
+  complexities: [
+    { time: "O(n)", space: "O(n)", note: "BEST — input is already sorted" },
+    { time: "O(n)", space: "O(n)", note: "log n to find the gap, then O(n) merge" }
+  ],
+  compare: [
+    { name: "Insert + re-sort", tech: "splice then sort everything", time: "O(n log n)", space: "O(n)", when: "rarely needed", best: false },
+    { name: "3-phase scan", tech: "before · absorb · after", time: "O(n)", space: "O(n)", when: "general case", best: true },
+    { name: "Binary-search insert", tech: "locate gap, splice, sweep-merge", time: "O(n)", space: "O(n)", when: "log n lookup matters", best: false }
+  ],
+  inputs: [
+    { name: "intervals", label: "intervals =", type: "list", default: "[[1,3],[6,9]]" },
+    { name: "interval", label: "new =", type: "list", default: "[4,8]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { intervals: "[[1,3],[6,9]]", interval: "[2,5]" }, result: "[[1,5],[6,9]]" },
+    { label: "Ex 2", values: { intervals: "[[1,2],[3,5],[6,7],[8,10],[12,16]]", interval: "[4,8]" }, result: "[[1,2],[3,10],[12,16]]" },
+    { label: "Ex 3", values: { intervals: "[]", interval: "[5,7]" }, result: "[[5,7]]" }
+  ],
+  realLife: "<p><b>Booking systems</b>: a sorted schedule of confirmed bookings exists; a new request arrives — find where it goes and merge any collisions without rebuilding the whole calendar.</p><p><b>Coverage registries</b>: inserting a new feature window into a sorted list of active ranges (feature flags, IP leases) with automatic coalescing of neighbors.</p>",
+  dsDive: `<h3>Why three phases and no more</h3>
+<p>The input is sorted and disjoint, so the new interval has a unique impact zone: everything strictly before its start is untouched, everything overlapping absorbs, everything after is untouched. The linear scan <b>partitions</b> the array once — each element is touched at most twice.</p>
+<div class="equation">absorb: new = [ min(new₀, sᵢ), max(new₁, eᵢ) ] &nbsp; while sᵢ ≤ new₁</div>
+<p>The binary-search variant trades the scan for <span class="code-var">O(log n)</span> positioning (first end ≥ new.start) but the splice still costs O(n) — so the win is the search, not the merge. Both stay <span class="code-var">O(n)</span> overall.</p>`,
+  code: [
+    "def insert(intervals, new_iv):",
+    "    res = []; i = 0",
+    "    while i < n and intervals[i][1] < new_iv[0]:",
+    "        res.append(intervals[i]); i += 1       # phase 1: ends before",
+    "    while i < n and intervals[i][0] <= new_iv[1]:",
+    "        new_iv = [min(new_iv[0], intervals[i][0]),",
+    "                  max(new_iv[1], intervals[i][1])]",
+    "        i += 1                                 # phase 2: absorb overlaps",
+    "    res.append(new_iv)                         # insert the merged one",
+    "    while i < n:",
+    "        res.append(intervals[i]); i += 1       # phase 3: starts after",
+    "    return res"
+  ],
+  steps: [
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const nin = (vals.interval || []).map(Number);
+      const ns = nin.length === 2 ? nin[0] : 0, ne = nin.length === 2 ? nin[1] : 0;
+      const steps = [];
+      const sorted = sortIv(ivs);
+      const newView = cur => ({ type: "array", title: "new interval (absorbing)", data: [ivStr(cur)], cls: { 0: "hot" }, showIdx: true, size: 8 });
+      const resView = () => arrView(res, {}, "result");
+      const snap = (text, code, cls, cur) => steps.push({ text, code, mem: [arrView(sorted, cls, "intervals (sorted)"), newView(cur), resView()] });
+      const res = [];
+      snap(`Merge <b>[${ns},${ne}]</b> into the sorted, disjoint list in 3 phases. <b>Phase 1</b>: copy everything that ends before new.start = ${ns}.`, 1, {}, [ns, ne]);
+      let i = 0;
+      while (i < sorted.length && sorted[i][1] < ns) {
+        res.push(sorted[i]);
+        snap(`<b>[${sorted[i].join(",")}]</b> ends ${sorted[i][1]} < ${ns} → fully before the new interval, copy verbatim.`, 3, { [i]: "done" }, [ns, ne]);
+        i++;
+      }
+      snap(`<b>Phase 2</b>: absorb every interval whose start ≤ new.end = ${ne}. They merge into one.`, 4, {}, [ns, ne]);
+      let cur = [ns, ne];
+      while (i < sorted.length && sorted[i][0] <= cur[1]) {
+        const old = cur.slice();
+        cur = [Math.min(cur[0], sorted[i][0]), Math.max(cur[1], sorted[i][1])];
+        snap(`<b>[${sorted[i].join(",")}]</b>: start ${sorted[i][0]} ≤ ${old[1]} → overlap. Merged interval widens: [${old.join(",")}] → <b>[${cur.join(",")}]</b>.`, 5, { [i]: "hl" }, cur);
+        i++;
+      }
+      res.push(cur);
+      snap(`Absorption done. Push the merged interval <b>[${cur.join(",")}]</b>. <b>Phase 3</b>: everything after starts above ${cur[1]} → copy verbatim.`, 8, {}, cur);
+      while (i < sorted.length) {
+        res.push(sorted[i]);
+        snap(`<b>[${sorted[i].join(",")}]</b>: start ${sorted[i][0]} > merged end ${cur[1]} → disjoint, copy verbatim.`, 10, { [i]: "done" }, cur);
+        i++;
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(refMergeAll(ivs.concat([[ns, ne]])));
+      last.memNote = "Time: O(n) — each interval inspected at most twice. Space: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const nin = (vals.interval || []).map(Number);
+      const ns = nin.length === 2 ? nin[0] : 0, ne = nin.length === 2 ? nin[1] : 0;
+      const steps = [];
+      const sorted = sortIv(ivs);
+      const newView = () => ({ type: "array", title: "new interval", data: [ivStr([ns, ne])], cls: { 0: "hot" }, showIdx: true, size: 8 });
+      const mark = (lo, hi, mid) => { const m = {}; m[mid] = "hot"; if (lo !== mid) m[lo] = "done"; if (hi !== mid && hi < sorted.length) m[hi] = "hl"; return m; };
+      const snap = (text, code, mem) => steps.push({ text, code, mem });
+      snap("Step 1: binary search for the first interval whose <b>end ≥ new.start</b> — everything before it stays untouched. Search in [0, n).", 1, [arrView(sorted, {}, "intervals"), newView()]);
+      let lo = 0, hi = sorted.length, mid = -1;
+      while (lo < hi) {
+        mid = (lo + hi) >> 1;
+        if (sorted[mid][1] < ns) {
+          lo = mid + 1;
+          snap(`mid=${mid} <b>[${sorted[mid].join(",")}]</b> ends ${sorted[mid][1]} < ${ns} → too early, jump right: lo → ${lo}.`, 4, [arrView(sorted, mark(lo, hi, mid), "intervals · lo/done · hi/hl · mid/hot"), newView()]);
+        } else {
+          hi = mid;
+          snap(`mid=${mid} <b>[${sorted[mid].join(",")}]</b> ends ${sorted[mid][1]} ≥ ${ns} → candidate zone, pull left: hi → ${hi}.`, 5, [arrView(sorted, mark(lo, hi, mid), "intervals · lo/done · hi/hl · mid/hot"), newView()]);
+        }
+      }
+      const data = sorted.slice();
+      data.splice(lo, 0, [ns, ne]);
+      snap(`Insertion point k=${lo}: splice <b>[${ns},${ne}]</b> in — list stays sorted. Now one merge sweep from the start.`, 6, [arrView(data, {}, "after splice"), newView()]);
+      const res = [];
+      for (let k = 0; k < data.length; k++) {
+        if (res.length && data[k][0] <= res[res.length - 1][1]) {
+          const old = res[res.length - 1][1];
+          res[res.length - 1][1] = Math.max(old, data[k][1]);
+          snap(`<b>[${data[k].join(",")}]</b>: start ${data[k][0]} ≤ last end ${old} → merge: end → <b>${res[res.length - 1][1]}</b>.`, 10, [arrView(data, { [k]: "hot" }, "after splice"), arrView(res, { [res.length - 1]: "done" }, "result")]);
+        } else {
+          res.push(data[k]);
+          snap(`<b>[${data[k].join(",")}]</b>: disjoint → append to result.`, 12, [arrView(data, { [k]: "hot" }, "after splice"), arrView(res, { [res.length - 1]: "done" }, "result")]);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(res);
+      last.correct = JSON.stringify(res) === JSON.stringify(refMergeAll(ivs.concat([[ns, ne]])));
+      last.memNote = "Time: O(n) overall (splice + merge sweep). Space: O(n).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0252 — MEETING ROOMS
+ * ================================================================ */
+NC150.register({
+  id: "0252", title: "Meeting Rooms", difficulty: "Easy",
+  url: "https://leetcode.com/problems/meeting-rooms/",
+  tags: ["sorting", "interval"],
+  approaches: ["Approach 1 · Sort + adjacent check (best)", "Approach 2 · Sweep-line event counting"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — sort, then one O(n) scan" },
+    { time: "O(n log n)", space: "O(n)", note: "2n events, count actives" }
+  ],
+  compare: [
+    { name: "Brute pairwise", tech: "overlap-check each pair", time: "O(n²)", space: "O(1)", when: "tiny n only", best: false },
+    { name: "Sort + adjacent", tech: "sort by start, check neighbors", time: "O(n log n)", space: "O(n)", when: "general case", best: true },
+    { name: "Sweep line", tech: "event count, active > 1", time: "O(n log n)", space: "O(n)", when: "shared with Rooms II", best: false }
+  ],
+  inputs: [
+    { name: "intervals", label: "intervals =", type: "list", default: "[[0,30],[5,10],[15,20]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { intervals: "[[0,30],[5,10],[15,20]]" }, result: "false" },
+    { label: "Ex 2", values: { intervals: "[[7,10],[2,4]]" }, result: "true" },
+    { label: "Ex 3", values: { intervals: "[[5,8],[8,10]]" }, result: "true" }
+  ],
+  realLife: "<p><b>Calendar conflict detection</b>: before accepting a new meeting, every scheduler must answer 'do any two of my meetings overlap?' — this boolean IS the interview question.</p><p><b>Editorial resource locking</b>: checking that time-window allocations (test environments, staging slots) never collide across teams.</p>",
+  dsDive: `<h3>Back-to-back is FINE, overlap is not</h3>
+<p>Two meetings [a,b] and [c,d] (a ≤ c) conflict iff <span class="code-var">c &lt; b</span> — note the strict inequality: c = b means one ends exactly when the next starts, which is allowed. After sorting by start, every conflict is visible between <b>adjacent</b> meetings, so the scan is O(n).</p>
+<div class="equation">conflict ⇔ intervals[i].start &lt; intervals[i−1].end</div>
+<p>The sweep-line variant converts each interval into two events (start +1, end −1); sorting events and integrating gives the number of meetings active at every instant. It answers a strictly harder question (how many rooms?) for the same cost — which is exactly Meeting Rooms II.</p>`,
+  code: [
+    "def can_attend_all(intervals):",
+    "    intervals.sort(key=lambda x: x[0])",
+    "    for i in range(1, len(intervals)):",
+    "        if intervals[i][0] < intervals[i-1][1]:",
+    "            return False                # two meetings overlap",
+    "    return True"
+  ],
+  steps: [
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [arrView(sorted, cls, "meetings (sorted by start)")] });
+      const sorted = sortIv(ivs);
+      snap("Sort meetings by start time — overlap is then only ever a property of <b>adjacent</b> pairs.", 1, {});
+      let ok = true;
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i][0] < sorted[i - 1][1]) {
+          ok = false;
+          snap(`<b>[${sorted[i].join(",")}]</b> starts at ${sorted[i][0]} but previous ends at ${sorted[i - 1][1]}: ${sorted[i][0]} < ${sorted[i - 1][1]} → <b>OVERLAP → false</b>. (Back-to-back would have been fine.)`, 4, { [i]: "hot", [i - 1]: "hot" });
+          break;
+        }
+        snap(`<b>[${sorted[i].join(",")}]</b>: start ${sorted[i][0]} ≥ previous end ${sorted[i - 1][1]} → no conflict.`, 3, { [i]: "hot", [i - 1]: "done" });
+      }
+      if (ok) snap(sorted.length ? "Every adjacent pair is conflict-free → can attend all → <b>true</b>." : "No meetings at all → can attend all → <b>true</b>.", 5, {});
+      const last = steps[steps.length - 1];
+      last.result = ok ? "true" : "false";
+      last.correct = ok === refCanAttend(ivs);
+      last.memNote = "Time: O(n log n) sort + O(n) scan. Space: O(n) for the sort copy.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const events = [];
+      for (const iv of ivs) { events.push([iv[0], +1]); events.push([iv[1], -1]); }
+      const evStr = e => e[0] + (e[1] > 0 ? ":+1" : ":−1");
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "events (time : delta)", data: events.map(evStr), cls: cls || {}, showIdx: true, size: 8 },
+        { type: "array", title: "active count", data: [active], cls: { 0: "hot" }, showIdx: true, size: 4 }
+      ] });
+      let active = 0;
+      snap("Sweep line: each meeting becomes two events — (start, +1) and (end, −1). Sort all 2n events by time.", 3, {});
+      events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      snap("Sorted by time. Tie-break: ends (−1) sort before starts (+1), so a meeting ending at t never collides with one starting at t.", 4, {});
+      let ok = true;
+      for (let i = 0; i < events.length; i++) {
+        const t = events[i][0], d = events[i][1];
+        active += d;
+        if (active > 1) {
+          ok = false;
+          snap(`t=${t}: active ${active - d} ${d > 0 ? "+1" : "−1"} → <b>${active}</b>. More than one meeting active → conflict → <b>false</b>.`, 8, { [i]: "hot" });
+          break;
+        }
+        snap(`t=${t}: active ${active - d} ${d > 0 ? "+1" : "−1"} → <b>${active}</b>.`, 7, { [i]: "hot" });
+      }
+      if (ok) snap("Active count never exceeded 1 → can attend all → <b>true</b>.", 9, {});
+      const last = steps[steps.length - 1];
+      last.result = ok ? "true" : "false";
+      last.correct = ok === refAdjacent(ivs);
+      last.memNote = "Time: O(n log n) — sorting 2n events. Space: O(n) events.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0253 — MEETING ROOMS II
+ * ================================================================ */
+NC150.register({
+  id: "0253", title: "Meeting Rooms II", difficulty: "Medium",
+  url: "https://leetcode.com/problems/meeting-rooms-ii/",
+  tags: ["heap", "interval"],
+  approaches: ["Approach 1 · Sort + min-heap of ends (best)", "Approach 2 · Two-pointer sweep — no heap"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — heap tracks room end times" },
+    { time: "O(n log n)", space: "O(n)", note: "two sorted arrays, one pointer" }
+  ],
+  compare: [
+    { name: "Brute per room", tech: "scan all rooms for each meeting", time: "O(n²)", space: "O(n)", when: "tiny n only", best: false },
+    { name: "Sort + min-heap", tech: "reuse earliest-ending room", time: "O(n log n)", space: "O(n)", when: "general case", best: true },
+    { name: "Two-pointer sweep", tech: "sorted starts vs ends", time: "O(n log n)", space: "O(n)", when: "no heap available", best: false }
+  ],
+  inputs: [
+    { name: "intervals", label: "intervals =", type: "list", default: "[[0,30],[5,10],[15,20]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { intervals: "[[0,30],[5,10],[15,20]]" }, result: "2" },
+    { label: "Ex 2", values: { intervals: "[[7,10],[2,4]]" }, result: "1" },
+    { label: "Ex 3", values: { intervals: "[[9,10],[4,9],[4,17]]" }, result: "2" }
+  ],
+  realLife: "<p><b>Conference room allocation</b>: the minimum number of rooms equals the maximum number of meetings that are ever simultaneously active — a resource-bound question (also: how many servers for scheduled batch jobs?).</p><p><b>Peak concurrency analysis</b>: answering 'how many parallel connections were needed' from timestamped sessions — the heap tracks exactly the active windows.</p>",
+  dsDive: `<h3>Why a MIN-heap of end times</h3>
+<p>Sort meetings by start. When a meeting begins, only one question matters: <b>does any room free up before my start?</b> The room that frees earliest is the one with the smallest end time — that's the heap's root. If even it is still busy, every room is busy → open a new one.</p>
+<div class="equation">room free ⇔ heap.min ≤ s &nbsp;&nbsp;→&nbsp;&nbsp; pop it, then push e</div>
+<p>The heap never exceeds the answer size, holds ≤ n end times, and every meeting pays one push and at most one pop — <span class="code-var">O(n log n)</span>. The two-pointer variant replaces the heap with a sorted copy of ends: pointer e advances past every end ≤ current start, and rooms = max ever seen.</p>`,
+  code: [
+    "def min_rooms(intervals):",
+    "    intervals.sort(key=lambda x: x[0])",
+    "    ends = []                             # min-heap of end times",
+    "    rooms = 0",
+    "    for s, e in intervals:",
+    "        if ends and ends[0] <= s:",
+    "            heappop(ends)                 # a room frees before s",
+    "        heappush(ends, e)",
+    "        rooms = max(rooms, len(ends))",
+    "    return rooms"
+  ],
+  steps: [
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const sorted = sortIv(ivs);
+      const ends = [];
+      let rooms = 0;
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        arrView(sorted, cls, "meetings (sorted by start)"),
+        heapView(ends, "min-heap of end times · rooms in use")
+      ] });
+      snap("Sort meetings by start. The min-heap stores the <b>end time of every room currently in use</b>; its root is the earliest-freed room.", 1, {});
+      for (let i = 0; i < sorted.length; i++) {
+        const s = sorted[i][0], e = sorted[i][1];
+        if (ends.length && ends[0][0] <= s) {
+          const freed = heapPop(ends);
+          snap(`<b>[${s},${e}]</b>: earliest end ${freed[0]} ≤ start ${s} → that room is free. Pop it and reuse it for this meeting.`, 6, { [i]: "hot" });
+        } else if (ends.length) {
+          snap(`<b>[${s},${e}]</b>: earliest end ${ends[0][0]} > start ${s} → no room frees in time → need a new room.`, 5, { [i]: "hot" });
+        } else {
+          snap(`<b>[${s},${e}]</b>: no active rooms → open the first room.`, 7, { [i]: "hot" });
+        }
+        heapPush(ends, [e, e]);
+        rooms = Math.max(rooms, ends.length);
+        snap(`Push end ${e} into the heap (sorted insert). ${ends.length} room(s) active → rooms = max(${rooms}) = <b>${rooms}</b>.`, 8, { [i]: "done" });
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(rooms);
+      last.correct = rooms === refRooms2(ivs);
+      last.memNote = "Time: O(n log n) — each end pushed once, popped once. Space: O(n) heap.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const sorted = sortIv(ivs);
+      const starts = sorted.map(x => x[0]);
+      const ends = sorted.map(x => x[1]).sort((a, b) => a - b);
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        { type: "array", title: "starts (sorted)", data: starts.map(String), cls: cls.s || {}, showIdx: true, size: 8 },
+        { type: "array", title: "ends (sorted)", data: ends.map(String), cls: cls.e || {}, showIdx: true, size: 8 }
+      ] });
+      snap("Two sorted arrays: starts of all meetings, ends of all meetings. Pointer e = index of the earliest end not yet consumed.", 1, { s: {}, e: {} });
+      let rooms = 0, e = 0;
+      for (let i = 0; i < starts.length; i++) {
+        const s = starts[i];
+        if (s >= ends[e]) {
+          e++;
+          snap(`start ${s} ≥ end ${ends[e - 1]} → a room freed before this meeting → reuse it. e → <b>${e}</b>.`, 5, { s: { [i]: "hot" }, e: Object.fromEntries(Array.from({ length: e }, (_, k) => [k, "done"])) });
+        } else {
+          rooms++;
+          snap(`start ${s} &lt; end ${ends[e]} → the earliest-freed room is still busy → open one more room. rooms → <b>${rooms}</b>.`, 7, { s: { [i]: "hot" }, e: { [e]: "hot" } });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(rooms);
+      last.correct = rooms === refRoomsHeap(ivs);
+      last.memNote = "Time: O(n log n) — two sorts. Space: O(n) for the copies. No heap needed.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 0435 — NON-OVERLAPPING INTERVALS
+ * ================================================================ */
+NC150.register({
+  id: "0435", title: "Non-overlapping Intervals", difficulty: "Medium",
+  url: "https://leetcode.com/problems/non-overlapping-intervals/",
+  tags: ["greedy", "interval"],
+  approaches: ["Approach 1 · Greedy: keep earliest finish (best)", "Approach 2 · Greedy by start, drop longer"],
+  complexities: [
+    { time: "O(n log n)", space: "O(n)", note: "BEST — classic interval scheduling" },
+    { time: "O(n log n)", space: "O(n)", note: "same bound, different scan" }
+  ],
+  compare: [
+    { name: "Brute longest subset", tech: "DP over sorted intervals", time: "O(n²)", space: "O(n)", when: "verification only", best: false },
+    { name: "Earliest-finish greedy", tech: "sort by end, keep compatible", time: "O(n log n)", space: "O(n)", when: "general case", best: true },
+    { name: "Start-sorted greedy", tech: "drop the longer overlap", time: "O(n log n)", space: "O(n)", when: "intuitive variant", best: false }
+  ],
+  inputs: [
+    { name: "intervals", label: "intervals =", type: "list", default: "[[1,2],[2,3],[3,4],[1,3]]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { intervals: "[[1,2],[2,3],[3,4],[1,3]]" }, result: "1" },
+    { label: "Ex 2", values: { intervals: "[[1,2],[1,2],[1,2]]" }, result: "2" },
+    { label: "Ex 3", values: { intervals: "[[1,2],[2,3]]" }, result: "0" }
+  ],
+  realLife: "<p><b>Conference track scheduling</b>: pick the largest set of talks that don't clash; every removal you avoid is a talk you get to keep — same math as 'how many sessions must I drop'.</p><p><b>Resource leasing</b>: keep the maximal non-conflicting set of leases; the rest of the answer is what gets rejected or retimed.</p>",
+  dsDive: `<h3>This is interval scheduling in disguise</h3>
+<p>Removing the fewest intervals = keeping the most. The classic theorem: for the maximum non-overlapping subset, <b>greedy on earliest end time is optimal</b> (exchange argument — the earliest finisher leaves the most room for everything else). Sort by end, then keep every interval that starts at or after the last kept end.</p>
+<div class="equation">removals = n − maxKept &nbsp;&nbsp; where maxKept = greedy(count compatible after sorting by end)</div>
+<p>Sorting by start instead needs the tie-break 'drop the longer interval' to stay optimal — both sweeps run in <span class="code-var">O(n log n)</span>.</p>`,
+  code: [
+    "def erase_overlap(intervals):",
+    "    intervals.sort(key=lambda x: x[1])   # earliest end first",
+    "    kept = 0; last_end = -inf",
+    "    for s, e in intervals:",
+    "        if s >= last_end:                # compatible with kept set",
+    "            kept += 1; last_end = e",
+    "        # else: overlaps → remove this one",
+    "    return len(intervals) - kept"
+  ],
+  steps: [
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const sorted = sortIvEnd(ivs);
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [arrView(sorted, cls, "intervals (sorted by END)")] });
+      snap("Sort by <b>end time</b> — the interval that finishes first leaves the most room for the rest. Greedy: keep every compatible interval.", 1, {});
+      let kept = 0, lastEnd = -Infinity;
+      for (let i = 0; i < sorted.length; i++) {
+        const s = sorted[i][0], e = sorted[i][1];
+        if (s >= lastEnd) {
+          const old = lastEnd;
+          kept++; lastEnd = e;
+          snap(`<b>[${s},${e}]</b>: start ${s} ≥ last kept end ${old === -Infinity ? "−∞" : old} → compatible → <b>KEEP</b>. kept = ${kept}.`, 5, { [i]: "done" });
+        } else {
+          snap(`<b>[${s},${e}]</b>: start ${s} &lt; last kept end ${lastEnd} → overlaps the kept set → <b>REMOVE</b> it.`, 6, { [i]: "hl" });
+        }
+      }
+      const removed = ivs.length - kept;
+      snap(`Removals = n − kept = ${ivs.length} − ${kept} = <b>${removed}</b>.`, 7, {});
+      const last = steps[steps.length - 1];
+      last.result = String(removed);
+      last.correct = kept === refKeep(ivs);
+      last.memNote = "Time: O(n log n) sort. Space: O(n) for the sort copy.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const steps = [];
+      const sorted = sortIv(ivs);
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [arrView(sorted, cls, "intervals (sorted by START)")] });
+      snap("Sort by start. On overlap, always drop the interval that ends later — keeping the shorter one frees the most future space.", 1, {});
+      let count = 0, prevEnd = sorted.length ? sorted[0][1] : 0;
+      for (let i = 1; i < sorted.length; i++) {
+        const s = sorted[i][0], e = sorted[i][1];
+        if (s >= prevEnd) {
+          const old = prevEnd;
+          prevEnd = e;
+          snap(`<b>[${s},${e}]</b>: start ${s} ≥ prev end ${old} → compatible → keep. prevEnd → <b>${e}</b>.`, 5, { [i]: "done", [i - 1]: "done" });
+        } else if (e < prevEnd) {
+          count++; prevEnd = e;
+          snap(`<b>[${s},${e}]</b>: overlaps prev, but ends ${e} &lt; ${prevEnd} → drop the LONGER (previous) one, keep this. count → <b>${count}</b>.`, 7, { [i]: "done", [i - 1]: "hl" });
+        } else {
+          count++;
+          snap(`<b>[${s},${e}]</b>: overlaps prev and ends ${e} ≥ ${prevEnd} → drop this one. count → <b>${count}</b>.`, 9, { [i]: "hl" });
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = String(count);
+      last.correct = (ivs.length - count) === refKeep(ivs);
+      last.memNote = "Time: O(n log n) sort. Space: O(n) for the sort copy.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ================================================================
+ * PROBLEM 1851 — MINIMUM INTERVAL TO INCLUDE EACH QUERY
+ * ================================================================ */
+NC150.register({
+  id: "1851", title: "Minimum Interval to Include Each Query", difficulty: "Hard",
+  url: "https://leetcode.com/problems/minimum-interval-to-include-each-query/",
+  tags: ["heap", "sorting", "interval"],
+  approaches: ["Approach 1 · Sort queries + sweep + min-heap (best)", "Approach 2 · Brute force per query"],
+  complexities: [
+    { time: "O((n+q) log n)", space: "O(n+q)", note: "BEST — offline sweep, heap of (size,end)" },
+    { time: "O(n·q)", space: "O(1)", note: "scan all intervals per query" }
+  ],
+  compare: [
+    { name: "Brute per query", tech: "check every interval", time: "O(n·q)", space: "O(1)", when: "small inputs", best: false },
+    { name: "Sort + sweep + heap", tech: "offline queries, heap of (size,end)", time: "O((n+q) log n)", space: "O(n+q)", when: "general case", best: true },
+    { name: "Segment tree", tech: "range-min over intervals", time: "O((n+q) log n)", space: "O(n)", when: "online queries", best: false }
+  ],
+  inputs: [
+    { name: "intervals", label: "intervals =", type: "list", default: "[[1,4],[2,4],[3,6],[4,4]]" },
+    { name: "queries", label: "queries =", type: "list", default: "[2,3,4,5]" }
+  ],
+  examples: [
+    { label: "Ex 1", values: { intervals: "[[1,4],[2,4],[3,6],[4,4]]", queries: "[2,3,4,5]" }, result: "[3,3,1,4]" },
+    { label: "Ex 2", values: { intervals: "[[2,3],[2,5],[1,8],[20,25]]", queries: "[2,19,5,22]" }, result: "[2,-1,4,6]" },
+    { label: "Ex 3", values: { intervals: "[[1,2]]", queries: "[1,2,3]" }, result: "[2,2,-1]" }
+  ],
+  realLife: "<p><b>Analytics dashboards</b>: 'for each timestamp, what is the smallest live campaign/offer window covering it?' — one expensive sweep serves hundreds of point queries.</p><p><b>Genomics / network ranges</b>: given annotated intervals (genes, IP blocks), answer many point-lookups for the tightest covering range — the offline sort-then-sweep pattern is standard in range-reporting engines.</p>",
+  dsDive: `<h3>Offline processing turns q scans into one sweep</h3>
+<p>A point q is inside <b>[l,r]</b> iff <span class="code-var">l ≤ q ≤ r</span>. Sort queries ascending — then intervals whose l ≤ q are added <b>monotonically</b> as q grows (one pointer, never revisited), and intervals whose r &lt; q are dead forever (popped once). The heap keyed by <b>(size, end)</b> yields the smallest size among all live intervals in O(log n).</p>
+<div class="equation">size = r − l + 1 &nbsp;&nbsp;&nbsp; add while l ≤ q &nbsp;&nbsp;&nbsp; pop while r &lt; q &nbsp;&nbsp;&nbsp; ans = heap.top.size</div>
+<p>Every interval is pushed once and popped once — <span class="code-var">O((n+q) log n)</span> total, versus O(n·q) brute force. The heap invariant '<b>every live entry can contain the current query</b>' is what makes the top correct.</p>`,
+  code: [
+    "def min_interval(intervals, queries):",
+    "    intervals.sort(key=lambda x: x[0])",
+    "    qs = sorted((q, i) for i, q in enumerate(queries))",
+    "    heap = []; ans = [-1] * len(queries); j = 0",
+    "    for q, qi in qs:                     # process queries in order",
+    "        while j < m and intervals[j][0] <= q:",
+    "            l, r = intervals[j]",
+    "            heappush(heap, (r - l + 1, r)); j += 1",
+    "        while heap and heap[0][1] < q:",
+    "            heappop(heap)                # expired: end < q",
+    "        if heap: ans[qi] = heap[0][0]",
+    "    return ans"
+  ],
+  steps: [
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const qs = (vals.queries || []).map(Number);
+      const steps = [];
+      const sortedIv = sortIv(ivs);
+      const qSorted = qs.map((q, i) => [q, i]).sort((a, b) => a[0] - b[0]);
+      const ans = new Array(qs.length).fill(-1);
+      const heap = [];
+      const qView = () => ({ type: "array", title: "queries (sorted, q·origIdx)", data: qSorted.map(x => x[0] + "·" + x[1]), showIdx: true, size: 8 });
+      const ansView = () => ({ type: "array", title: "answers", data: ans.slice(), showIdx: true, size: 8 });
+      const snap = (text, code, mem) => steps.push({ text, code, mem });
+      snap("Offline setup: sort intervals by start AND queries ascending (remembering original indexes). One pointer sweeps intervals as queries grow.", 2, [arrView(ivs, {}, "intervals"), qView()]);
+      snap("The heap stores live candidates as (size, end). A candidate is alive for query q iff its start ≤ q and its end ≥ q.", 3, [arrView(sortedIv, {}, "intervals (sorted)"), qView(), heapView(heap, "min-heap · size·end"), ansView()]);
+      let j = 0;
+      for (let qi = 0; qi < qSorted.length; qi++) {
+        const q = qSorted[qi][0], orig = qSorted[qi][1];
+        snap(`Query <b>${q}</b> (originally index ${orig}): add every interval with start ≤ ${q}.`, 5, [arrView(sortedIv, {}, "intervals (sorted)"), qView(), heapView(heap, "min-heap · size·end"), ansView()]);
+        const added = [];
+        while (j < sortedIv.length && sortedIv[j][0] <= q) {
+          const l = sortedIv[j][0], r = sortedIv[j][1];
+          heapPush(heap, [r - l + 1, r]);
+          added.push("[" + l + "," + r + "]");
+          j++;
+        }
+        snap(added.length
+          ? `Added ${added.join(" ")} — size = end − start + 1. Heap stays sorted by (size, end).`
+          : "No new interval starts at or before " + q + ".",
+          7, [arrView(sortedIv, { [j - 1]: "hot" }, "intervals (sorted)"), qView(), heapView(heap, "min-heap · size·end"), ansView()]);
+        const expired = [];
+        while (heap.length && heap[0][1] < q) expired.push(heapPop(heap));
+        snap(expired.length
+          ? "Expired " + expired.map(x => "size " + x[0] + " (ends " + x[1] + ")").join(", ") + ": end < " + q + " → can never contain the query again."
+          : "Nothing expired — every live interval ends at ≥ " + q + ".",
+          9, [arrView(sortedIv, {}, "intervals (sorted)"), qView(), heapView(heap, "min-heap · size·end"), ansView()]);
+        if (heap.length) {
+          ans[orig] = heap[0][0];
+          snap(`Heap top = size <b>${heap[0][0]}</b> (ends at ${heap[0][1]}) → smallest interval containing ${q} → answers[${orig}] = <b>${ans[orig]}</b>.`, 10, [arrView(sortedIv, {}, "intervals (sorted)"), qView(), heapView(heap, "min-heap · size·end"), ansView()]);
+        } else {
+          snap(`Heap empty → no interval contains ${q} → answers[${orig}] = <b>-1</b>.`, 10, [arrView(sortedIv, {}, "intervals (sorted)"), qView(), heapView(heap, "min-heap · size·end"), ansView()]);
+        }
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(ans);
+      last.correct = JSON.stringify(ans) === JSON.stringify(refBrute(ivs, qs));
+      last.memNote = "Time: O((n+q) log n) — each interval pushed/popped once. Space: O(n + q).";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    },
+    function (vals) {
+      const ivs = (vals.intervals || []).map(iv => [Number(iv[0]), Number(iv[1])]);
+      const qs = (vals.queries || []).map(Number);
+      const steps = [];
+      const ans = [];
+      const snap = (text, code, cls) => steps.push({ text, code, mem: [
+        arrView(ivs, cls, "intervals"),
+        { type: "array", title: "answers", data: ans.slice(), showIdx: true, size: 8 }
+      ] });
+      snap("Baseline: for each query, scan EVERY interval and keep the smallest size that covers it.", 1, {});
+      for (let qi = 0; qi < qs.length; qi++) {
+        const q = qs[qi];
+        let best = Infinity;
+        snap(`Query <b>${q}</b>: scan all ${ivs.length} intervals for l ≤ ${q} ≤ r.`, 2, {});
+        for (let i = 0; i < ivs.length; i++) {
+          const l = ivs[i][0], r = ivs[i][1];
+          if (l <= q && q <= r) {
+            const sz = r - l + 1;
+            const prev = best;
+            best = Math.min(best, sz);
+            snap(`<b>[${l},${r}]</b>: ${l} ≤ ${q} ≤ ${r} ✓ → size ${sz}${best < prev ? " &lt; " + prev + " → new best!" : " (not better)"} best = <b>${best}</b>.`, 6, { [i]: "hot" });
+          } else {
+            snap(`<b>[${l},${r}]</b>: does NOT contain ${q} → skip. best = ${best === Infinity ? "∞" : best}.`, 5, { [i]: "hl" });
+          }
+        }
+        ans.push(best === Infinity ? -1 : best);
+        snap(`Query ${q} → best size ${best === Infinity ? "none" : best} → answers[${qi}] = <b>${ans[ans.length - 1]}</b>.`, 7, {});
+      }
+      const last = steps[steps.length - 1];
+      last.result = JSON.stringify(ans);
+      last.correct = JSON.stringify(ans) === JSON.stringify(refBrute(ivs, qs));
+      last.memNote = "Time: O(n·q) — every query rescans everything. Space: O(1) extra.";
+      return { steps, result: last.result, correct: last.correct, memNote: last.memNote };
+    }
+  ]
+});
+
+/* ============ BOOT ============ */
+NC150.init(SECTION);
+</script>
+</body>
+</html>
