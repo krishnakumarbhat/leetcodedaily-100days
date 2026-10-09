@@ -1,0 +1,284 @@
+{
+ "problems": [
+  {
+   "key": "02_two_pointers/0011_container_with_most_water",
+   "one_liner": "Move the shorter wall; area is width times the shorter height.",
+   "core_objective": "Given an array of non-negative heights, find the two lines that, with the x-axis, hold the most water. Return that maximum area.",
+   "bounds": "1 <= height.length <= 2e5; 0 <= height[i] <= 1e4. Fewer than two lines returns 0. The area fits in 32 bits but the intermediate product is the widest arithmetic in the problem, so be careful in C++.",
+   "approaches": [
+    {
+     "name": "Brute force (baseline, O(n\u00b2))",
+     "aha": "Try EVERY pair of walls (i, j), compute the enclosed area, keep the maximum. Correct but wasteful: n\u00b2 pairs, most dominated by a taller wall elsewhere.",
+     "py": "best = 0\nl, r = 0, n - 1\nwhile l < r:\n    best = max(best, (r - l) * min(h[l], h[r]))\n    if h[l] < h[r]: l += 1\n    else: r -= 1",
+     "cpp": "int best = 0, l = 0, r = n - 1;\nwhile (l < r) {\n    best = max(best, (r - l) * min(h[l], h[r]));\n    h[l] < h[r] ? ++l : --r;\n}",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    },
+    {
+     "name": "Two pointers (BEST, O(n))",
+     "aha": "Start l = 0, r = n-1 (maximal width). Compute the area. Then move ONLY the shorter of the two walls inward: \u2022 If h[l] <= h[r], advancing l can only make the area grow (the limiting height might rise) \u2014 advancing r can never beat this. \u2022 Else advance r. Both pointers meet after exactly n-1 moves \u2192 O(n) total areas.",
+     "py": "for i in range(n):\n    for j in range(i + 1, n):\n        best = max(best, (j - i) * min(h[i], h[j]))\nreturn best",
+     "cpp": "int best = 0;\nfor (int i = 0; i < n; ++i)\n  for (int j = i + 1; j < n; ++j)\n    best = max(best, (j - i) * min(h[i], h[j]));",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    }
+   ],
+   "diagram": " h = [1, 8, 6, 2, 5, 4, 8, 3, 7]\n     0  1  2  3  4  5  6  7  8\n\n     l=0,r=8: (8-0) * min(1,7) = 8 8 -> move l (h[l]=1 < h[r])\n     l=1,r=8: (8-1) * min(8,7) = 7 7 -> move r (h[r]=7 < h[l])\n     l=1,r=7: (7-1) * min(8,3) =18 18 -> move r\n     l=1,r=6: (6-1) * min(8,8) =40 40 -> tie: move either\n     l=2,r=6: (6-2) * min(6,8) =24\n     l=3,r=6: (6-3) * min(2,8) = 6 -> move l\n     ... best so far = 49 at l=4,r=8? no: l=2,r=7 -> 5*6=30\n     ANSWER 49 = (8-1) * min(h[1],h[7]) is wrong; true best is\n            l=1,r=6 area 40, or l=4,r=8: 4*min(5,7)=20\n     full sweep records every candidate; only the pruned walk is fast",
+   "cpp_vs_py": "The loop is a dependent chain: the next comparison needs the previous pointer, so the branch predictor sees a hard-to-predict pattern and mispredicts often, which is where the real cycles go. C++ keeps `height[l]` and `height[r]` in registers across the iteration and computes the area in two multiplies with no memory traffic beyond two L1 loads; the compiler can even hoist the comparison into a conditional move, eliminating the branch entirely. CPython re-dereferences the list pointer, boxes the indices for `height[l]`, calls `min()` as a Python-level function, and allocates a new int for every `max(...)` candidate -- roughly 15 to 20 bytecodes per iteration for work C++ does in about six instructions.",
+   "cpp_alts": [
+    "Ternary `h[l] < h[r] ? ++l : --r` instead of an if/else lets the compiler emit a branchless cmov, which removes the misprediction entirely.",
+    "Prefix and suffix max arrays give an $O(n)$ one-pass alternative but need $O(n)$ extra memory; the two-pointer version needs none.",
+    "For 64-bit safety on huge inputs use `1LL * (r - l) * min(h[l], h[r])` even though the bound here fits in 32 bits."
+   ],
+   "py_alts": [
+    "`min`/`max` are Python function calls; inlining them as conditional expressions is measurably faster in a hot loop.",
+    "`while l < r` with `l, r = (l+1, r) if ... else (l, r-1)` avoids rebinding overhead in some interpreters -- measure before trusting it.",
+    "`zip(height, reversed(height))` is a cute O(1)-space form but it stops at the midpoint, so it is wrong unless combined with an explicit index."
+   ],
+   "trap": "Moving the TALLER wall, or moving both pointers. Any answer containing the shorter wall is bounded by the area just computed, so that wall can never improve on the recorded best; discarding it is safe. Discarding the taller one is not, because the shorter wall could pair with something further out.",
+   "invariant": "At the top of each iteration, `best` is at least the maximum area over every pair that uses an index already discarded. That is what makes the discard safe.",
+   "questions": [
+    {
+     "q": "Why is it always safe to move the shorter wall?",
+     "a": "Any pair (l, j) with j < r holds at most h[l] of water and a width smaller than r - l, so its area is at most what we just recorded. Same symmetric argument for r. Hence the discarded end cannot appear in a better answer."
+    },
+    {
+     "q": "What does the prefix/suffix max version buy you, and what does it cost?",
+     "a": "It removes the dependency between the two pointer positions, letting you sweep in one direction. It costs $O(n)$ extra memory and two extra passes, so for this problem the two-pointer version strictly dominates."
+    },
+    {
+     "q": "How many pairs does the two-pointer version actually examine?",
+     "a": "At most $n-1$, because each iteration moves exactly one pointer toward the other. The brute force examines $n(n-1)/2$. The speedup comes from the proof above, not from the count alone."
+    }
+   ],
+   "category_note": "Two pointers is a search-space-reduction technique, not a data structure. You start with two extremes of the feasible region and every move permanently discards a subrange, so the algorithm is a depth-first walk of an $O(n^2)$ decision tree pruned to a single path. The two flavours are opposite pointers on a sorted-or-unsorted array where a monotone predicate justifies each move, and same-direction pointers where a window's validity is monotone. The invariant to hunt for is always the same: after each move, the discarded end provably cannot appear in any strictly better answer than the one already recorded."
+  },
+  {
+   "key": "02_two_pointers/0015_3sum",
+   "one_liner": "Fix one value, two-pointer the rest, and skip duplicates.",
+   "core_objective": "Return every unique triple of distinct indices whose values sum to zero. Duplicated triples must be reported once and the order within a triple is irrelevant.",
+   "bounds": "3 <= nums.length <= 3000; -1e5 <= nums[i] <= 1e5. At least one triple is guaranteed. The $O(n^2)$ target is mandatory because the naive triple loop is $O(n^3)$ and times out at n = 3000.",
+   "approaches": [
+    {
+     "name": "Sort + two pointers (BEST, O(n\u00b2))",
+     "aha": "Sort nums. For each pivot i (skipping duplicate pivots): \u2022 target = -nums[i]; l = i+1, r = n-1. \u2022 Sum nums[l] + nums[r]: < target \u2192 l += 1, > target \u2192 r -= 1, == target \u2192 record, then skip duplicates on BOTH sides. \u2022 nums[i] > 0 \u2192 early exit: three positives can never sum to 0.",
+     "py": "nums.sort()\nout = []\nfor i in range(n - 2):\n    if nums[i] > 0: break\n    if i and nums[i] == nums[i-1]: continue\n    l, r = i + 1, n - 1\n    while l < r:\n        s = nums[i] + nums[l] + nums[r]\n        if s < 0: l += 1\n        elif s > 0: r -= 1\n        else:\n            out.append([nums[i], nums[l], nums[r]])\n            while l < r and nums[l] == nums[l+1]: l += 1\n            while l < r and nums[r] == nums[r-1]: r -= 1\n            l += 1; r -= 1",
+     "cpp": "sort(nums.begin(), nums.end());\nvector<vector<int>> out;\nfor (int i = 0; i + 2 < n; ++i) {\n    if (nums[i] > 0) break;\n    if (i && nums[i] == nums[i-1]) continue;\n    int l = i + 1, r = n - 1;\n    while (l < r) {\n        int s = nums[i] + nums[l] + nums[r];\n        if (s < 0) ++l; else if (s > 0) --r;\n        else { out.push_back({nums[i], nums[l], nums[r]});\n               while (l < r && nums[l] == nums[l+1]) ++l;\n               while (l < r && nums[r] == nums[r-1]) --r;\n               ++l; --r; }\n    }\n}",
+     "time": "O(n\u00b2)",
+     "space": "O(1) extra",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Hash map with dedupe set (O(n\u00b2) time, O(n) space)",
+     "aha": "Same pivot loop, but the inner 2-sum uses a set of seen values: for each j, look up -(nums[i]+nums[j]). Insert triplets into a set of canonical \"a,b,c\" tuples to kill duplicates.",
+     "py": "out, seen = [], set()\nfor i in range(n):\n    for j in range(i + 1, n):\n        need = -nums[i] - nums[j]\n        if need in seen:\n            out.append(sorted([nums[i], nums[j], need]))\n        seen.add(nums[j])\nreturn {tuple(t) for t in out}",
+     "cpp": "set<vector<int>> uniq;\nfor (int i = 0; i < n; ++i) {\n    unordered_set<int> seen;\n    for (int j = i + 1; j < n; ++j) {\n        int need = -nums[i] - nums[j];\n        if (seen.count(need)) {\n            vector<int> t{nums[i], nums[j], need};\n            sort(t.begin(), t.end()); uniq.insert(t);\n        }\n        seen.insert(nums[j]);\n    }\n}",
+     "time": "O(n\u00b2)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [-1, 0, 1, 2, -1, -4]   -> [[-1,-1,2], [-1,0,1]]\n\n sort: [-4, -1, -1, 0, 1, 2]\n\n i=0 x=-4  nums[i]>0? no\n   l=1 r=5  sum=-3 <0 -> l++      (need bigger)\n   l=2 r=5  sum=-3 <0 -> l++\n   l=3 r=5  sum=-1 <0 -> l++\n   l=4 r=5  sum=-1 <0 -> l++  -> l>=r, next i\n i=1 x=-1  nums[i-1]==-1? YES -> SKIP (dup left)\n   l=2 r=5  sum=0 HIT -> [-1,-1,2]\n        skip dup l (nums[l]==nums[l+1]) -> l=4\n        skip dup r (nums[r]==nums[r-1]) -> r=4\n        l+=1 r-=1 -> l>r, exit\n i=2 x=-1  nums[i-1]==-1? YES -> SKIP (dup left)\n i=3 x=0   l=4 r=5  sum=3 >0 -> r--\n        l=4 r=4 -> exit\n i=4 x=1   nums[i]>0 -> BREAK (rest cannot sum to 0)\n result [[-1,-1,2],[-1,0,1]]",
+   "cpp_vs_py": "Sorting dominates here. C++ `std::sort` is introsort -- quicksort with a depth cap, then heapsort, then insertion sort for small ranges -- so it is branch-heavy, cache-friendly on ints (a single 24 KB array for n = 3000, entirely in L1/L2) and never allocates. CPython's `list.sort()` is Timsort, which on an already-sorted or nearly-sorted run costs $O(n)$, and it uses a scratch buffer plus $O(\\log n)$ comparisons per merge step. The real Python cost is not the sort but the triple loop: the inner while is pure bytecode with a `max` of two indices, and CPython's per-iteration overhead of roughly 200 ns dominates the three integer adds that do the actual work.",
+   "cpp_alts": [
+    "`vector<long long>` for the sum if you want headroom; int is enough for the stated bounds but -1e5 * 3 fits comfortably anyway.",
+    "Prune the inner loop with `if (nums[i] + nums[i+1] + nums[i+2] > 0) break;` and `if (nums[i] + nums[n-2] + nums[n-1] < 0) continue;` -- standard three-sum pruning that shaves the constant noticeably.",
+    "Sorting once into `vector<pair<int,int>>` keeps original indices if you need them; this problem does not."
+   ],
+   "py_alts": [
+    "`while l < r and nums[l] == nums[l+1]: l += 1` after a hit is what makes the output unique; omitting it is the classic bug.",
+    "Two-sum per fixed i with a dict is $O(n^2)$ too but allocates a dict n times; the two-pointer version allocates nothing.",
+    "`itertools.combinations` is $O(n^3)$ and unusable here, but its output shape is the fastest way to express the brute force."
+   ],
+   "trap": "Finding a valid triple and appending it without the duplicate-skipping sweeps afterwards. You then emit the same triple many times, which LeetCode rejects as a wrong answer even though the set of triples is right.",
+   "invariant": "For fixed i, `l < r` and `nums[l..r]` is sorted. A sum below zero means no pair at or right of l can work with this i and the current r, so l advances; symmetrically for r. Every triple with first index i is found or provably excluded.",
+   "questions": [
+    {
+     "q": "Why must you skip duplicates after a hit, and not before?",
+     "a": "Skipping duplicates on the left before the loop only handles duplicate values of the fixed `i`. After a hit, the same triple can still be re-found by advancing one pointer, so the inner duplicate sweeps on both `l` and `r` are what make the output set unique."
+    },
+    {
+     "q": "Why is `if nums[i] > 0: break` safe?",
+     "a": "The array is sorted, so once the fixed value is positive every later value is too and no triple including it can sum to zero. Symmetrically, `nums[i] + nums[n-2] + nums[n-1] < 0` lets you skip the current i entirely."
+    },
+    {
+     "q": "What is the time complexity, and where does each factor come from?",
+     "a": "$O(n \\log n)$ for the sort plus $O(n^2)$ for the nested i/l walk -- each i sweeps at most n pointers. The third factor is eliminated by the monotone two-pointer argument inside the inner loop."
+    }
+   ]
+  },
+  {
+   "key": "02_two_pointers/0042_trapping_rain_water",
+   "one_liner": "Always advance the side with the smaller running maximum.",
+   "core_objective": "Given bar heights, compute how much trapped rain water sits between them, assuming the ends are infinitely tall walls.",
+   "bounds": "0 <= height.length <= 2e4; 0 <= height[i] <= 1e5. The answer can reach about $10^9$, so it just fits in a signed 32-bit int but any intermediate sum wants `long long`. An empty array or fewer than three bars traps nothing.",
+   "approaches": [
+    {
+     "name": "Prefix/suffix max arrays (intuitive, O(n) space)",
+     "aha": "Pass 1: leftMax[i] = max(height[0..i]) \u2014 build left to right. Pass 2: rightMax[i] = max(height[i..n-1]) \u2014 build right to left. Pass 3: water[i] = min(leftMax[i], rightMax[i]) - height[i] \u2265 0. Sum the non-negative values. Three linear passes, dead simple.",
+     "py": "l, r = 0, n - 1\nlo = hi = 0\nwater = 0\nwhile l < r:\n    lo, hi = max(lo, h[l]), max(hi, h[r])\n    if lo < hi:\n        water += lo - h[l]; l += 1\n    else:\n        water += hi - h[r]; r -= 1",
+     "cpp": "int l = 0, r = n - 1, lo = 0, hi = 0, water = 0;\nwhile (l < r) {\n    lo = max(lo, h[l]); hi = max(hi, h[r]);\n    if (lo < hi) { water += lo - h[l]; ++l; }\n    else          { water += hi - h[r]; --r; }\n}",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "two linear passes; the suffix is carried in a scalar; hence the stated bounds."
+    },
+    {
+     "name": "Two pointers (BEST, O(1) space)",
+     "aha": "Maintain l = 0, r = n-1 plus two running maxima: lMax (tallest seen on the left side) and rMax (tallest seen on the right side). Invariant: if lMax <= rMax, bar l's true cap equals lMax \u2014 we can compute water[l] RIGHT NOW and advance l. Symmetric for r. Each bar is finalized exactly once.",
+     "py": "left = [0] * n; right = [0] * n\nlo = 0\nfor i in range(n):\n    left[i] = lo = max(lo, h[i])\nhi = 0\nfor i in range(n - 1, -1, -1):\n    right[i] = hi = max(hi, h[i])\nreturn sum(left[i] - h[i] if left[i] < right[i] else right[i] - h[i]\n           for i in range(n))",
+     "cpp": "vector<int> L(n), R(n); int lo = 0, hi = 0;\nfor (int i = 0; i < n; ++i) L[i] = lo = max(lo, h[i]);\nfor (int i = n-1; i >= 0; --i) R[i] = hi = max(hi, h[i]);\nint w = 0;\nfor (int i = 0; i < n; ++i) w += min(L[i], R[i]) - h[i];",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    }
+   ],
+   "diagram": " h = [4,2,0,3,2,5]\n     ^\n     |        <- trapped between 4 and 5\n     |    . . .\n     |  [4][2][0][3][2][5]\n\n l=0 r=5  lo=4 hi=5   lo<hi -> water += 4-2 = 2 (at l=1) -> l=1\n l=1 r=5  lo=4 hi=5   lo<hi -> water += 4-2 = 2 (at l=2) -> l=2\n l=2 r=5  lo=4 hi=5   lo<hi -> water += 4-0 = 4 -> l=3\n l=3 r=5  lo=4 hi=5   lo<hi -> water += 4-3 = 1 -> l=4\n l=4 r=5  lo=4 hi=5   lo<hi -> water += 4-2 = 2 -> l=5  loop ends\n total = 2+2+4+1+2 = 11   (check: 0,1,3,1,2,0)\n\n key: when lo<hi the LEFT bound is already known, so height at l\n      is irrelevant to the level -- only the right side can rise.",
+   "cpp_vs_py": "The $O(1)$-space version reads `h[l]` and `h[r]` once per iteration and keeps both running maxima in registers, so the inner loop is two loads, two compares and one subtract -- about as tight as user code gets, and the two loads are cache-friendly because the two fronts sweep inward toward each other and stay resident. Python re-reads `h[l]`, calls `max` twice per iteration, allocates a fresh int for every `water +=` accumulation, and performs the accumulate into a boxed object, so the interpreter spends roughly ten bytecodes doing what the C++ loop does in six instructions. The $O(n)$ prefix/suffix version is worse in C++ for the same reason: it makes two full forward and backward passes over memory to hold data that two registers already carry.",
+   "cpp_alts": [
+    "The $O(1)$-space two-pointer version needs only `lo`, `hi`, `l`, `r` -- four registers, no allocation, no vector.",
+    "A prefix-max vector plus a running suffix max gives one forward pass and one backward pass, $O(n)$ space but better branch prediction.",
+    "Bucket approach for huge inputs: clamp heights into min(h, maxH) buckets, accumulate with a running max and a pending-water counter, which is a single streaming pass."
+   ],
+   "py_alts": [
+    "Inlining `max(lo, h[l])` as `lo = lo if lo > h[l] else h[l]` avoids two Python function calls per iteration.",
+    "The generator-sum form of the prefix/suffix version is concise but allocates three lists of size n.",
+    "For small n a stack-based solution mirroring the histogram problem is also $O(n)$ and reuses a familiar kernel."
+   ],
+   "trap": "Advancing the taller side, or forgetting to clamp negative contributions to zero. If you move `r` while `h[r] > h[l]` you subtract a height that has not yet been bounded on the left, and the total comes out too large.",
+   "invariant": "`lo` is the maximum of `h[0..l]` and `hi` the maximum of `h[r..n-1]`. When `lo <= hi`, the water level at l is exactly `lo`, so adding `lo - h[l]` is final and `l` can be retired. Symmetrically for r.",
+   "questions": [
+    {
+     "q": "Why does the smaller running maximum decide which side to move?",
+     "a": "If `lo <= hi`, the highest bar seen from the left already bounds column l, and the right side cannot get lower than `hi`. So the final water surface at l is `lo` and adding `lo - h[l]` now is safe; symmetrically when `hi < lo`. The two cases are the only possibilities, so every step is correct."
+    },
+    {
+     "q": "Is the O(n)-space prefix/suffix solution ever preferable?",
+     "a": "Yes, if you also need the per-column trapped amounts later, or if a single left-to-right pass suits a streaming source. For a single scalar answer the two-pointer version is strictly better: less memory, fewer passes, and a shorter dependency chain."
+    },
+    {
+     "q": "How do you prove the two-pointer version never skips a column's water?",
+     "a": "Each iteration retires exactly one index and adds its exact final contribution, and the pointers move only inward from 0 and n-1 until they meet. So every column is counted exactly once, and its level was provably final at the time it was counted."
+    }
+   ]
+  },
+  {
+   "key": "02_two_pointers/0125_valid_palindrome",
+   "one_liner": "Two pointers that skip non-alphanumeric and fold case.",
+   "core_objective": "Decide whether a string reads the same forwards and backwards after discarding every non-alphanumeric character and ignoring letter case.",
+   "bounds": "1 <= s.length <= 1e5, no bound on the character set. An empty result after filtering is a palindrome. Digits count as alphanumeric, so '0' must be compared too, and non-ASCII letters need an explicit alnum predicate.",
+   "approaches": [
+    {
+     "name": "Two pointers with in-place normalization (BEST, O(1) space)",
+     "aha": "l walks from the left, r from the right. Skip any non-alphanumeric character (punctuation, spaces) on either side, then compare s[l].lower() vs s[r].lower(). Any mismatch \u2192 false; pointers meet at the center \u2192 true.",
+     "py": "l, r = 0, len(s) - 1\nwhile l < r:\n    while l < r and not s[l].isalnum(): l += 1\n    while l < r and not s[r].isalnum(): r -= 1\n    if s[l].lower() != s[r].lower(): return False\n    l += 1; r -= 1\nreturn True",
+     "cpp": "int l = 0, r = s.size() - 1;\nwhile (l < r) {\n    while (l < r && !isalnum(s[l])) ++l;\n    while (l < r && !isalnum(s[r])) --r;\n    if (tolower(s[l]) != tolower(s[r])) return false;\n    ++l; --r;\n}\nreturn true;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "the output array doubles as the state store; hence the stated bounds."
+    },
+    {
+     "name": "Filter + reverse compare",
+     "aha": "Build a cleaned string (keep alnum, lowercase), then check it against its reverse. Conceptually simplest \u2014 a palindrome equals its own reverse \u2014 but allocates a second copy of the string.",
+     "py": "t = ''.join(c.lower() for c in s if c.isalnum())\nreturn t == t[::-1]",
+     "cpp": "string t;\nfor (char ch : s) if (isalnum(ch)) t += tolower(ch);\nstring u(t.rbegin(), t.rend());\nreturn t == u;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "Follows directly from the traversal count: O(n) time, O(n) space."
+    }
+   ],
+   "diagram": " s = \"A man, a plan, a canal: Panama\"\n     l=0                r=len-1\n\n step 1: skip non-alnum from both ends, fold case\n step 2: compare, advance both\n\n   A ... a   -> 'a' == 'a'  ok\n   m ... m   -> ok\n   a ... n   -> 'a' != 'n'  ... keep going, real middle\n   \\n\n   filtered = \"amanaplanacanalpanama\"\n   reversed = \"amanaplanacanalpanama\"\n\\n memory: two pointers, zero allocation (BEST)\n vs    filtered + reversed = 2 extra strings of size n",
+   "cpp_vs_py": "The $O(1)$-space version is the whole point, and it is where the languages diverge most. C++ `isalnum` and `tolower` from `<cctype>` are locale-aware C functions operating directly on `char` inside the string's own buffer, so the scan is a pure in-place read with perfect prefetch behaviour and zero allocation. Python's `str.isalnum()` is a method call on a one-character string, and critically CPython caches single-character Latin-1 strings, so `s[l].isalnum()` does not allocate -- but `s[l].lower()` on a character with no uppercase form also returns a cached object. The remaining cost is the four method dispatches per iteration, which at n = 1e5 dominates everything else.",
+   "cpp_alts": [
+    "Use `std::isalnum(static_cast<unsigned char>(ch))` -- passing a plain signed `char` is undefined behaviour for bytes above 127.",
+    "`std::string_view` avoids a copy of the input if you must take it by value elsewhere.",
+    "A manual in-place compaction into a buffer (write pointer, read pointer) beats the two-pointer version when you need to keep the filtered string, and is still one pass."
+   ],
+   "py_alts": [
+    "Generator filtering plus a comparison against the reversed generator is awkward; the explicit two-pointer loop is clearest.",
+    "`s[l].isalnum()` beats `re.match` or `str.translate` here -- the per-call regex machinery dwarfs the check.",
+    "`casefold()` is stricter than `lower()` for Unicode but slower; with the ASCII guarantee, `lower()` is correct and fast."
+   ],
+   "trap": "Using the whole-string reverse comparison and calling it $O(1)$ space. It is $O(n)$ space and allocates two strings. Also, forgetting that digits count, or comparing without folding case so 'A' != 'a' fails every real test.",
+   "invariant": "Throughout the loop, every character strictly left of `l` and strictly right of `r` has already been matched with its mirror (or skipped as non-alphanumeric). So the remaining work is entirely inside the window [l, r].",
+   "questions": [
+    {
+     "q": "Why is the two-pointer version $O(1)$ space and the reversed-copy version not?",
+     "a": "The two-pointer version only holds two integer indices and reads the original buffer in place. Building `t = filtered` and then `t[::-1]` materialises two new strings of length n, so that version is $O(n)$ space."
+    },
+    {
+     "q": "What does `isalnum` return for unicode digits and accented letters in Python?",
+     "a": "True for any unicode alphanumeric, which is broader than the ASCII definition. C++ `std::isalnum` with the default 'C' locale only accepts ASCII. That divergence is exactly why a naive port can behave differently on non-ASCII input."
+    },
+    {
+     "q": "How do you make the digits comparison safe from sign issues in C++?",
+     "a": "Cast to `unsigned char` before calling `isalnum`/`tolower`. A `char` with the high bit set is negative, and passing that where an `unsigned char` is expected is undefined behaviour -- a real source of crashes on non-ASCII input."
+    }
+   ]
+  },
+  {
+   "key": "02_two_pointers/0167_two_sum_ii",
+   "one_liner": "Sorted input means one pointer move per step; watch the 1-based indices.",
+   "core_objective": "Given a 1-indexed array of integers sorted in ascending order, return the 1-indexed positions of the two numbers that add to target.",
+   "bounds": "2 <= numbers.length <= 3e4; -1e7 <= numbers[i] < 1e7; exactly one solution exists and l < r always. The output must be 1-based -- the single most common failure on this problem.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "l, r = 0, n - 1\nwhile l < r:\n    s = nums[l] + nums[r]\n    if s == target: return [l + 1, r + 1]   # 1-based!\n    s < target and l or l.__class__\n    if s < target: l += 1\n    else: r -= 1",
+     "cpp": "int l = 0, r = n - 1;\nwhile (l < r) {\n    int s = nums[l] + nums[r];\n    if (s == target) return {l + 1, r + 1};   // 1-based\n    s < target ? ++l : --r;\n}",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "for i, x in enumerate(nums):\n    need = target - x\n    if need in seen: return [seen[need] + 1, i + 1]\n    seen[x] = i",
+     "cpp": "unordered_map<int,int> seen;\nfor (int i = 0; i < n; ++i) {\n    int need = target - nums[i];\n    auto it = seen.find(need);\n    if (it != seen.end()) return {it->second + 1, i + 1};\n    seen[nums[i]] = i;\n}",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v3",
+     "aha": "v3 -- see the kernel below.",
+     "py": "l, r = 0, len(numbers) - 1\nwhile l < r:\n    s = numbers[l] + numbers[r]\n    if s == target: return [l + 1, r + 1]\n    elif s < target: l += 1\n    else: r -= 1",
+     "cpp": "while (l < r) { int s = numbers[l] + numbers[r];\n    if (s == target) return {l + 1, r + 1};\n    else if (s < target) l++;\n    else r--;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " numbers = [2, 7, 11, 15]   target = 9\n         idx1   idx2  idx3   idx4\n\n l=1 r=4  2 + 15 = 17 > 9  -> r=3\n l=1 r=3  2 + 11 = 13 > 9  -> r=2\n l=1 r=2  2 +  7 =  9 = 9  -> return [1, 2]\n\n why r moves on 'too big': numbers[l] is the smallest remaining,\n so with this l no smaller r can work either -> retire l? no,\n retire r because any smaller r only makes the sum smaller,\n and we already know l is at its smallest useful value here.\n\n 1-BASED TRAP: returning [0, 1] fails.\n Binary-search alternative is O(n log n); the log n is wasted.",
+   "cpp_vs_py": "Sorted input plus two indices is the ideal shape for C++: `numbers[l]` and `numbers[r]` are loads from opposite ends of a 240 KB array, the cache lines holding both are fetched once and reused on every subsequent iteration, and the pointer update is a single decrement that the compiler turns into a branchless cmov. The array is read-only, so there is no store traffic and no write-allocate misses at all. Python does the same two loads through `numbers.__getitem__`, which returns a borrowed reference and interns nothing here, then allocates a new int for the sum each iteration; the comparison chain is identical but executed in bytecode, so the constant factor is 20 to 50 times larger even though the asymptotics match.",
+   "cpp_alts": [
+    "A single `for` with two index variables and a ternary move compiles to cmov and avoids one predictable-branch misprediction per iteration.",
+    "`std::lower_bound` + `std::upper_bound` gives $O(n \\log n)$ with branch-predictable library code -- a reasonable fallback when readability matters more than the constant.",
+    "Because the array is sorted and you know the index, you can prune the right end using `target - numbers[0]` as an initial bound."
+   ],
+   "py_alts": [
+    "The dict version is $O(n)$ time but $O(n)$ space -- strictly worse here, listed only as the contrast that motivates the two pointers.",
+    "`bisect_left` per element is $O(n \\log n)$ in C-implemented code, which for large n can beat a Python-level two-pointer loop despite the worse asymptotics.",
+    "Using `numbers[l] + numbers[r] < target` directly avoids materialising `s`, saving one int allocation per iteration."
+   ],
+   "trap": "Returning 0-based indices. The input is explicitly 1-indexed and the expected answer is `[1, 2]` for the standard example, not `[0, 1]`.",
+   "invariant": "At every step, if a valid pair exists at all, one exists with `l' >= l` and `r' <= r`. That is exactly what lets each move retire one index permanently.",
+   "questions": [
+    {
+     "q": "Why is moving the pointer toward the middle correct given sorted input?",
+     "a": "If the sum is too large, every pair using the current `r` with a smaller `l` is also too large, because `numbers[l]` only decreases as `l` grows. So `r` cannot be part of a solution and can be retired. The sum-too-small case is symmetric for `l`."
+    },
+    {
+     "q": "Is the hash-map solution acceptable here?",
+     "a": "It is $O(n)$ and correct, but the array is already sorted, so the two-pointer version is $O(n)$ time with $O(1)$ space and no hashing. Mentioning why the sorted invariant makes the map unnecessary is the point of the comparison."
+    },
+    {
+     "q": "What is the tight bound on pointer moves?",
+     "a": "At most $n-1$ moves, since each iteration moves exactly one pointer and the gap shrinks by one. Combined with the $O(1)$ cost of each load and add, the whole scan is a linear pass over two cache lines' worth of active data."
+    }
+   ]
+  }
+ ]
+}

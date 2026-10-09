@@ -1,0 +1,162 @@
+{
+ "problems": [
+  {
+   "key": "08_tries/0208_implement_trie",
+   "one_liner": "Each node holds a child map plus an end-of-word flag.",
+   "core_objective": "Implement a prefix tree supporting insert, search, and startsWith.",
+   "bounds": "lowercase English letters only, so at most 26 children per node. With 1e4 words of length 100 the node count can reach 1e6, which makes per-node memory the real constraint in Python.",
+   "approaches": [
+    {
+     "name": "26-array trie (BEST for a fixed lowercase alphabet)",
+     "aha": "Node = { children[26], isEnd }. children[i] is the child for letter 'a'+i; isEnd marks where an inserted word terminates. insert : walk letters, allocate missing children, set isEnd. search : walk letters; missing child \u21d2 false; return isEnd. startsWith: walk letters; missing child \u21d2 false; else true \u2014 NO isEnd check, any descendant counts.",
+     "py": "    self.children: List[Optional[\"SolutionOne._Node\"]] = [None] * 26\n    self.isEnd: bool = False  # True = a word terminates here\nself.root: SolutionOne._Node = SolutionOne._Node()\nnode = self.root\nfor ch in word:\n    idx = ord(ch) - 97  # 'a'\u21920 \u2026 'z'\u219225 \u2014 one multiply to find child\n    if node.children[idx] is None:\n        node.children[idx] = SolutionOne._Node()  # grow the path",
+     "cpp": "for (char c : word) {\n    int i = c - 'a';                          // letter \u2192 slot 0..25\n    if (!n->children[i]) n->children[i] = new TrieNode(); // grow path\n    n = n->children[i];                       // descend one level",
+     "time": "O(L) per op \u2014 L = word length.",
+     "space": "O(26\u00b7n\u00b7L) worst case \u2014 n\u00b7L nodes, each holding",
+     "why": "Follows directly from the traversal count: O(L) per op \u2014 L = word length. time, O(26\u00b7n\u00b7L) worst case \u2014 n\u00b7L nodes, each holding space."
+    },
+    {
+     "name": "Hash set + linear prefix scan (contrast)",
+     "aha": "Store every word verbatim in a Python set (open addressing with LINEAR PROBING: h(k, i) = (hash(k) + i) mod m, i = 0, 1, 2, \u2026). search : O(1) average \u2014 one probe sequence. startsWith: scan ALL stored words and prefix-compare each \u2014 O(n\u00b7L), because a hash set cannot answer prefix queries.",
+     "py": "self.words: set[str] = set()\nself.words.add(word)\nreturn word in self.words\nreturn any(w.startswith(prefix) for w in self.words)",
+     "cpp": "for (const std::string& w : words) { if (w.size() >= prefix.size() &&\n        w.compare(0, prefix.size(), prefix) == 0) { return true;\n    }",
+     "time": "search O(1) avg; startsWith O(n\u00b7L).",
+     "space": "O(n\u00b7L).",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " insert('apple') then insert('app')\n\n  root\n   |-a\n   |  \\-p\n   |    \\-p   <-- endOfWord (word 'app' ends here)\n   |       \\-l\n   |          \\-e  <-- endOfWord (word 'apple' ends here)\n\n  insert('apple','app','apply'):\n   root -> a -> p -> p (flag=True)\n                 -> l -> e (flag=True)\n                       -> y (flag=True)\n\n  search('app')  -> follow a,p,p and return flag -> True\n  search('apx')  -> no child 'x' -> False EARLY\n  startsWith('ap') -> follow a,p, end of pattern, no flag -> True\n\n  invariant: a node is reached by exactly one string prefix, so\n  the flag at a node is the sole record of \"a word ends here\".",
+   "cpp_vs_py": "The trie is a 26-way tree: every node has 26 child slots (one branch per letter position) + an isEnd flag. Words sharing a prefix share EVERY node of that prefix \u2014 \"app\" then \"apple\" costs only 2 extra nodes, not 5. Hash sets (dict/set probing h(k,i) = (hash(k)+i) mod m) give O(1) EXACT matches but cannot do prefix queries \u2014 a prefix is not a key. The trie converts them into a single O(L) walk at the price of memory: each node pre-allocates 26 slots (26\u00d78 B \u2248 208 B) even when 1\u20132 children exist. Fixed small alphabet \u2192 list children (index = ord(c)-97); unbounded alphabets (Unicode) \u2192 dict children allocate only what is used. =====================================================================\n\nA trie is a 26-way tree: every node carries 26 child pointers (one branch per letter position) + an isEnd flag. Two words that share a prefix share EVERY node of that prefix \u2014 inserting \"app\" then \"apple\" costs only 2 extra nodes, not 5. Hash maps (C++ unordered_set = separate chaining; Python set = open addressing with linear probing h(k,i) = (hash(k) + i) mod m) give O(1) EXACT matches, but a prefix is not a key \u2014 \"all words starting with 'app'\" forces a full scan. The trie turns that query into one O(L) walk. The price is memory: each node pre-allocates 26 pointers (26\u00d78 B \u2248 208 B) even when only 1\u20132 children exist. Fixed small alphabet \u2192 array children (child lookup = 1 multiply, cac",
+   "cpp_alts": [
+    "`vector<TrieNode>` with `children[26]` as a fixed array is cache-ideal but costs 104 bytes per node; a `map` or `vector<pair>` child list is denser for sparse nodes.",
+    "`gp_hash_table<char,int>` per node is a poor fit: one hash table per node is heavy, and 26 edges do not justify hashing."
+   ],
+   "py_alts": [
+    "A plain `dict` per node is the standard; a `list` of 26 is faster for lookup but wastes memory on sparse tries.",
+    "`defaultdict(dict)` for children removes the membership test on insert.",
+    "A set of all words supports startsWith by scanning, but search becomes $O(\\sum |w|)$ -- worse, though trivially correct."
+   ],
+   "trap": "Confusing search with startsWith: `search('app')` must require the end-of-word flag, `startsWith('app')` must not. Returning the node without checking the flag makes every prefix a word.",
+   "invariant": "Following the character sequence of a query reaches a node iff that sequence is a prefix of some inserted word. The flag at that node distinguishes \"a word ends here\" from \"a path continues\", which is the only difference between the two query methods.",
+   "questions": [
+    {
+     "q": "Why does a trie beat a set for startsWith?",
+     "a": "A set requires scanning all words or building a separate prefix structure, and a scan is $O(n)$ regardless of query length. A trie answers startsWith in $O(L)$ where L is the query length, independent of the number of words stored."
+    },
+    {
+     "q": "What is the memory cost per node?",
+     "a": "A Python dict costs roughly 64 bytes empty and grows with entries, so a million-node trie can exceed 200 MB. C++ with `children[26]` costs 104 bytes plus the flag, but compresses into a flat array with child indices -- predictable and cache-friendly."
+    },
+    {
+     "q": "How would you support arbitrary characters?",
+     "a": "Replace the fixed 26-array or lowercase assumption with a map, and index by code point rather than `ord(c) - ord('a')`. Unicode tries need care with surrogate pairs in narrow builds."
+    }
+   ]
+  },
+  {
+   "key": "08_tries/0211_design_add_and_search_words",
+   "one_liner": "Treat '.' as a branch point during the descent.",
+   "core_objective": "Implement a trie supporting insert and a search that allows '.' to match any single character.",
+   "bounds": "1 <= word.length <= 25 with lowercase letters and '.', at most 100 words stored. A query of all dots must not blow up -- without pruning it explores 26^d paths.",
+   "approaches": [
+    {
+     "name": "Trie + recursive DFS (best)",
+     "aha": "Walk the trie with an index i into the pattern. pattern[i] == '.' \u2192 try EVERY child; true if any matches. pattern[i] == 'c' \u2192 follow only child 'c'; missing \u21d2 false. i == len(pattern) \u2192 answer = isEnd of the current node. The '.' branch is O(26) per level worst case; letters stay O(1).",
+     "py": "self.root: _TrieNode = _TrieNode()\nnode = self.root\nfor ch in word:\n    node = node.children.setdefault(ch, _TrieNode())  # grow path\nnode.isEnd = True  # mark word completion\n    if i == len(word):\n        return node.isEnd\n    ch = word[i]",
+     "cpp": "if (c == '.') { for (int k = 0; k < 26; ++k) {\n        if (n->children[k] && dfs(n->children[k], w, i + 1)) return true;\n    }\n    return false;",
+     "time": "O(26^d) worst case, d = number of '.'; O(L)",
+     "space": "O(26\u00b7n\u00b7L) trie nodes worst case + O(L) call stack.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "Trie + iterative BFS (level-by-level frontier)",
+     "aha": "Keep a FRONTIER of candidate nodes. For each pattern char: '.' \u2192 frontier = ALL children of every candidate. 'c' \u2192 frontier = only the 'c'-children of candidates. Empty frontier \u21d2 no match. Finally, true iff some surviving node has isEnd. Same complexity as DFS, no recursion stack, and every candidate advances in lockstep \u2014 the natural \"wavefront\" view.",
+     "py": "self.root: _TrieNode = _TrieNode()\nnode = self.root\nfor ch in word:\n    node = node.children.setdefault(ch, _TrieNode())\nnode.isEnd = True\nfrontier: deque[_TrieNode] = deque([self.root])  # nodes alive so far\nfor ch in word:\n    next_frontier: deque[_TrieNode] = deque()",
+     "cpp": "for (char c : word) {\n    std::vector<TrieNode*> next; // candidates for the NEXT level\n    if (c == '.') { for (const TrieNode* n : frontier) { for (int k = 0; k < 26; ++k) {\n                if (n->children[k]) next.push_back(n->children[k]);\n            }\n        }\n    } else { for (const TrieNode* n : frontier) { TrieNode* child = n->children[c - 'a'];\n            if (child) next.push_back(child);",
+     "time": "O(26^d) worst case, O(L) without wildcards.",
+     "space": "O(26^d) frontier worst case.",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    }
+   ],
+   "diagram": " insert('bad'), insert('dad'), insert('mad')\n\n  search('pad'):\n   root -> a exists; then '.' branches over b,d,m\n     'a'+'d' exists ; third char 'd' exists -> flag? yes -> True\n   -> 3 branches at ONE level only (the whole query has\n      a single dot), so this is cheap\n\n  the blow-up case: search('.....') with 25 dots\n   26 branches at each of 25 levels = 26^25 paths.\n   PRUNING: if a dot is the LAST character of the pattern,\n   accept immediately if the current node has any children.\n   That single check kills the exponential case:\n   \"\\.\" at the end -> return bool(children)\n\n  invariant: at level i, node sits on exactly the trie prefix\n  matching pattern[0..i-1] under the '.' rule.",
+   "cpp_vs_py": "Without '.' this is exactly LeetCode 208's trie: node = 26 child slots + isEnd. With '.', search becomes a tree WALK with branching: every '.' multiplies the live paths by up to 26, so d wildcards cost up to 26^d node visits. DFS visits one path to its end before backtracking; BFS visits all paths one level at a time \u2014 identical work, different order. Python dict children (open addressing, linear probing h(k,i) = (hash(k)+i) mod m) are lean for '.'-scanning: iterating only existing children beats scanning 26 fixed slots. =====================================================================\n\nWithout '.' this is exactly LeetCode 208's trie: each node = 26 children + isEnd. With '.', the search becomes a tree WALK with branching: every '.' multiplies the number of live paths by (up to) 26, so d wildcards cost up to 26^d node visits. DFS visits one path to its end before backtracking; BFS visits all paths one level at a time \u2014 identical work, different order. Python dict children (probing h(k,i) = (hash(k)+i) mod m) are the lean choice for '.'-scanning here: iterating only the children that EXIST beats scanning 26 fixed slots per branch. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 BFS frontier, test ops #include <string> // std::string \u2014 words and patterns #",
+   "cpp_alts": [
+    "Recursive DFS with `const vector<TrieNode*>& children` avoids copying the child vector per call.",
+    "Iterative DFS with an explicit stack bounds the stack at $O(L)$ regardless of the branching factor."
+   ],
+   "py_alts": [
+    "`for c in children[node]:` iterates values directly, saving a dict lookup per child.",
+    "Recursion depth equals word length (25), so the default Python limit is never a concern here."
+   ],
+   "trap": "Not pruning when the '.' is the final character of the pattern. `26^L` is astronomically slow, and the fix is a one-line check that a node with any child satisfies a trailing wildcard.",
+   "invariant": "`search(node, i)` is true iff there is an inserted word matching `pattern[i:]` within node's subtree. The split into \"pattern[i] == '.'\" (try every child) and \"concrete character\" (take one child) covers exactly the wildcard semantics, so the recursion is exhaustive and sound.",
+   "questions": [
+    {
+     "q": "What is the worst-case time of the wildcard search?",
+     "a": "Exponential in the number of dots, up to $26^d$ for d dots. The trailing-dot optimisation caps it, and in practice LeetCode inputs keep dot counts low -- but stating the exponential bound and the pruning is the interview answer."
+    },
+    {
+     "q": "Why does a trailing dot return immediately?",
+     "a": "Because any descendant of the current node completes the word. If the node has at least one child, some continuation exists and matches the single remaining dot. If it has no children, there is nothing to match. That test is exact, not a heuristic."
+    },
+    {
+     "q": "How would you add prefix search with dots?",
+     "a": "Return true if the recursion reaches i == len(pattern) without failing -- whether or not a flag is set -- which is exactly `startsWith` generalised to wildcards."
+    }
+   ]
+  },
+  {
+   "key": "08_tries/0212_word_search_ii",
+   "one_liner": "Each trie node walks the grid instead of matching its word.",
+   "core_objective": "Find all words in a dictionary that exist in a grid using adjacent horizontal or vertical moves, each cell at most once per word.",
+   "bounds": "up to 3e4 cells, 1e5 words of length up to 10e3. Pruning is essential: without removing found words and without early termination the search is hopeless.",
+   "approaches": [
+    {
+     "name": "Trie + grid DFS backtracking (foundation)",
+     "aha": "Build the trie (each terminal node stores its full word, which doubles as a \"found\" marker). For every cell, DFS: prune when the letter has no trie child; mark cells '#' while visiting to stop re-use, restore on backtrack. When a node's stored word is found, record it and CLEAR the stored word so it is never reported again.",
+     "py": "root = _TrieNode()\nfor w in words:\n    _insert(root, w)\nrows, cols = len(board), len(board[0])\nfound: List[str] = []\n    if r < 0 or r >= rows or c < 0 or c >= cols:\n        return\n    if board[r][c] == \"#\":",
+     "cpp": "if (!child->word.empty()) {         // this path spells a full word\n    found.push_back(child->word);   // report it\u2026\n    child->word.clear();            // \u2026and never report it again",
+     "time": "O(m\u00b7n\u00b74^L) worst case \u2014 L = max word length,",
+     "space": "O(26\u00b7n\u00b7L) trie + O(L) recursion depth.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "Trie + grid DFS with branch pruning (BEST)",
+     "aha": "Same walk, plus a refs counter on every node = number of words still reachable through it. When a node's last remaining word is found, refs drops to 0 and the whole dead branch is DELETED from the trie \u2014 future DFS never re-explores it. This removes the classic \"found word still costs DFS time on every later cell\" waste.",
+     "py": "root = _TrieNode()\nfor w in words:\n    _insert(root, w)\nrows, cols = len(board), len(board[0])\nfound: List[str] = []\n    if r < 0 or r >= rows or c < 0 or c >= cols:\n        return\n    if board[r][c] == \"#\":",
+     "cpp": "if (!child->word.empty()) {             // word completed here\n    found.push_back(child->word);\n    child->word.clear();\n    --child->refs;                      // one fewer word in this branch",
+     "time": "O(m\u00b7n\u00b74^L) worst case, faster in practice.",
+     "space": "O(26\u00b7n\u00b7L) trie + O(L) recursion depth.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": " grid:  oaan\n        etaen\n        iok\n        le        words: [oath, pea, eat, rain]\n\n  THE SHIFT: each trie node stores the LIST OF GRID CELLS\n  where that prefix occurs. So one node does O(4) work per cell\n  rather than rescanning its whole word.\n\n   root: all (0,0) (0,1) (0,2) (0,3)\n            (1,0)... (2,3)\n   node 'o': (0,0) (1,0) (2,1)\n   node 'oa': (0,0)\n   node 'oat': (0,0) -> neighbour 'h' at (1,0)? no -> dead\n   node 'e': (0,1) (1,1) (1,3) (2,2)\n   node 'ea': (1,1)\n   node 'eat': (1,1) -> 't' at (1,2)? yes -> flag -> 'eat' FOUND\n              remove 'eat' from the trie (prune)\n\n  per node work: 4 neighbours * (rows*cols) cells = O(4RC)\n  marking is by mutating the CELL to '#' then restoring,\n  so a cell is never reused within one path.",
+   "cpp_vs_py": "A plain hash set of words cannot guide the walk: from cell (r,c) you would have to ask \"which words start with the letters spelled so far?\" \u2014 a PREFIX query, exactly what hash maps cannot answer (probing h(k,i) = (hash(k)+i) mod m finds only exact keys). The trie answers it in O(1) per letter: one child lookup decides whether to descend or prune. Deleting used words (A2) turns the trie into a live accumulator \u2014 each word is discovered exactly once and its branch dies afterwards, so later cells stop paying for it. Memory math: n words of avg length L share prefix nodes; worst case n\u00b7L nodes \u00d7 26 pointers each. =====================================================================\n\nA plain hash set of words cannot guide the walk: from cell (r,c) you would have to ask \"which words start with the letters I have spelled so far?\" \u2014 a PREFIX query, exactly what hash maps cannot answer (probe h(k,i) = (hash(k)+i) mod m only finds exact keys). The trie answers it in O(1) per letter: one child lookup decides whether to descend or prune. Deleting used words (A2) turns the trie into a live accumulator \u2014 each word is discovered exactly once and its branch dies afterwards, so later cells stop paying for it. Memory math: n words of avg length L share prefix nodes, worst case n\u00b7L nodes \u00d7 26 pointers. ===================================================================== /\n\n#include <iostream> //",
+   "cpp_alts": [
+    "Store `(row, col)` pairs per node in a `vector`; that is the algorithm's essential data, not an optimisation.",
+    "Deleting found words from the trie is the main pruning win -- without it every grid cell keeps searching for words already reported.",
+    "Encode positions as `int` instead of a pair to halve the node payload."
+   ],
+   "py_alts": [
+    "A list of ints per node with `for p in node.positions:` avoids tuple unpacking.",
+    "Deleting from the trie: set the node's children to an empty list so the DFS stops descending there."
+   ],
+   "trap": "Forgetting to unmark the grid cell after the recursive call. The cell stays as '#' and every other word that needs it fails, so the answer is missing valid words.",
+   "invariant": "The list at trie node u holds exactly the grid cells where u's prefix ends, for the current search. DFS from u visits each such cell, marks it, and recurses into the child matching the next character. Marking makes the path self-avoiding; restoring after the loop restores the invariant for sibling branches.",
+   "questions": [
+    {
+     "q": "What does storing grid positions in the trie buy?",
+     "a": "It inverts the loops. Instead of every cell trying every dictionary word (O(RC * W)), each trie node does O(4) work per cell it occupies, so the total is proportional to the number of (prefix, cell) pairs that actually exist. Shared prefixes are explored once instead of once per word."
+    },
+    {
+     "q": "Why is removing found words necessary?",
+     "a": "Without it, a cell visited late still descends the full remaining trie looking for words already reported, wasting the dominant share of the work. Removing a found word prunes that subtree for every later cell, and since the answer is a set, reporting twice is wrong anyway."
+    },
+    {
+     "q": "How does marking prevent revisiting a cell?",
+     "a": "Temporarily writing '#' into the cell makes any check of its character fail for the remainder of that path. Because the recursion restores the original character on the way out, sibling branches still see the true letter -- so marking gives path-local, not global, exclusion."
+    }
+   ]
+  }
+ ]
+}

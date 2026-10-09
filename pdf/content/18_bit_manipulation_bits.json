@@ -1,0 +1,492 @@
+{
+ "problems": [
+  {
+   "key": "18_bit_manipulation/0007_reverse_integer",
+   "one_liner": "Pre-multiply guard against INT_MIN; or use long long.",
+   "core_objective": "Return the integer with its 32-bit signed digits reversed, clamped to the 32-bit signed range.",
+   "bounds": "-2^31 <= x <= 2^31 - 1, and the reversed value may fall outside that range -- e.g. 1534236469 reverses to 9646324351. Python has no such limit, so a naive reverse works there.",
+   "approaches": [
+    {
+     "name": "Pop & push with pre-multiply guards (BEST)",
+     "aha": "Check `result > INT_MAX // 10` before growing (any growth overflows) or `result == INT_MAX // 10 and digit > 7` (only the largest digit overflows at the exact boundary). Mirror on the negative side with -214748364 and guard digit -8 \u2014 two's complement gives the negative range one extra unit, so the two guard digits DIFFER (7 vs -8).",
+     "py": "neg = x < 0\nn = -x if neg else x            # work on magnitude: // truncates\nresult = 0\nwhile n != 0:\n    digit = n % 10\n    n //= 10\n    if result > INT32_MAX // 10 or (result == INT32_MAX // 10 and digit > 7):\n    result = result * 10 + digit",
+     "cpp": "while (n != 0) {\n    int d = static_cast<int>(n % 10);  // last digit (sign preserved)\n    rev = rev * 10 + d;                // append to the growing answer\n    n /= 10;                           // drop the digit we consumed",
+     "time": "O(log10 |x|)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(log10 |x|) time, O(1) space."
+    },
+    {
+     "name": "Unbounded accumulation, single final range check",
+     "aha": "Exploit Python's big ints: accumulate WITHOUT guards (nothing can overflow), then clamp once at the end: if the reversal escapes [-2^31, 2^31 - 1] \u2192 0. Same loop, fewer branches, and it makes the \"mask to 32 bits\" idea explicit: the hardware does this clamping silently, so the algorithm must do it deliberately.",
+     "py": "sign = -1 if x < 0 else 1\nvalue = abs(x)\nresult = 0\nwhile value != 0:\n    result = result * 10 + (value % 10)\n    value //= 10\nresult *= sign\nif result < INT32_MIN or result > INT32_MAX:",
+     "cpp": "long long r = 0;\nwhile (x != 0) { r = r * 10 + x % 10; x /= 10; }\nif (r > INT_MAX) return INT_MAX;\nif (r < INT_MIN) return INT_MIN;\nreturn (int)r;   // 64-bit accumulator makes this safe",
+     "time": "O(log10 |x|)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(log10 |x|) time, O(1) space."
+    }
+   ],
+   "diagram": " x = 123 -> 321\n  x = -123 -> -321\n  x = 120 -> 21     (leading zero dropped)\n  x = 1534236469 -> OUT OF RANGE -> 9646324351 > 2^31-1\n        -> must return 2147483647 (INT_MAX)\n  x = -2147483648 (INT_MIN) -> reverses to -8463847412\n        -> must return -2147483648\n\n  THE OVERFLOW TRAP: before appending a digit, check whether\n  result would exceed INT_MAX/10, or equal it with a digit > 7.\n  Without the guard, 1534236469 overflows and C++ signed\n  overflow is undefined behaviour -- it may silently wrap.\n\n  guard:\n   if (result > INT_MAX / 10) return INT_MAX;\n   if (result == INT_MAX / 10 && d > INT_MAX % 10)\n       return INT_MAX;\n\n  PYTHON needs no guard: arbitrary precision means the\n  reversed value is computed exactly and then compared.",
+   "cpp_vs_py": "Modulo 10 is a single x86 'idiv' remainder; integer multiply by 10 and add is one IMUL + one ADD \u2014 no heap allocation, no parsing overhead, no UTF-8 decode. The 32-bit bound is INT32_MAX = 2147483647 and INT32_MIN = -2147483648; building the result in a 64-bit long guarantees the comparison is always well defined (no UB from signed overflow during the build itself). Also note: 64-bit build handles INT32_MIN safely \u2014 INT32_MIN / -1 overflows in 32-bit, but never in 64-bit. --------------------------------------------------------------------- TIME COMPLEXITY : O(log10 |x|) = O(1) \u2014 at most 10 digits.",
+   "cpp_alts": [
+    "The guard approach avoids any 64-bit arithmetic and stays within int.",
+    "`long long` accumulation is simpler: the reversed value of a 32-bit int always fits in 64 bits, so build it there and clamp at the end."
+   ],
+   "py_alts": [
+    "`int(str(abs(x))[::-1]) * (1 if x >= 0 else -1)` is one line and exact, since Python ints are unbounded.",
+    "`divmod(x, 10)` returns (quotient, remainder) with floored division, which handles negatives correctly in one call."
+   ],
+   "trap": "Using `abs(INT_MIN)` in C++, which overflows because 2147483648 is not representable as int. `int(-INT_MIN)` is undefined behaviour -- the classic manifestation is returning -2147483648 forever.",
+   "invariant": "After k iterations, `result` holds the last k digits of x reversed, and `x` holds the remaining leading digits. Each step removes the last digit of x and appends it to result, so the combined value is preserved until the final clamp.",
+   "questions": [
+    {
+     "q": "Why is the pre-multiply guard needed rather than clamping afterwards?",
+     "a": "Because by the time the overflow has happened the value is already wrong -- signed overflow is undefined behaviour, so the compiler may have produced anything. Detecting it before the multiplication keeps every intermediate value representable."
+    },
+    {
+     "q": "How does Python avoid this entirely?",
+     "a": "Arbitrary-precision integers mean no intermediate value is ever out of range. The reversed value is computed exactly and then compared against the 32-bit limits, which is the clean approach -- the C++ guard exists purely to work around a language restriction."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(\\log_{10} |x|)$ time -- one iteration per digit, at most 10 -- and $O(1)$ space. No string conversion is needed in either language."
+    }
+   ]
+  },
+  {
+   "key": "18_bit_manipulation/0136_single_number",
+   "one_liner": "XOR cancels pairs; the leftover is the answer.",
+   "core_objective": "Return the one element that appears exactly once while every other element appears twice.",
+   "bounds": "1 <= nums.length <= 3e4 with values up to 3e4, so int suffices and the length is always odd. Exactly one such element is guaranteed to exist.",
+   "approaches": [
+    {
+     "name": "XOR everything (BEST)",
+     "aha": "acc = 0; for num in nums: acc ^= num. Pairs vanish (x ^ x = 0, x ^ 0 = x); order is irrelevant (commutative + associative).",
+     "py": "acc = 0\nfor num in nums:\n    acc ^= num\nreturn acc",
+     "cpp": "        for (int num : nums) { acc ^= num;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "one accumulator pass, O(1) space; hence the stated bounds."
+    },
+    {
+     "name": "Hash set toggle (O(n) space baseline)",
+     "aha": "Add on first sight, remove on second. The only key left when the array ends is the singleton. Correct but fails the O(1)-space requirement \u2014 shown as the baseline XOR defeats.",
+     "py": "seen: set[int] = set()\nfor num in nums:\n    if num in seen:\n        seen.remove(num)   # second occurrence \u2192 pair complete\n    else:\n        seen.add(num)      # first occurrence \u2192 remember it\nreturn next(iter(seen))",
+     "cpp": "for (int num : nums) { auto it = seen.find(num);\n    if (it != seen.end()) {\n        seen.erase(it);   // second occurrence \u2192 pair complete\n    } else {\n        seen.insert(num); // first occurrence \u2192 remember it\n    }",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [4,1,2,1,2]\n\n  x ^ x = 0 and x ^ 0 = x, and XOR is associative\n  and commutative, so pair order is irrelevant:\n\n  4 ^ 1 ^ 2 ^ 1 ^ 2\n  = 4 ^ (1 ^ 1) ^ (2 ^ 2)\n  = 4 ^ 0 ^ 0\n  = 4\n\n  every paired value annihilates, leaving the single one.\n  Requires EVEN counts of the paired values -- the reason\n  this fails for problem 137 where three copies appear.\n\n  invariant: at any point, `r` equals the XOR of all elements\n  processed so far. Since XOR is self-inverse, after the whole\n  pass only elements with odd multiplicity survive, and the\n  guarantee says exactly one does.",
+   "cpp_vs_py": "XOR truth table: 0^0=0, 0^1=1, 1^0=1, 1^1=0. Two identities: x ^ 0 = x (xor with zero is identity) x ^ x = 0 (xor with itself cancels) And xor is commutative (a^b = b^a) and associative ((a^b)^c = a^(b^c)), so the array order is irrelevant. Group every pair: (v1 ^ v1) ^ (v2 ^ v2) ^ ... ^ s = 0 ^ 0 ^ ... ^ s = s This is EXACTLY why disk arrays use XOR for parity: it can be undone by itself. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the input array #include <cstdint> // std::int32_t \u2014 fixed-width element type #include <climits> // INT_MIN \u2014 edge case for the test table #include <chrono> // std::chrono::steady_clock \u2014 timing for benchmark #include <sys/resource.h>// getrusage \u2014 peak RAM measurement for benchmark #include <unordered_set> // std::unordered_set \u2014 approach 2's toggle set",
+   "cpp_alts": [
+    "A single accumulator `int r = 0; for (int x : nums) r ^= x;` -- the tightest possible loop.",
+    "`unsigned` avoids any concern about sign extension in the XOR, though int is correct here."
+   ],
+   "py_alts": [
+    "`functools.reduce(operator.xor, nums, 0)` is a C-level fold.",
+    "Bitwise NOT in Python yields -1-style results because Python integers are infinite-precision two's complement, so be careful with masking."
+   ],
+   "trap": "Using XOR when three copies of a value may appear (problem 137). Then an odd count leaves the value itself rather than zero, and the single XOR is wrong -- you need per-bit counts in that case.",
+   "invariant": "`r` is always the XOR of the prefix processed so far. Because XOR is associative and commutative, the elements can be reordered freely, so every equal pair cancels regardless of adjacency. After the full pass the result is the XOR of all elements with odd multiplicity, which by the guarantee is the single one.",
+   "questions": [
+    {
+     "q": "Why does XOR cancel pairs but not triples?",
+     "a": "Because a ^ a = 0, so two copies vanish. Three copies leave a ^ a ^ a = 0 ^ a = a. So XOR isolates elements with ODD multiplicity -- exactly the guarantee for this problem and precisely the failure case for problem 137."
+    },
+    {
+     "q": "Why does the element order not matter?",
+     "a": "XOR is both associative and commutative, so any parenthesisation and any permutation gives the same value. That is what allows pair cancellation even when the duplicates are far apart in the array."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time and $O(1)$ space -- one accumulator, one pass. That is optimal, since every element must be read."
+    }
+   ]
+  },
+  {
+   "key": "18_bit_manipulation/0190_reverse_bits",
+   "one_liner": "Loop 32 times: shift the input in, shift the output out.",
+   "core_objective": "Reverse the order of the bits of a 32-bit unsigned integer.",
+   "bounds": "The input is always a 32-bit unsigned integer, so exactly 32 iterations are required regardless of the value. A zero input must give zero, not be skipped.",
+   "approaches": [
+    {
+     "name": "Shift-and-OR assembly, 32 iterations (clear)",
+     "aha": "result = 0; 32 times: result = (result << 1) | (n & 1); n >>= 1. The input's bits are consumed low \u2192 high and emitted high \u2192 low.",
+     "py": "n &= MASK32\nn = ((n >> 16) | (n << 16)) & MASK32\nn = (((n & 0xFF00FF00) >> 8) | ((n & 0x00FF00FF) << 8)) & MASK32\nn = (((n & 0xF0F0F0F0) >> 4) | ((n & 0x0F0F0F0F) << 4)) & MASK32\nn = (((n & 0xCCCCCCCC) >> 2) | ((n & 0x33333333) << 2)) & MASK32\nn = (((n & 0xAAAAAAAA) >> 1) | ((n & 0x55555555) << 1)) & MASK32\nreturn n",
+     "cpp": "for (int i = 0; i < 32; ++i) { result = (result << 1) | (n & 1);\n    n >>= 1;",
+     "time": "O(1) \u2014 exactly 32 fixed iterations.",
+     "space": "O(1)",
+     "why": "one shift-and-mask per bit position; hence the stated bounds."
+    },
+    {
+     "name": "5 masked block swaps (divide & conquer)",
+     "aha": "Swap halves, then 8-bit quarters, 4-bit blocks, 2-bit blocks, adjacent bits \u2014 five ops, no loop. Masks isolate every other block of the current size: 0xFF00FF00, 0xF0F0F0F0, 0xCCCCCCCC, 0xAAAAAAAA (and their bitwise complements) for sizes 8, 4, 2, 1.",
+     "py": "result = 0\nfor _ in range(32):\n    result = (result << 1) | (n & 1)\n    n = (n >> 1) & MASK32\nreturn result & MASK32",
+     "cpp": "n = ((n & 0xaaaa) >> 1) | ((n & 0x5555) << 1);\nn = ((n & 0xcccc) >> 2) | ((n & 0x3333) << 2);\nn = ((n & 0xf0f0) >> 4) | ((n & 0x0f0f) << 4);\nn = ((n & 0xff00) >> 8) | ((n & 0x00ff) << 8);\nn = (n >> 16) | (n << 16);\nreturn n;   // branch-free, five stages",
+     "time": "O(1) \u2014 FIVE operations.",
+     "space": "O(1)",
+     "why": "the recursion splits the work; the bound is the sum over levels; hence the stated bounds."
+    }
+   ],
+   "diagram": " input = 43261596 (0b000000101001010000011110)\n\n  32 iterations, always:\n   result = (result << 1) | (n & 1)\n   n >>= 1\n\n  after 32 steps result = 0b011110001110010011110000 = 964176192\n\n  WHY THE FIXED LOOP: a shorter loop (while n) would stop at\n  the highest set bit, but the answer must be a FULL 32-bit\n  reversal -- leading zeros of the input become trailing zeros\n  of the output. So the loop must run exactly 32 times.\n\n  ALTERNATIVE: swap 5-bit blocks, then 3-bit, then the\n  remaining bits -- a divide-and-conquer reversal in 3 steps:\n   n = ((n & 0xaaaa) >> 1) | ((n & 0x5555) << 1)\n   n = ((n & 0xcccc) >> 2) | ((n & 0x3333) << 2)\n   n = ((n & 0xf0f0) >> 4) | ((n & 0x0f0f) << 4)\n   n = ((n & 0xff00) >> 8) | ((n & 0x00ff) << 8)\n   n = (n >> 16) | ((n & 0xffff) << 16)\n\n  input  0b000000101001010000011110\n  reverse 0b011110001110010011110000",
+   "cpp_vs_py": "Start from the requirement: output bit b must equal input bit 31\u2212b. Split at the midpoint: input bits 0..15 must land in output bits 16..31, i.e. SWAP THE HALVES. Repeat inside each half (8-bit quarters), then inside each quarter (4-bit blocks), etc. The masks isolate every other block of size 2^k: swap halves: (x >> 16) | (x << 16) swap 8s: ((x & 0xFF00FF00) >> 8) | ((x & 0x00FF00FF) << 8) swap 4s: ((x & 0xF0F0F0F0) >> 4) | ((x & 0x0F0F0F0F) << 4) swap 2s: ((x & 0xCCCCCCCC) >> 2) | ((x & 0x33333333) << 2) swap 1s: ((x & 0xAAAAAAAA) >> 1) | ((x & 0x55555555) << 1) Each stage preserves the work of the previous one because the masks only touch bits that already live in mirrored positions. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the test-case table #include <cstdint> // std::uint32_t \u2014 the 32-bit operand type #include <climits> // UINT32_MAX \u2014 edge case for the test table #include <chrono> // std::chrono::steady_clock \u2014 timing for benchmark #include <sys/resource.h>// getrusage \u2014 peak RAM measurement for benchmark",
+   "cpp_alts": [
+    "`uint32_t` with a fixed `for (int i = 0; i < 32; ++i)` is the canonical form.",
+    "The masked-block version is branch-free and runs in constant time with a handful of instructions, and is a classic bit-twiddling showcase."
+   ],
+   "py_alts": [
+    "`int(f'{n:032b}'[::-1], 2)` is a one-liner but allocates a 32-character string and is much slower.",
+    "Python's `>>` on a positive int is a logical shift, so no sign handling is needed."
+   ],
+   "trap": "Using `while n` instead of a 32-iteration loop. That stops early for inputs with leading zero bits, and the answer loses the trailing zeros the reversal should produce.",
+   "invariant": "After i iterations, `result` holds the reversal of the i lowest bits of the original input, and n holds the remaining higher bits shifted down. Extending by one iteration appends the next input bit as the new most significant bit of result, which is exactly the reversal order.",
+   "questions": [
+    {
+     "q": "Why exactly 32 iterations?",
+     "a": "Because the reversal is defined over 32 bits. Input bits that are zero still occupy positions, and they become trailing zeros in the output. A loop that stops when n reaches zero would silently drop them."
+    },
+    {
+     "q": "What happens to 0?",
+     "a": "All 32 iterations run with n = 0, each doing `result = result << 1 | 0`, so result stays 0. The answer is correctly 0 rather than undefined."
+    },
+    {
+     "q": "Why might the masked-block version be faster?",
+     "a": "It is branch-free, performs a fixed 5 operations instead of 32 iterations, and each mask-and-shift pair is a couple of machine instructions. It also expresses the reversal as three stages of larger block swaps, which is why it generalises to wider integers."
+    }
+   ]
+  },
+  {
+   "key": "18_bit_manipulation/0191_number_of_1_bits",
+   "one_liner": "n &= n - 1 clears the lowest set bit; count the iterations.",
+   "core_objective": "Return the population count of a non-negative 32-bit integer.",
+   "bounds": "0 <= n <= 2^31 - 1, and n = 0 gives 0. Kernighan's algorithm is loop-invariant, so it runs once per set bit.",
+   "approaches": [
+    {
+     "name": "Kernighan's algorithm (BEST)",
+     "aha": "count = 0; while n: n &= n - 1; count += 1. One round per SET bit. Derivation of x & (x - 1): x = ...1 0 0 0 (lowest 1-bit at position k) x - 1 = ...0 1 1 1 (borrow: bit k \u2192 0, below \u2192 all 1s) x & (x-1) = ...1\u00b71 \u00b7\u00b7\u00b7 0 \u00b7\u00b7\u00b7 0\u00b71 = x minus its lowest 1-bit",
+     "py": "count = 0\nn &= MASK32\nwhile n != 0:\n    n &= n - 1   # clears the lowest set bit (see deep dive)\n    count += 1\nreturn count",
+     "cpp": "while (n != 0) {\n    n &= n - 1;   // clears the lowest set bit (see deep dive)\n    ++count;",
+     "time": "O(popcount) \u2264 O(32) = O(1)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(popcount) \u2264 O(32) = O(1) time, O(1) space."
+    },
+    {
+     "name": "Scan all 32 bit positions",
+     "aha": "count = 0; for i in range(32): count += n & 1; n >>= 1. Checks every position including zeros \u2014 simple, 32 fixed rounds.",
+     "py": "count = 0\nfor _ in range(32):\n    count += n & 1\n    n = (n >> 1) & MASK32\nreturn count",
+     "cpp": "for (int i = 0; i < 32; ++i) { count += n & 1;\n    n >>= 1;",
+     "time": "O(32) = O(1)",
+     "space": "O(1)",
+     "why": "constant passes over the bits of the value; hence the stated bounds."
+    }
+   ],
+   "diagram": " n = 13  ->  3\n 13 = 1101\n\n n & (n - 1) clears the LOWEST set bit:\n   13 = 1101\n   12 = 1100\n   ----\n    4 = 0100     one set bit gone -> count = 1\n\n step 1: n=13 (1101) -> n=12 (1100)  count=1\n step 2: n=12 (1100) -> n= 8 (1000)  count=2\n step 3: n= 8 (1000) -> n= 0 (0000)  count=3\n n == 0 -> return 3\n\n iterations == popcount, NOT 32 -- the loop-invariant\n is the whole algorithm",
+   "cpp_vs_py": "Write x in binary: ...1 0 0 0, where the lowest 1-bit sits at position k with only 0-bits below it. Subtracting 1 borrows through those zeros, flipping the bit at k to 0 and every bit below it to 1: x = ...1 0 0 0 (bits above k unchanged) x - 1 = ...0 1 1 1 (bit k cleared, below becomes all-ones) Now AND them: positions above k match (both have the original bits), position k is 1 & 0 = 0, positions below are 0 & 1 = 0. Result: x with its lowest 1-bit removed \u2014 exactly one bit cleared, everything else untouched. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the test-case table #include <cstdint> // std::uint32_t \u2014 the 32-bit operand type #include <climits> // UINT32_MAX \u2014 edge case for the test table #include <chrono> // std::chrono::steady_clock \u2014 timing for benchmark #include <sys/resource.h>// getrusage \u2014 peak RAM measurement for benchmark",
+   "cpp_alts": [
+    "`__builtin_popcount` compiles to a single POPCNT instruction on modern CPUs, which beats any loop -- worth naming before writing the manual version.",
+    "`std::bitset<32>` exposes a `count()` member with the same hardware advantage and no UB concerns on the shift."
+   ],
+   "py_alts": [
+    "`bin(n).count('1')` is a one-liner but allocates a string of up to 32 characters and is much slower than the loop.",
+    "Python 3.10+ exposes `int.bit_count()`, which is implemented in C and matches Kernighan's speed for small integers."
+   ],
+   "trap": [
+    "M",
+    "u",
+    "t",
+    "a",
+    "i",
+    "n",
+    "g",
+    " ",
+    "s",
+    "d",
+    "e",
+    "h",
+    "l",
+    "o",
+    "p",
+    "c",
+    ",",
+    "`",
+    "w",
+    "(",
+    "&",
+    "=",
+    "-",
+    "1",
+    ")",
+    "m",
+    "b",
+    "r",
+    "f",
+    "y",
+    "v",
+    ".",
+    "T",
+    "x"
+   ],
+   "invariant": [
+    "E",
+    "a",
+    "c",
+    "h",
+    " ",
+    "i",
+    "t",
+    "e",
+    "r",
+    "o",
+    "n",
+    "m",
+    "v",
+    "s",
+    "x",
+    "l",
+    "y",
+    "w",
+    "b",
+    "d",
+    "u",
+    ",",
+    "f",
+    "k",
+    "q",
+    "g",
+    "p",
+    "."
+   ],
+   "questions": [
+    {
+     "q": "Why does n & (n-1) clear the lowest set bit?",
+     "a": "Subtracting 1 flips the lowest 1 to 0 and all trailing 0s to 1. ANDing keeps only the bits that are 1 in both, so the lowest 1 is removed and every higher bit is untouched."
+    },
+    {
+     "q": "How many iterations does it take?",
+     "a": "Exactly the number of set bits, popcount(n). That is a genuine improvement over scanning all 32 positions, which is the alternative at worst case."
+    },
+    {
+     "q": "How does this relate to the C++ builtin?",
+     "a": "`__builtin_popcount` compiles to a single POPCNT instruction on modern CPUs using a population-count microcode table, which beats any loop. Kernighan's algorithm is the version you write when the builtin is unavailable or when you want the derivation."
+    }
+   ]
+  },
+  {
+   "key": "18_bit_manipulation/0268_missing_number",
+   "one_liner": "XOR the range 0..n with the array: pairs cancel.",
+   "core_objective": "Return the one missing integer from the range 0..n inclusive.",
+   "bounds": "1 <= nums.length <= 1e4 with 0 <= nums[i] <= 1e4, and exactly one value from 0..n is absent. n is nums.length by construction.",
+   "approaches": [
+    {
+     "name": "XOR of all indices and values (BEST)",
+     "aha": "acc = n; for i: acc ^= i ^ nums[i]. Present pairs cancel; acc ends as the unmatched index = the missing number. No overflow.",
+     "py": "acc = len(nums)\nfor i, num in enumerate(nums):\n    acc ^= i ^ num\nreturn acc",
+     "cpp": "        for (int i = 0; i < static_cast<int>(nums.size()); ++i) { acc ^= i ^ nums[i];",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "one accumulator pass, O(1) space; hence the stated bounds."
+    },
+    {
+     "name": "Sum formula",
+     "aha": "expected = n(n+1)/2; return expected \u2212 sum(nums).",
+     "py": "n = len(nums)\nexpected = n * (n + 1) // 2\nreturn expected - sum(nums)",
+     "cpp": "        for (int v : nums) { actual += v;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    }
+   ],
+   "diagram": " nums=[3,0,1] (n=3) -> missing 2\n\n  XOR 0^1^2^3 = 0\n  XOR nums = 3^0^1 = 2\n  answer = 0 ^ 2 = 2\n\n  why it works: every value in 0..n appears exactly once\n  in the full range XOR; the present values cancel against it,\n  leaving only the missing one.\n\n  alternative (sum formula):\n   expected = n(n+1)/2 ; answer = expected - sum(nums)\n\n  XOR is preferred because the sum formula overflows int\n  for large n in C++ (n = 1e4 gives 5e7, safe; n = 1e5\n  would overflow -- and it also breaks silently under\n  floating-point if you use /2.0).\n\n  invariant: at any point `r` is the XOR of the range XOR\n  accumulated so far and the array elements processed so far.\n  Present values appear twice and cancel; the missing one\n  appears once and survives.",
+   "cpp_vs_py": "We KNOW the full range {0..n} has n+1 distinct values. Its XOR depends only on n. Now xor in every ARRAY element: acc = n acc ^= 0 ^ nums[0] ^ 1 ^ nums[1] ^ ... ^ (n-1) ^ nums[n-1] Rearrange (commutative): every value v that IS present meets its own index v and cancels (v ^ v = 0). The one index m whose value is absent has nothing to cancel with \u2014 it is the sole survivor. Identical machinery to 0136 Single Number \u2014 same proof, new hat. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the input array #include <cstdint> // std::int64_t \u2014 overflow-free sum lane #include <climits> // INT_MAX \u2014 scale check for the test table #include <chrono> // std::chrono::steady_clock \u2014 timing for benchmark #include <sys/resource.h>// getrusage \u2014 peak RAM measurement for benchmark",
+   "cpp_alts": [
+    "A single `int r = n; for (i=0..n-1) r ^= nums[i] ^ i;` folds the range XOR into one loop with no separate pass.",
+    "`long long` for the sum formula if you choose that route, since `n*(n+1)/2` overflows int past n = 65535."
+   ],
+   "py_alts": [
+    "`reduce(xor, nums, n)` plus a range fold is concise but allocates the range.",
+    "The sum formula `n*(n+1)//2 - sum(nums)` is a one-liner in Python and exact."
+   ],
+   "trap": "Using the sum formula with float division or with int overflow in C++. Both give wrong answers on large inputs, whereas the XOR approach has no arithmetic range concern at all.",
+   "invariant": "`r` equals the XOR of 0..n XOR the elements of nums. Every value present in nums occurs in both and cancels; the missing value occurs only in the range, so it is what survives. The result is therefore exactly the missing number.",
+   "questions": [
+    {
+     "q": "Why is XOR better than the sum formula?",
+     "a": "XOR has no overflow or precision hazard, and the same single loop handles the range and the array. The sum formula needs a wider type and careful division, both of which are failure modes in C++."
+    },
+    {
+     "q": "How does the index trick work?",
+     "a": "Initialising r to n and then XORing with both nums[i] and i in the same loop folds the range 0..n-1 in for free, so only one pass is needed instead of one over the range and one over the array."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time and $O(1)$ space. Both approaches are linear; XOR is preferred purely for robustness rather than speed."
+    }
+   ]
+  },
+  {
+   "key": "18_bit_manipulation/0338_counting_bits",
+   "one_liner": "ones[i] = ones[i >> 1] + (i & 1).",
+   "core_objective": "Return an array where the element at index i is the number of 1 bits in i, for every i from 0 to n.",
+   "bounds": "0 <= n <= 1e5, so the array has up to 1e5 entries and each count fits in a byte. i = 0 gives 0.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "dp = [0] * (n + 1)\noffset = 1\nfor i in range(1, n + 1):\n    if offset * 2 == i: offset = i\n    dp[i] = 1 + dp[i - offset]\nreturn dp",
+     "cpp": "        for (int i = 1; i <= n; ++i) { dp[i] = dp[i >> 1] + (i & 1);",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "dp = [0] * (n + 1)\nfor i in range(1, n + 1):\n    dp[i] = dp[i & (i - 1)] + 1\nreturn dp",
+     "cpp": "        for (int i = 1; i <= n; ++i) { dp[i] = dp[i & (i - 1)] + 1;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " n = 5 -> [0,1,1,2,1,2]\n\n  ones[0] = 0\n  i=1:  1>>1 = 0, 1&1 = 1 -> 0 + 1 = 1\n  i=2:  2>>1 = 1, 2&1 = 0 -> 1 + 0 = 1\n  i=3:  3>>1 = 1, 3&1 = 1 -> 1 + 1 = 2\n  i=4:  4>>1 = 2, 4&1 = 0 -> 1 + 0 = 1\n  i=5:  5>>1 = 2, 5&1 = 1 -> 1 + 1 = 2\n\n  THE INSIGHT: shifting right by one removes the lowest bit\n  and leaves the rest unchanged, so\n     popcount(i) = popcount(i >> 1) + (i & 1)\n  The RHS term is already computed since i >> 1 < i.\n\n  BIT TRICK: ones[i] = ones[i & (i-1)] + 1 is the same idea\n  expressed with the clear-lowest-bit identity from problem 191.\n\n  invariant: when computing ones[i], ones[i >> 1] is already\n  final because i >> 1 < i, and (i & 1) is exactly the bit\n  that i >> 1 discarded. So the sum is the popcount of i.",
+   "cpp_vs_py": "Splitting a number at the bit boundary: i = (i >> 1) << 1 | (i & 1). The set bits of i = the set bits of (i >> 1) \u2014 those are i's bits shifted down one position, count preserved \u2014 PLUS the lowest bit (i & 1), which the shift dropped. Since i >> 1 is strictly smaller than i for i > 0, induction on i gives every value in O(1). For i = 13 = 1101\u2082: dp[13] = dp[6] + 1 = dp[3] + 0 + 1 = 3. \u2713 ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the output dp array #include <cstdint> // std::int32_t \u2014 element type of the dp table #include <climits> // INT_MAX \u2014 scale check for the test table #include <chrono> // std::chrono::steady_clock \u2014 timing for benchmark #include <sys/resource.h>// getrusage \u2014 peak RAM measurement for benchmark",
+   "cpp_alts": [
+    "A `vector<uint8_t>` of n+1 bytes; the values never exceed 32 so a full int array wastes 4x the cache.",
+    "For the same reason POPCNT-style primitives give O(n) with no table, but the DP table is the point of this problem."
+   ],
+   "py_alts": [
+    "`[bin(i).count('1') for i in range(n+1)]` is a one-liner but allocates n strings and is orders of magnitude slower.",
+    "`int.bit_count()` in Python 3.10+ is the C-level equivalent and still $O(n)$ overall with no extra table."
+   ],
+   "trap": [
+    "I",
+    "t",
+    "e",
+    "r",
+    "a",
+    "i",
+    "n",
+    "g",
+    " ",
+    "u",
+    "p",
+    "w",
+    "d",
+    "h",
+    "l",
+    "`",
+    "o",
+    "s",
+    "[",
+    ">",
+    "1",
+    "]",
+    "f",
+    "m",
+    "y",
+    "z",
+    ",",
+    "<",
+    "v",
+    "0",
+    "-",
+    "q",
+    "c",
+    "."
+   ],
+   "invariant": [
+    "W",
+    "h",
+    "e",
+    "n",
+    " ",
+    "c",
+    "o",
+    "m",
+    "p",
+    "u",
+    "t",
+    "i",
+    "g",
+    "s",
+    "[",
+    "]",
+    ",",
+    ">",
+    "1",
+    "a",
+    "l",
+    "r",
+    "d",
+    "y",
+    "f",
+    "b",
+    "<",
+    "(",
+    "&",
+    ")",
+    ".",
+    "T"
+   ],
+   "questions": [
+    {
+     "q": "Why does the DP beat calling popcount n times?",
+     "a": "Each popcount is $O(\\log n)$ at worst without a builtin, giving $O(n \\log n)$ overall. The recurrence computes every answer from a strictly smaller index, so the total is $O(n)$ with one shift, one AND, and one addition per element."
+    },
+    {
+     "q": "How does this relate to problem 191?",
+     "a": "Same identity, different output. Here the identity is applied across indices to build a table; there it is applied within a single number to count its bits. Both come from the fact that clearing the lowest bit reduces popcount by exactly one."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time and $O(n)$ space for the result, which is required since every value from 0 to n must be returned. No extra space beyond the output."
+    }
+   ]
+  },
+  {
+   "key": "18_bit_manipulation/0371_sum_of_two_integers",
+   "one_liner": "AND for the sum, XOR for the carry, recurse until carry is 0.",
+   "core_objective": "Return the sum of two integers using only bitwise operators.",
+   "bounds": "-1e5 <= a, b <= 1e5, so the sum fits in int. Negative numbers work because Python's integers are infinite two's complement; C++ needs explicit sign handling or the non-negative assumption.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "mask = 0xFFFFFFFF\nwhile b != 0:\n    tmp = (a & b) << 1\n    a = (a ^ b) & mask\n    b = tmp & mask\nif a > 0x7FFFFFFF: return ~(a ^ mask)\nreturn a",
+     "cpp": "while (b != 0) {\n    int carry = (a & b) << 1;   // carry from the ORIGINAL a\n    a = a ^ b;                 // sum without carry\n    b = carry;\n}\nreturn a;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " a = 1, b = 2\n  a ^ b = 3        (no common bits -> sum is 3)\n  (a & b) << 1 = 0 -> no carry -> answer 3\n\n  a = 1, b = 3\n  a ^ b = 2        (01 ^ 11 = 10)\n  (a & b) << 1 = 4 (01 & 11 = 01, shifted)\n  now add 2 and 4:  2^4 = 6, (2&4)<<1 = 0 -> answer 6\n\n  WHY IT WORKS: addition decomposes into a sum-without-carry\n  part (XOR, since a 1-bit appears in at most one addend) and\n  a carry part (AND, since both addends must have 1 to carry).\n  The carry must then be added to the XOR result, recursively.\n\n  termination: (a & b) << 1 has strictly fewer set bits than\n  a | b, so the recursion depth is at most the bit width.\n\n  negative numbers: in two's complement, -1 is all 1s, so\n  -1 ^ x == ~x and (a & b) << 1 can be negative. The loop\n  `while b:` with `b = (a & b) << 1` still terminates because\n  the shift eventually overflows to 0 in a fixed width.",
+   "cpp_vs_py": "Bit operations map almost directly onto single machine instructions in C++, so this category shows the largest per-operation gap. Python's integers are arbitrary-precision objects, so `&`, `|`, `^` and `>>` allocate a new object per operation unless CPython's small-int cache applies -- and Python's `~x` yields a negative number because integers are infinite two's complement. For pure bit work C++ is the natural home.",
+   "cpp_alts": [
+    "In C++ with signed ints, `a ^ b` and `(a & b) << 1` behave as two's complement only if the width is fixed; shifting into the sign bit is implementation-defined before C++20.",
+    "`uint32_t` avoids all sign questions and the problem's inputs are non-negative there."
+   ],
+   "py_alts": [
+    "`while b: a, b = a ^ b, (a & b) << 1` uses simultaneous assignment so the carry is computed from the OLD a -- which is exactly why the tuple form is correct and two separate statements would not be.",
+    "`while b: a, b = a ^ b, (a & b) << 1` uses simultaneous assignment so the carry is computed from the ORIGINAL a, which is exactly why the tuple form is correct.",
+    "`divmod` plays no role here -- the whole computation is bitwise, which is what keeps it working for negative operands."
+   ],
+   "trap": "Computing the carry after already updating a. The carry must be derived from the original a and b, so in Python the simultaneous assignment `a, b = a ^ b, (a & b) << 1` is essential -- doing `a ^= b` then `b = (a & b) << 1` uses the already-modified a and gives wrong answers.",
+   "invariant": "At the top of each iteration, the original sum equals a + b. The update replaces that with `(a ^ b) + ((a & b) << 1)`, which is an exact identity for two's-complement addition. When b becomes 0 the identity forces a to equal the original sum.",
+   "questions": [
+    {
+     "q": "Why do the answers to 190, 191, 338, 371 form a set?",
+     "a": "Each isolates one bit-level identity: shift-and-mask reverses bits, clearing the lowest bit counts them, and XOR-with-carry computes addition. They all exploit that the same operation can be expressed either with arithmetic or with masks, and knowing both forms is what makes the others obvious."
+    },
+    {
+     "q": "Why does the loop terminate?",
+     "a": "The carry value `(a & b) << 1` has strictly fewer set bits than `a | b`. Each iteration consumes one level of the bit-carry hierarchy, so after at most the bit-width iterations the carry is 0."
+    },
+    {
+     "q": "How does Python handle the negative cases?",
+     "a": "Python integers are infinite-precision two's complement, so `-1 ^ x == ~x` and the arithmetic works uniformly for negatives without any special case. That is why this problem is notably cleaner in Python than in C++."
+    }
+   ]
+  }
+ ]
+}

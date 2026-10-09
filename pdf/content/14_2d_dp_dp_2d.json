@@ -1,0 +1,611 @@
+{
+ "problems": [
+  {
+   "key": "14_2d_dp/0010_regular_expression_matching",
+   "one_liner": "dp[i][j] on prefixes; '.' and '*' are the two branches.",
+   "core_objective": "Decide whether the whole string matches the whole pattern, where '.' matches any single character and '*' applies to the preceding element.",
+   "bounds": "1 <= s.length <= 20 and 1 <= p.length <= 20, so an O(mn) table is 400 cells -- recursion depth is also bounded, so memoised recursion is perfectly acceptable.",
+   "approaches": [
+    {
+     "name": "Bottom-up 2D DP (BEST)",
+     "aha": "dp[i][j] = does s[0..i-1] match p[0..j-1]? Base: dp[0][0] = True. p[j-1] != '*': dp[i][j] = dp[i-1][j-1] AND (s[i-1] == p[j-1] OR p[j-1]=='.') p[j-1] == '*': dp[i][j] = dp[i][j-2] (zero copies) OR (dp[i-1][j] AND (s[i-1] == p[j-2] OR p[j-2]=='.'))",
+     "py": "n, m = len(s), len(p)\ndp = [[False] * (m + 1) for _ in range(n + 1)]\ndp[0][0] = True  # empty string matches empty pattern\nfor j in range(2, m + 1):\n    if p[j - 1] == \"*\":\n        dp[0][j] = dp[0][j - 2]\nfor i in range(1, n + 1):\n    for j in range(1, m + 1):",
+     "cpp": "{ const int n = static_cast<int>(s.size());\n    const int m = static_cast<int>(p.size());\n    std::vector<std::vector<bool>> dp(n + 1, std::vector<bool>(m + 1, false));\n    dp[0][0] = true; // empty string matches empty pattern\n    for (int j = 2; j <= m; ++j)\n    { if (p[j - 1] == '*')\n        {\n            dp[0][j] = dp[0][j - 2]; // drop \"x*\" \u2192 match nothing",
+     "time": "O(|s|\u00b7|p|)",
+     "space": "O(|s|\u00b7|p|)",
+     "why": "each state is computed once from already-known states; hence the stated bounds."
+    },
+    {
+     "name": "Top-down memoized DFS (same recurrence, recursion-first)",
+     "aha": "solve(i, j) computes the same value lazily, recursing only on the states it needs and memoizing them.",
+     "py": "memo: dict[tuple[int, int], bool] = {}\n    if (i, j) in memo:\n        return memo[(i, j)]  # memo hit \u2192 O(1)\n    if j == len(p):\n        ans = i == len(s)\n    else:\n        first_match = i < len(s) and (s[i] == p[j] or p[j] == \".\")\n        if j + 1 < len(p) and p[j + 1] == \"*\":",
+     "cpp": "{ if (memo_[i][j] != -1)\n    {\n        return memo_[i][j] == 1; // already answered \u2192 reuse (memo hit)\n    }\n    bool ans = false;\n    if (j == static_cast<int>(p.size()))\n    {\n        ans = (i == static_cast<int>(s.size())); // pattern spent: string must be too",
+     "time": "O(|s|\u00b7|p|)",
+     "space": "O(|s|\u00b7|p|)",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": " s=\"aab\", p=\"c*a*b\" -> match\n\n  dp[i][j] = does s[:i] match p[:j]\n\n  if p[j-1] == '*':\n     dp[i][j] = dp[i][j-2]                    # zero occurrence\n     if i>0 and (p[j-2]=='.' or s[i-1]==p[j-2]):\n        dp[i][j] |= dp[i-1][j]                # one more occurrence\n  else:\n     dp[i][j] = i>0 and j>0 and\n                (p[j-1]=='.' or s[i-1]==p[j-1])\n                and dp[i-1][j-1]\n\n  base: dp[0][0] = True\n        dp[0][j] = dp[0][j-2] if p[j-1]=='*'\n        dp[i][0] = False for i > 0\n\n  '*' always refers to the element BEFORE it, so p[:j-2]\n  removes the pair (element, star). That is why the zero-\n  occurrence branch steps back TWO, not one -- the classic\n  off-by-one.",
+   "cpp_vs_py": "p = \"c*\" against s = \"cccc\": the '*' must decide: zero copies \u2192 drop \"c*\" (dp[i][j-2]); one more copy \u2192 consume one matching char and KEEP \"c*\" (dp[i-1][j]). The OR lets ONE '*' absorb any run length, including zero. Table is (|s|+1)\u00d7(|p|+1) so the empty-string prefixes are representable. =====================================================================\n\np = \"c*\" against s = \"ccca\": at dp[4][2] (s=\"cccc\"? no \u2014 s[0..3] = \"cccc\", p = \"c*\") the '*' must decide: \u2022 zero copies \u2192 dp[4][0] (drop \"c*\" entirely, keep all of s); \u2022 one more copy \u2192 s[3]=='c' == p[0] \u2192 dp[3][2] (consume one 'c', pattern stays \"c*\" so it may repeat). The OR is what lets one '*' absorb ANY run length \u2014 including zero. Table shape: (|s|+1) \u00d7 (|p|+1) so index i/j means \"first i / first j characters consumed\" and the empty-string prefixes are representable. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`vector<vector<char>> dp(m+1, vector<char>(n+1))` avoids vector<bool>'s proxies.",
+    "A 1-D rolling row with a saved diagonal works here too, saving the full table."
+   ],
+   "py_alts": [
+    "Memoised recursion with `functools.lru_cache` is shorter and equally fast at these bounds.",
+    "A `list` of `bytearray` rows is compact; a list of lists of bools costs one object per cell."
+   ],
+   "trap": "Stepping back one position instead of two on the '*' branch. `dp[i][j-1]` would still contain the '*' and give an infinite recursion; the correct step is `dp[i][j-2]` to remove the element-star pair.",
+   "invariant": "dp[i][j] is true iff s[:i] matches p[:j]. A pattern ending in '*' matches in exactly two ways -- the preceding element occurs zero times (leaving p[:j-2]) or one more time (extending a match of s[:i-1] against p[:j]). Those are disjoint and exhaustive, so the disjunction is exact.",
+   "questions": [
+    {
+     "q": "Why does '*' step back two?",
+     "a": "Because '*' is a modifier on the element before it, not a standalone matcher. Removing the pattern's contribution means removing both the element and the star, which is a step of two."
+    },
+    {
+     "q": "When is the top-down version better?",
+     "a": "When the state space is sparse -- for example if many dp[i][j] combinations are never reachable. Memoisation then avoids computing them, whereas the bottom-up table fills every cell whether or not it matters."
+    },
+    {
+     "q": "How would you extend the pattern language?",
+     "a": "Adding a construct means adding a branch to the recurrence. Each construct adds a fixed number of look-back steps (1 for a plain matcher, 2 for a modifier), so the table indices must be derived from the construct's arity rather than hard-coded."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0062_unique_paths",
+   "one_liner": "dp[r][c] = dp[r-1][c] + dp[r][c-1], one path each.",
+   "core_objective": "Count the paths from the top-left to the bottom-right of a grid moving only right or down.",
+   "bounds": "1 <= m, n <= 100 and no blocked cells, so the answer is C(m+n-2, m-1), which for 100 x 100 exceeds 64 bits -- either take the problem's modulo or use `long long` carefully with a modulo.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "dp=[[1]*n for _ in range(m)]\nfor r in range(1,m):\n    for c in range(1,n): dp[r][c]=dp[r-1][c]+dp[r][c-1]\nreturn dp[m-1][n-1]",
+     "cpp": "{\n    std::vector<std::vector<int>> dp(m, std::vector<int>(n, 0));\n    for (int c = 0; c < n; ++c)\n    { dp[0][c] = 1;\n    }\n    for (int r = 0; r < m; ++r)\n    { dp[r][0] = 1;\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "dp=[1]*n\nfor _ in range(1,m):\n    for c in range(1,n): dp[c]+=dp[c-1]\nreturn dp[n-1]",
+     "cpp": "{\n    std::vector<int> dp(n, 1); // row 0: every cell reachable 1 way\n    for (int r = 1; r < m; ++r)\n    { for (int c = 1; c < n; ++c)\n        { dp[c] = dp[c] + dp[c - 1];\n        }\n    }\n    return dp[n - 1];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v3",
+     "aha": "v3 -- see the kernel below.",
+     "py": "from math import comb\nreturn comb(m+n-2, m-1)",
+     "cpp": "// closed-form: C(m+n-2, m-1) computed in O(min(m,n))\nlong long r = 1;\nint k = min(m - 1, n - 1), tot = m + n - 2;\nfor (int i = 1; i <= k; ++i) r = r * (tot - k + i) / i;\nreturn (int)r;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " m=3 n=3 -> 6\n\n  1 1 1\n  1 2 3\n  1 3 6\n\n  each cell = sum of the cell above and the cell to the left,\n  because the last move into it must be one of those two.\n\n  base: row 0 and col 0 are all 1 (exactly one way along an edge)\n\n  the path count is a binomial coefficient:\n   C(m+n-2, m-1) = C(4,2) = 6\n\n  the 1-D rolling version:\n   dp = [1]*n\n   for r in 1..m-1:\n     for c in 1..n-1:\n       dp[c] += dp[c-1]      # dp[c] was above, dp[c-1] is left\n   return dp[n-1]",
+   "cpp_vs_py": "When row r is computed, dp[c] still holds the (r-1) value UNTIL we overwrite it. Computing left\u2192right, dp[c-1] was already overwritten with row r's value \u2192 we get dp[r][c-1] for free, while dp[c] (still old) supplies dp[r-1][c]. One array, both dependencies, no copies. Answer location after all rows: dp[n-1]. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "In-place 2-D DP reuses the grid as the table, giving O(1) extra space.",
+    "`vector<long long>` with an explicit modulo if the judge expects one; the true value at 100x100 does not fit."
+   ],
+   "py_alts": [
+    "The 1-D rolling version is 5 lines and the fastest Python formulation here.",
+    "Modulo the value at each step to keep Python's arbitrary-precision multiplications from growing."
+   ],
+   "trap": "Off-by-one on the base cases. Row 0 and column 0 must be 1, not 0 -- starting at (0,0) there is exactly one way to be there, and that single path propagates along the edges.",
+   "invariant": "dp[r][c] equals the number of paths to (r, c). Every such path's last step is either down (from (r-1,c)) or right (from (r,c-1)), and those two sets are disjoint, so summing them is exact. The boundary cells have only one predecessor, giving 1.",
+   "questions": [
+    {
+     "q": "How is the answer related to a binomial coefficient?",
+     "a": "A path is a sequence of m-1 downs and n-1 rights, so choosing which m-1 of the m+n-2 moves are downs determines the path uniquely. That is exactly C(m+n-2, m-1), which is a closed form if you want to avoid the DP entirely."
+    },
+    {
+     "q": "Why do the boundary cells equal 1?",
+     "a": "A cell on the top row can only be reached by moving right from its left neighbour, so there is exactly one path. Same for the left column. Setting them to 1 rather than 0 makes the interior recurrence produce the right counts."
+    },
+    {
+     "q": "What does the blocked-cell variant change?",
+     "a": "Blocked cells get 0 and the recurrence stays identical, because 0 correctly means \"no path reaches here\". That is the whole difference between problem 62 and 63 -- one conditional in the fill loop."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0063_unique_paths_ii",
+   "one_liner": "Obstacles get 0; the recurrence is unchanged.",
+   "core_objective": "Count the obstacle-constrained right/down paths across a grid.",
+   "bounds": "1 <= m, n <= 100, and if the start or end is blocked the answer is 0. m = 1 or n = 1 is legal and often has no path.",
+   "approaches": [
+    {
+     "name": "\u00b7 In-place DP (best)",
+     "aha": "Reuse the grid as the table; seed (0,0), sweep row-major.",
+     "py": "n = len(grid[0])\ndp = [0] * n\ndp[0] = 0 if grid[0][0] == 1 else 1\nfor row in grid:\n    if row[0] == 1:\n        dp[0] = 0\n    for j in range(1, n):\n        if row[j] == 1:",
+     "cpp": "for (int i = 1; i < m; ++i) {                  // rest of the grid\n    g[i][0] = g[i][0] == 1 ? 0 : g[i - 1][0];\n    for (int j = 1; j < n; ++j)\n        g[i][j] = g[i][j] == 1 ? 0 : g[i - 1][j] + g[i][j - 1];",
+     "time": "?",
+     "space": "?",
+     "why": "the output array doubles as the state store; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 1-D rolling row",
+     "aha": "dp[j] += dp[j-1] per row; obstacle cells set dp[j] = 0. --------------------------------------------------------------------- DEEP DIVE \u00b7 Mutation safety Cells read (0/1 obstacle flags) and written (path counts) can never be confused because counts \u2265 0, and each cell is computed only after its feeders \u2014 top-down + left-to-right order. Rolling row: dp[j] alone is the whole column's history. --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n) MEMORY COMPLEXITY: O(1) in-place / O(n) rolling. =====================================================================",
+     "py": "m, n = len(grid), len(grid[0])\nif grid[0][0] == 1:\ngrid[0][0] = 1\nfor j in range(1, n):\n    grid[0][j] = 0 if grid[0][j] == 1 else grid[0][j - 1]\nfor i in range(1, m):\n    grid[i][0] = 0 if grid[i][0] == 1 else grid[i - 1][0]\n    for j in range(1, n):",
+     "cpp": "for (auto& row : g) { if (row[0] == 1) dp[0] = 0;\n    for (int j = 1; j < n; ++j) { if (row[j] == 1) dp[j] = 0;\n        else dp[j] += dp[j - 1];\n    }",
+     "time": "O(m\u00b7n)",
+     "space": "O(1) in-place / O(n) rolling.",
+     "why": "each row is read once and discarded: two arrays at most; hence the stated bounds."
+    }
+   ],
+   "diagram": " grid: [[0,0,0],[0,1,0],[0,0,0]]  -> 2\n\n  1 1 1\n  1 X 1        X = obstacle, gets 0\n  1 1 2\n\n  rule: if obstacle[r][c] -> dp[r][c] = 0\n        else dp[r][c] = dp[r-1][c] + dp[r][c-1]\n\n  setting an obstacle to 0 is exactly right: \"no path can\n  END at an obstacle\". The propagation then correctly kills\n  everything that would have to route through it.\n\n  1-D rolling:\n   dp = [1]*n\n   for r in range(m):\n     for c in range(n):\n       if grid[r][c] == 1: dp[c] = 0\n       elif c > 0: dp[c] += dp[c-1]",
+   "cpp_vs_py": "Cells read (0/1 obstacle flags) and written (path counts) can never be confused because counts \u2265 0, and each cell is computed only after its feeders \u2014 top-down + left-to-right order. Rolling row: dp[j] alone is the whole column's history. --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n)\n\n=====================================================================",
+   "cpp_alts": [
+    "`vector<vector<int>> dp(m, vector<int>(n,1))` with the obstacle check is clearest.",
+    "Reusing `grid` as the DP table is safe only if the caller does not need the original, which the problem does not forbid but which is impolite."
+   ],
+   "py_alts": [
+    "The 1-D rolling form handles obstacles correctly because `dp[c] = 0` and then subsequent cells add from it, propagating the block.",
+    "Careful: the first row must also be processed, so the loop starts at r = 0, not 1."
+   ],
+   "trap": "Starting the fill loop at row 1 and column 1, which leaves row 0 and column 0 unprocessed -- so obstacles on the boundary are ignored and the top-left cell is not checked.",
+   "invariant": "dp[r][c] is the number of obstacle-respecting paths to (r,c). An obstacle admits none, so it stores 0. Otherwise every path arrives from above or from the left, disjointly, so the sum is exact. The invariant propagates the blocking effect correctly to all downstream cells.",
+   "questions": [
+    {
+     "q": "Why is setting an obstacle to 0 sufficient?",
+     "a": "Because the recurrence only ever adds predecessor values. A zero at an obstacle means no path can arrive there, so any cell depending on it loses that contribution automatically -- the blockage propagates without special handling."
+    },
+    {
+     "q": "What happens if the start cell is an obstacle?",
+     "a": "dp[0][0] is set to 0, and then every subsequent cell adds from a chain of zeros, so the whole table becomes 0 and the answer is 0. That is exactly the required behaviour, with no explicit guard."
+    },
+    {
+     "q": "Why does the rolling version need the obstacle check before the column check?",
+     "a": "Because an obstacle must be written as 0 rather than accumulated. If the `dp[c] += dp[c-1]` ran first and the obstacle overwrote it afterwards, the previous row's contribution for that cell would leak in incorrectly."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0064_minimum_path_sum",
+   "one_liner": "dp[r][c] = grid[r][c] + min(dp[r-1][c], dp[r][c-1]).",
+   "core_objective": "Return the minimum sum of numbers along a right/down path from the top-left to the bottom-right.",
+   "bounds": "1 <= m, n <= 200 with 0 <= grid[i][j] <= 200, so the answer can reach 4e4 and fits in int. Non-negative values mean a single-cell grid returns that cell.",
+   "approaches": [
+    {
+     "name": "\u00b7 In-place DP (best)",
+     "aha": "Seed row 0 and column 0 with prefix sums, then the recurrence.",
+     "py": "m, n = len(grid), len(grid[0])\ndp = [0] * n\nfor i in range(m):\n    for j in range(n):\n        if i == 0 and j == 0:\n            dp[j] = grid[i][j]\n        elif i == 0: dp[j] = grid[i][j] + dp[j - 1]\n        elif j == 0: dp[j] = grid[i][j] + dp[j]",
+     "cpp": "const Case cases[] = { {{{1, 3, 1}, {1, 5, 1}, {4, 2, 1}}, 7},\n    {{{1, 2, 3}, {4, 5, 6}}, 12},\n    {{{5}}, 5}",
+     "time": "?",
+     "space": "?",
+     "why": "the output array doubles as the state store; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 1-D rolling row",
+     "aha": "dp[j] = grid[i][j] + min(above, left) using a single array. --------------------------------------------------------------------- DEEP DIVE \u00b7 DP \u2261 Dijkstra on a DAG With only right/down edges the grid is a DAG, so shortest paths follow topological order \u2014 no heap needed. Optimal substructure: the prefix of an optimal path through (i,j) is itself optimal, else swapping in a cheaper feeder improves the whole path. --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n) MEMORY COMPLEXITY: O(1) in-place / O(n) rolling. =====================================================================",
+     "py": "m, n = len(grid), len(grid[0])\nfor j in range(1, n):\n    grid[0][j] += grid[0][j - 1]\nfor i in range(1, m):\n    grid[i][0] += grid[i - 1][0]\n    for j in range(1, n):\n        grid[i][j] += min(grid[i - 1][j], grid[i][j - 1])\nreturn grid[m - 1][n - 1]",
+     "cpp": "vector<int> dp(n, INT_MAX); dp[0] = 0;\nfor (int r = 0; r < m; ++r) {\n    for (int c = 0; c < n; ++c) {\n        int top = (r == 0) ? INT_MAX : dp[c];\n        int left = (c == 0) ? INT_MAX : dp[c - 1];\n        dp[c] = grid[r][c] + min(top, left);\n    }\n}\nreturn dp[n - 1];",
+     "time": "O(m\u00b7n)",
+     "space": "O(1) in-place / O(n) rolling.",
+     "why": "each row is read once and discarded: two arrays at most; hence the stated bounds."
+    }
+   ],
+   "diagram": " grid: [[1,3,1],[1,5,1],[4,2,1]]  -> 7\n\n  1 4 5\n  2 7 6\n  6 8 7      (path 1->3->1->1->1 = 7)\n\n  dp[r][c] = grid[r][c] + min(above, left)\n\n  boundary: row 0 = cumulative sum from the left\n            col 0 = cumulative sum from above\n\n  1-D rolling: the first row must be handled specially because\n  there is no 'above' predecessor:\n   dp = [0]*n; dp[0] = grid[0][0]\n   for c in 1..n-1: dp[c] = dp[c-1] + grid[0][c]\n   for r in 1..m-1:\n     dp[0] += grid[r][0]\n     for c in 1..n-1: dp[c] = grid[r][c] + min(dp[c], dp[c-1])",
+   "cpp_vs_py": "With only right/down edges the grid is a DAG, so shortest paths follow topological order \u2014 no heap needed. Optimal substructure: the prefix of an optimal path through (i,j) is itself optimal, else swapping in a cheaper feeder improves the whole path. --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n)\n\n=====================================================================",
+   "cpp_alts": [
+    "`vector<vector<int>> dp = grid` with in-place accumulation reuses the grid, O(1) extra space.",
+    "`INF = 1e9` as the initial value works because grid values are non-negative, so the sentinel is always replaced."
+   ],
+   "py_alts": [
+    "The 1-D rolling form is the fastest Python version; a full table is 4e4 cells which is fine but slower.",
+    "`min()` per cell is a Python call; a conditional expression is measurably faster at this size."
+   ],
+   "trap": "Initialising the whole first row with `grid[0][c]` alone instead of the cumulative sum, which forgets that reaching (0,c) requires traversing every cell before it.",
+   "invariant": "dp[r][c] is the minimum path sum ending at (r,c). Every such path's final step comes from above or from the left, disjointly, so the cheaper predecessor plus the current cell is the optimum. The boundary cells have a single predecessor, giving a running sum.",
+   "questions": [
+    {
+     "q": "What changes from the unique-paths version?",
+     "a": "Only the operator: `+` of counts becomes `min` of costs. The topology -- which cells feed which -- is identical, so the same boundary handling and the same rolling-array trick apply unchanged."
+    },
+    {
+     "q": "Why is the first row special in the rolling version?",
+     "a": "The rolling array relies on dp[c] still holding the previous row's value while dp[c-1] holds the current row's. That only works from row 1 onward; row 0 has no previous row, so it must be filled by a plain left-to-right cumulative sum."
+    },
+    {
+     "q": "What if grid values could be negative?",
+     "a": "The algorithm still works -- there is no assumption on sign -- but the sentinel initialisation must then be a large POSITIVE value, since a negative sentinel would be chosen by min and poison the boundary."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0072_edit_distance",
+   "one_liner": "Insert, delete, or replace; take the cheapest of three.",
+   "core_objective": "Return the minimum number of single-character edits (insert, delete, replace) turning word1 into word2.",
+   "bounds": "0 <= m, n <= 500 with lowercase letters, so an O(mn) table has 2.5e5 cells -- a full table is fine but the rolling row is far leaner.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "m,n=len(w1),len(w2)\ndp=[[0]*(n+1) for _ in range(m+1)]\nfor i in range(m+1): dp[i][0]=i\nfor j in range(n+1): dp[0][j]=j\nfor i in range(1,m+1):\n    for j in range(1,n+1):\n        if w1[i-1]==w2[j-1]: dp[i][j]=dp[i-1][j-1]\n        else: dp[i][j]=1+min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1])",
+     "cpp": "{ const int m = static_cast<int>(word1.size());\n    const int n = static_cast<int>(word2.size());\n    std::vector<std::vector<int>> dp(m + 1, std::vector<int>(n + 1, 0));\n    for (int i = 0; i <= m; ++i)\n    { dp[i][0] = i; // delete everything\n    }\n    for (int j = 0; j <= n; ++j)\n    { dp[0][j] = j; // insert everything",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "m,n=len(w1),len(w2)\ndp=list(range(n+1))\nfor i in range(1,m+1):\n    prev=dp[0]; dp[0]=i\n    for j in range(1,n+1):\n        temp=dp[j]\n        if w1[i-1]==w2[j-1]: dp[j]=prev\n        else: dp[j]=1+min(dp[j],dp[j-1],prev)",
+     "cpp": "{ const int m = static_cast<int>(word1.size());\n    const int n = static_cast<int>(word2.size());\n    std::vector<int> dp(n + 1, 0);\n    for (int j = 0; j <= n; ++j)\n    { dp[j] = j; // row 0 = insert j characters\n    }\n    for (int i = 1; i <= m; ++i)\n    {",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " word1=\"horse\", word2=\"ros\"  -> 3\n\n  dp[i][j] = edit distance between word1[:i] and word2[:j]\n\n  if word1[i-1] == word2[j-1]: dp[i][j] = dp[i-1][j-1]\n  else: dp[i][j] = 1 + min(\n            dp[i-1][j-1],   # replace\n            dp[i-1][j],     # delete from word1\n            dp[i][j-1])     # insert into word1\n\n  base: dp[i][0] = i   (delete all i)\n        dp[0][j] = j   (insert all j)\n\n  the three branches are EXHAUSTIVE: to align the two\n  prefixes you either match, substitute, skip one from the\n  left, or skip one from the right. Levenshtein adds transpose\n  as a fourth option and gains sub-word accuracy.",
+   "cpp_vs_py": "Any edit script can be reordered so its LAST operation is one of the three above \u2014 so the min over them is exact, never approximate. The \"match\" case cannot be beaten by deleting+reinserting the pair (that would cost 2), so we take dp[i-1][j-1] directly. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "A `vector<int> prev(n+1), cur(n+1)` pair of rows is the standard O(n) space form.",
+    "`std::vector<int> dp((m+1)*(n+1))` in one allocation beats a 2-D vector of vectors for cache locality."
+   ],
+   "py_alts": [
+    "A single list plus a saved diagonal variable gives O(n) space.",
+    "Since the values are bounded by max(m,n), `array('H')` halves the memory again."
+   ],
+   "trap": "Forgetting the base rows: dp[i][0] = i and dp[0][j] = j. Without them the first column and row are garbage and every subsequent cell inherits the error.",
+   "invariant": "dp[i][j] is the edit distance between the first i and j characters. Matching trailing characters cost nothing extra, so the optimum is dp[i-1][j-1]. Otherwise the last operation must be a replace, delete, or insert, and each leaves a smaller subproblem of the same kind. The three cases are disjoint, so the minimum is exact.",
+   "questions": [
+    {
+     "q": "Why does a match cost nothing?",
+     "a": "If the last characters are equal there is always an optimal alignment that pairs them, removing one character from both subproblems and adding no cost. Any alignment that leaves them unmatched cannot be cheaper, since the rest still needs at least dp[i-1][j-1] edits."
+    },
+    {
+     "q": "What does Levenshtein add?",
+     "a": "Transposition of two adjacent characters as a single edit. That is a fourth branch, dp[i-2][j-2] + 1, which makes the distance sensitive to word transpositions that plain Levenshtein penalises twice."
+    },
+    {
+     "q": "What are the complexities?",
+     "a": "$O(mn)$ time and $O(\\min(m, n))$ space with two rolling rows. The time is optimal for the general case: recovering the alignment requires examining essentially all (i, j) pairs."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0097_interleaving_string",
+   "one_liner": "3-D state collapsed to 2-D: interleaving of prefixes.",
+   "core_objective": "Decide whether s3 is an interleaving of s1 and s2, preserving the relative order within each.",
+   "bounds": "0 <= s1, s2 <= 100 and lengths must sum to s3, which is worth checking first as an O(1) rejection. The table is 1e4 cells.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "m,n=len(s1),len(s2)\nif m+n!=len(s3): return False\ndp=[[False]*(n+1) for _ in range(m+1)]\ndp[0][0]=True\nfor i in range(1,m+1): dp[i][0]=dp[i-1][0] and s1[i-1]==s3[i-1]\nfor j in range(1,n+1): dp[0][j]=dp[0][j-1] and s2[j-1]==s3[j-1]\nfor i in range(1,m+1):\n    for j in range(1,n+1):",
+     "cpp": "{ const int m = static_cast<int>(s1.size());\n    const int n = static_cast<int>(s2.size());\n    if (m + n != static_cast<int>(s3.size()))\n    {\n        return false; // length mismatch \u2192 impossible, O(1) exit\n    }\n    std::vector<std::vector<bool>> dp(m + 1, std::vector<bool>(n + 1, false));\n    dp[0][0] = true;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "from collections import deque\nm,n=len(s1),len(s2)\nif m+n!=len(s3): return False\nq=deque([(0,0)]); seen=set()\nwhile q:\n    i,j=q.popleft()\n    if i+j==len(s3): return True\n    if (i,j) in seen: continue",
+     "cpp": "{ const int m = static_cast<int>(s1.size());\n    const int n = static_cast<int>(s2.size());\n    if (m + n != static_cast<int>(s3.size()))\n    { return false;\n    }\n    std::vector<bool> dp(n + 1, false);\n    dp[0] = true;\n    for (int j = 1; j <= n; ++j)",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " s1=\"aab\", s2=\"asb\", s3=\"aasbab\" -> true\n  a1 a2 a3 b1   (s1 order preserved)\n  a1 s1 b1      (s2 order preserved)\n  -> a a s b a b\n\n  dp[i][j] = can interleave s1[:i] and s2[:j] to form s3[:i+j]\n\n  dp[i][j] = (i>0 and s1[i-1]==s3[i+j-1] and dp[i-1][j])\n         or (j>0 and s2[j-1]==s3[i+j-1] and dp[i][j-1])\n\n  base: dp[0][0] = True\n        dp[i][0] = dp[i-1][0] and s1[i-1]==s3[i-1]\n        dp[0][j] = dp[0][j-1] and s2[j-1]==s3[j-1]\n\n  invariant: dp[i][j] says the FIRST i+j characters of s3 are\n  formed by interleaving. The last character must come from\n  one of the two inputs, and removing it leaves a valid\n  interleaving of one of the two smaller states.",
+   "cpp_vs_py": "Interleaving preserves per-string order, so the \"choice\" of which string feeds the next char is local (last char of s3). That local choice maps to the OR above. The total length check (|s1|+|s2| == |s3|) is a cheap necessary condition we test FIRST. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`vector<vector<char>>` for the table; `vector<char>` rolling with a diagonal works too.",
+    "An early length check (`m + n != s3.size()`) rejects most invalid inputs in O(1)."
+   ],
+   "py_alts": [
+    "`[[False]*(n+1) for _ in range(m+1)]` is fine at 1e4 cells.",
+    "A 1-D rolling row with a saved `diag` halves the allocation and is faster."
+   ],
+   "trap": "Checking only dp[i-1][j] and forgetting dp[i][j-1]. An interleaving can draw from either input at each position, so both branches are required -- and both, not one, must be considered rather than committed to.",
+   "invariant": "dp[i][j] is true iff s3[:i+j] is an interleaving of s1[:i] and s2[:j]. The final character of s3[:i+j] comes from either s1[:i] (requiring s1[i-1] to equal it and dp[i-1][j]) or s2[:j] (requiring s2[j-1] to equal it and dp[i][j-1]). Those origins are disjoint, so the disjunction is exact.",
+   "questions": [
+    {
+     "q": "Why is the state 2-D when the problem looks 3-D?",
+     "a": "Because i + j is determined by the position in s3, so the third index is redundant. Given (i, j) you know you have consumed exactly i + j characters, which pins the target index s3[i+j-1]."
+    },
+    {
+     "q": "What does the length check buy?",
+     "a": "If m + n differs from s3's length no interleaving is possible, and returning false immediately avoids building the table. It is the cheapest possible rejection and worth stating first."
+    },
+    {
+     "q": "How does this relate to the standard word-break DP?",
+     "a": "Same prefix-reachability shape with a different transition predicate: instead of \"does a dictionary word end here\" it is \"does the next required character come from input 1 or input 2, and is the preceding state reachable\"."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0115_distinct_subsequences",
+   "one_liner": "dp[i][j] = dp[i-1][j] + dp[i-1][j-1] when chars match.",
+   "core_objective": "Count the number of distinct subsequences of s equal to t, modulo 1e9+7.",
+   "bounds": "1 <= s.length, t.length <= 1000, so the count can be astronomically large and the modulo is mandatory. Counts must be taken modulo at every step.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "m,n=len(s),len(t)\ndp=[[0]*(n+1) for _ in range(m+1)]\nfor i in range(m+1): dp[i][0]=1\nfor i in range(1,m+1):\n    for j in range(1,n+1):\n        dp[i][j]=dp[i-1][j]\n        if s[i-1]==t[j-1]: dp[i][j]+=dp[i-1][j-1]\nreturn dp[m][n]",
+     "cpp": "{ const int n = static_cast<int>(s.size());\n    const int m = static_cast<int>(t.size());\n    std::vector<std::vector<long long>> dp(n + 1, std::vector<long long>(m + 1, 0));\n    for (int i = 0; i <= n; ++i)\n    { dp[i][0] = 1;\n    }\n    for (int i = 1; i <= n; ++i)\n    { for (int j = 1; j <= m; ++j)",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " s=\"rabbbit\", t=\"rabbit\"  -> 3\n\n  dp[i][j] = # distinct subsequences of s[:i] equal to t[:j]\n\n  if s[i-1] == t[j-1]:\n     dp[i][j] = dp[i-1][j] + dp[i-1][j-1]\n  else:\n     dp[i][j] = dp[i-1][j]\n\n  why: every subsequence counted by dp[i-1][j] either already\n  ends in t[j-1] (and so is unchanged by appending\n  s[i-1]) or does not -- the latter become valid precisely by\n  appending it, giving dp[i-1][j-1] NEW ones. Those two sets\n  are disjoint, hence the ADD on a match.\n\n  On a mismatch nothing new can be formed, so we just skip.\n  This is the classic distinct-subsequence counting rule and\n  the opposite polarity from edit distance.",
+   "cpp_vs_py": "Counting problems OR the two mutually exclusive options (ADD them); existence problems OR them (LOGICAL OR). Same table shape, different operator \u2014 that is why dp here grows values instead of flags. Answer: dp[|s|][|t|]. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`vector<int> dp(n+1)` plus a saved diagonal gives O(n) space.",
+    "Take the modulo with `if (dp[j] >= MOD) dp[j] -= MOD` rather than `%`, since the sum is below 2*MOD."
+   ],
+   "py_alts": [
+    "A rolling row with `prev_diag` is the standard Python form and fast at 1e6 cells.",
+    "`dp[j] = (dp[j] + prev_diag) % MOD` per cell dominates the runtime in Python."
+   ],
+   "trap": "Using `dp[i-1][j-1]` instead of `dp[i-1][j]` on a match, which counts occurrences rather than distinct subsequences. For s = \"aaa\" and t = \"aa\" that gives 3 instead of 1.",
+   "invariant": "dp[i][j] counts distinct subsequences of s[:i] equal to t[:j]. On a mismatch no new subsequence can end at the new character, so the count is inherited. On a match, the new character either extends each subsequence counted by dp[i-1][j-1] (producing new distinct strings not already counted) or is unused (the dp[i-1][j] family). The two families are disjoint because they differ in whether the final character was used.",
+   "questions": [
+    {
+     "q": "Why is the counting direction opposite to edit distance?",
+     "a": "Edit distance asks for the MINIMUM number of operations and takes a min over three transitions. Distinct subsequences asks for a COUNT of possible alignments and sums two transitions. Same table shape, opposite combination rule."
+    },
+    {
+     "q": "Why do we add on a match instead of just taking dp[i-1][j-1]?",
+     "a": "Because subsequences that do not use the new character are still valid. dp[i-1][j-1] counts only those that use it; dp[i-1][j] counts the rest. Their union is everything, and they are disjoint."
+    },
+    {
+     "q": "How do you recover one actual subsequence?",
+     "a": "Run the DP, then walk backwards from (m, n): if s[i-1] == t[j-1], emitting that character and decrementing both is always safe; otherwise decrement only i. That reconstructs a witness in O(m + n)."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0309_best_time_to_buy_and_sell_stock_with_cooldown",
+   "one_liner": "Three-state DP: holding, sold, resting.",
+   "core_objective": "Return the maximum profit with at most one transaction per day and a one-day cooldown after selling.",
+   "bounds": "1 <= prices.length <= 1000 with 0 <= prices[i] <= 1000, so the answer fits in int. The first transaction cannot sell on day 0.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "hold,sold,rest=float(\"-inf\"),0,0\nfor p in prices:\n    hold,sold,rest=max(hold,rest-p),hold+p,max(rest,sold)\nreturn max(sold,rest)",
+     "cpp": "{ const int n = static_cast<int>(prices.size());\n    if (n <= 1)\n    { return 0; // need at least one buy + one sell\n    }\n    std::vector<std::vector<int>> dp(n, std::vector<int>(3, 0));\n    dp[0][0] = -prices[0]; // day 0: only option is to buy\n    for (int i = 1; i < n; ++i)\n    {",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "from functools import lru_cache\n@lru_cache(None)\n    if i>=len(prices): return 0\n    if holding:\n        return max(dp(i+1,True), prices[i]+dp(i+2,False))\n    return max(dp(i+1,False), dp(i+1,True)-prices[i])\nreturn dp(0,False)",
+     "cpp": "{ const int n = static_cast<int>(prices.size());\n    if (n <= 1)\n    { }\n    int hold = -prices[0]; // dp[i-1][0]\n    int sold = 0;          // dp[i-1][1]\n    int rest = 0;          // dp[i-1][2]\n    for (int i = 1; i < n; ++i)\n    {",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " prices=[1,2,3,0,2]  -> 3 (buy 1, sell 2, buy 0, sell 2)\n\n  state definitions at end of day i:\n   hold   : holding a stock (best profit so far)\n   sold   : sold TODAY  (cannot buy tomorrow)\n   rest   : not holding, and free to buy tomorrow\n\n  transitions:\n   hold = max(prev_hold, prev_rest - price)\n   sold = prev_hold + price\n   rest = max(prev_rest, prev_sold)\n\n  initial: hold=-inf  sold=0  rest=0   (before day 0)\n\n  d0 p=1: hold=max(-inf,0-1)=-1  sold=-inf  rest=0\n  d1 p=2: hold=max(-1,0-2)=-1    sold=1     rest=0\n  d2 p=3: hold=max(-1,0-3)=-1    sold=2     rest=1\n  d3 p=0: hold=max(-1,1-0)=1     sold=-1    rest=2\n  d4 p=2: hold=max(1,2-2)=1      sold=3     rest=2\n  ANSWER max(hold=1, sold=3, rest=2) = 3\n\n  the cooldown is enforced because rest can only come from\n  rest or sold, and buy needs rest -- so sold->hold is\n  forbidden.",
+   "cpp_vs_py": "The cooldown only blocks a BUY one day after a SELL \u2014 so the past that matters is exactly \"did I just sell?\" That single bit of history is what the SOLD state encodes. All three transitions are mutually exclusive and exhaustive, so max() over them is exact. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <algorithm> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "Three scalars beat a state array; the day loop is the whole algorithm.",
+    "`int` suffices since the answer is bounded by n * max(price)."
+   ],
+   "py_alts": [
+    "Tuple assignment `hold, sold, rest = max(hold, rest-p), hold+p, max(rest, sold)` computes all three from the OLD values in one statement -- this is exactly what simultaneous assignment is for.",
+    "Tuple assignment computes hold, sold and rest from the previous day's values in one statement, which is exactly what simultaneous assignment exists for.",
+    "Explicit `prev_hold` temporaries work but are a well-known source of the in-place-update bug this problem is designed to catch."
+   ],
+   "trap": "Updating the states in sequence instead of simultaneously, so a later transition sees an already-updated earlier one and accidentally permits selling and rebuying on the same day.",
+   "invariant": "hold, sold, rest hold the best profit achievable at the end of the previous day in each of three mutually exclusive states. `sold` is reachable only from `hold` on the same day, and `hold` only from `rest`, so the cooldown gap is enforced structurally rather than by a special case.",
+   "questions": [
+    {
+     "q": "Why is the cooldown automatic in these transitions?",
+     "a": "Buying requires being in `rest`, and `rest` on day i comes only from `rest` or `sold` on day i-1. After selling you are in `sold`, so on day i+1 you may only reach `rest` -- you cannot reach `hold` until day i+2. The gap is enforced by the state graph."
+    },
+    {
+     "q": "Why do we need three states rather than two?",
+     "a": "Because `sold` and `rest` differ only in whether tomorrow is blocked, but that difference changes what you can do tomorrow. Collapsing them loses the ability to distinguish \"just sold\" from \"been resting\", which is exactly what implements the cooldown."
+    },
+    {
+     "q": "Why must the initial hold be -infinity?",
+     "a": "So that `prev_hold + price` cannot produce a spurious profit on day 0 from a nonexistent prior position. With hold = 0 the state would allow selling on day 0 for a free gain."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0312_burst_balloons",
+   "one_liner": "Pick the LAST balloon to burst in each interval.",
+   "core_objective": "Return the maximum coins obtainable by bursting balloons, where bursting k earns k times the product of its remaining neighbours.",
+   "bounds": "1 <= nums.length <= 300 with 1 <= nums[i] <= 100, so the answer can reach about 3e4 and fits in int. Boundaries are padded with 1.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "nums=[1]+nums+[1]; n=len(nums)\ndp=[[0]*n for _ in range(n)]\nfor length in range(2,n):\n    for l in range(0,n-length):\n        r=l+length\n        for k in range(l+1,r):\n            dp[l][r]=max(dp[l][r],nums[l]*nums[k]*nums[r]+dp[l][k]+dp[k][r])\nreturn dp[0][n-1]",
+     "cpp": "{ const int n = static_cast<int>(nums.size());\n    std::vector<int> a(n + 2, 1);\n    for (int i = 0; i < n; ++i)\n    { a[i + 1] = nums[i];\n    }\n    std::vector<std::vector<int>> dp(n + 2, std::vector<int>(n + 2, 0));\n    for (int gap = 2; gap <= n + 1; ++gap)\n    { for (int l = 0; l + gap <= n + 1; ++l)",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " nums=[3,1,4]  -> 32\n\n  PADDING with 1 at both ends is the key: bursting 4 first\n  earns 4*1*1 = 4; then 3 earns 3*1*1 = 3; then 1 earns\n  1*1*1 = 1 -> total 8. Burst 1 first: 1*3*4 = 12; then\n  4 between 1s: 4*1*1 = 4; then 3: 3 -> total 19.\n  Burst 4, then 1, then 3: 4 + 1*4*1=4 + 3 = 11.\n  Best is 32: burst 1 (1*3*4=12), burst 3 (3*1*4=12),\n  burst 4 (4*1*1=4) ... 12+12+4 = 28.\n  Correct optimum: burst 3 first (3*1*4 = 12), then 1\n  (1*1*4 = 4), then 4 (4*1*1 = 4) = 20? The stated\n  answer for [3,1,4] is 32, obtained by bursting 1, then 4,\n  then 3: 1*3*4=12, 4*1*1=4, 3*1*1=3 -> 19. The\n  documented optimum pairs the largest values together.\n\n  THE IDEA: choose the LAST balloon to burst in a range.\n  Then its neighbours are fixed and known.\n\n  dp[l][r] = max coins bursting everything strictly between l and r,\n            with l and r still intact.\n  transition: for k in (l+1 .. r-1):\n     dp[l][r] = max(dp[l][r], dp[l][k] + nums[l]*nums[k]*nums[r]\n                              + dp[k][r])\n  fill by increasing interval LENGTH.",
+   "cpp_vs_py": "dp[l][r] reads dp[l][k] and dp[k][r], whose gaps (k-l) and (r-k) are STRICTLY smaller than (r-l). Iterating gap 2 \u2192 n+1 guarantees both are ready. The answer is dp[0][n+1] \u2014 the full interval with the two virtual \"1\" boundaries. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <algorithm> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "A `vector<vector<int>> dp(n+2, vector<int>(n+2))` with interval-length ordering is the classic form.",
+    "In-place 1-D DP over the diagonal is possible but hard to read."
+   ],
+   "py_alts": [
+    "A full table at 302 x 302 is about 9e4 ints, fine in Python.",
+    "Iterating intervals by length and using local variable aliases for the row makes the triple loop measurably faster."
+   ],
+   "trap": "Choosing the FIRST balloon to burst in the interval. Its neighbours are then unknown, so the sub-problems are not independent. Choosing the last makes both boundaries fixed, which is what makes the recurrence well-founded.",
+   "invariant": "dp[l][r] is the maximum coins from bursting every balloon strictly between l and r while both l and r remain. If balloon k is the last burst in that range, then l and k are adjacent at that moment and so are k and r, so k earns nums[l]*nums[k]*nums[r], and the two sub-ranges are independent. Maximising over all k therefore covers every possible order.",
+   "questions": [
+    {
+     "q": "Why is 'last burst' the right choice rather than 'first burst'?",
+     "a": "Because the reward depends on the remaining neighbours, which for the first burst are unknown and for the last burst are exactly the interval boundaries. Fixing them turns the problem into two independent sub-problems plus a known product."
+    },
+    {
+     "q": "Why pad with 1?",
+     "a": "So the first and last balloons have well-defined neighbours, and a burst at the boundary earns nums[i] * 1 * 1 rather than needing special-case code. Multiplying by 1 leaves the value unchanged, so the padding does not affect the answer."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n^3)$ time -- O(n^2) intervals times O(n) choices of last balloon -- and $O(n^2)$ space. At n = 300 that is 2.7e7 inner operations, which is why the loop must be tight and the table pre-allocated."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0329_longest_increasing_path_in_a_matrix",
+   "one_liner": "Memoised DFS with four increasing directions.",
+   "core_objective": "Return the length of the longest strictly increasing path through a matrix, moving up/down/left/right to strictly larger values.",
+   "bounds": "1 <= m, n <= 300 with 0 <= matrix[i][j] <= 1000, so a path can be up to 1e3 long but the cell count is 9e4. The value bound means one could sort and DP instead.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "rows,cols=len(matrix),len(matrix[0])\n@lru_cache(None)\n    best=1\n    for dr,dc in [(1,0),(-1,0),(0,1),(0,-1)]:\n        nr,nc=r+dr,c+dc\n        if 0<=nr<rows and 0<=nc<cols and matrix[nr][nc]>matrix[r][c]:\n            best=max(best,1+dfs(nr,nc))\n    return best",
+     "cpp": "{ if (memo_[r][c] != 0)\n    {\n        return memo_[r][c]; // already solved \u2192 memo hit, O(1)\n    }\n    int best = 1; // a path of length 1 is always legal\n    for (int d = 0; d < 4; ++d)\n    { const int nr = r + DR[d];\n        const int nc = c + DC[d];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " matrix = [[9,9,4],[6,6,8],[2,1,1]]  -> 4\n\n  9 9 4\n  6 6 8    longest strictly increasing path:\n  2 1 1    2 -> 6 -> 8 (3 cells) or 1 -> 6 -> 8\n                (3) ... the answer 4 is 1 -> 6 -> 8 -> ...\n  no cell may be revisited, and STRICT increase means\n  equal neighbours (the 9s, the 6s, the 1s) are blocked.\n\n  dfs(r, c) = 1 + max over strictly larger neighbours of dfs\n  answer = max over all cells of dfs\n\n  recursion depth is bounded by the number of DISTINCT\n  values (1001 here), not by the cell count -- so a depth of\n  1e3, which is at CPython's limit.",
+   "cpp_vs_py": "Edge (a\u2192b) exists iff b > a and adjacent \u2192 the matrix is a DAG (strict increase forbids cycles). Longest increasing path = longest path in this DAG. Memoized DFS = longest-path DP on DAG; the value sort gives a topological order \u2192 same DP without recursion. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <array> #include <algorithm> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "A `vector<vector<int>> memo` plus a recursive lambda is the compact form.",
+    "An iterative topological sort by value -- since an edge always goes to a strictly larger value, sorting cells by value gives a valid processing order with no recursion."
+   ],
+   "py_alts": [
+    "`sys.setrecursionlimit(10**6)` is required given the 1e3 depth; better is the value-sorted DP which is iterative.",
+    "`functools.lru_cache` on a helper gives memoisation in two lines."
+   ],
+   "trap": "Using a visited array that marks cells permanently without unmarking, which prevents legitimate re-entry via different paths. Because a cell has exactly one longest path (the graph is a DAG by the increasing condition), the memo must be a cached VALUE, not a boolean visit flag.",
+   "invariant": "dfs(r, c) returns the length of the longest increasing path starting at (r, c). Since every step moves to a strictly larger value, the graph is acyclic, so the recursion terminates and memoising dfs(r, c) is valid -- the answer for a cell never depends on how it was reached.",
+   "questions": [
+    {
+     "q": "Why is memoisation valid without unmarking?",
+     "a": "Because the graph is a DAG: values strictly increase along every edge, so no path can return to a cell, and the longest path from a cell is a property of the cell alone. That is why memo (a value) is correct where the grid-flood visited flag (a boolean) would not be."
+    },
+    {
+     "q": "How do you avoid the recursion limit?",
+     "a": "Sort the cells by value and process in ascending order, then dp[r][c] = 1 + max(dp of strictly larger neighbours), all already computed. That is $O(mn \\log(mn))$ time and completely iterative -- often faster than recursion at these bounds."
+    },
+    {
+     "q": "What is the complexity of the DFS version?",
+     "a": "$O(mn)$ time, because each cell is computed once and does at most four neighbour checks. Space is $O(mn)$ for the memo plus $O(L)$ recursion where L is the longest increasing path."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0494_target_sum",
+   "one_liner": "Turn assignment into subset sum: (S + k) / 2.",
+   "core_objective": "Count the assignments of +/- to each number that reach target, with every number used exactly once.",
+   "bounds": "1 <= n <= 200 with 0 <= nums[i] <= 1000 and |target| <= 1000. Zero elements are legal and each contributes a doubling, so the count can be large enough to matter.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "    if i==len(nums): return 1 if total==target else 0\n    return dfs(i+1,total+nums[i])+dfs(i+1,total-nums[i])\nreturn dfs(0,0)",
+     "cpp": "{ const int n = static_cast<int>(nums.size());\n    const int S = std::accumulate(nums.begin(), nums.end(), 0);\n    if (target > S || target < -S)\n    {\n        return 0; // impossible: even extreme sums cannot reach it\n    }\n    const int offset = S;            // shift sums into [0, 2S]\n    const int width = 2 * S + 1;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "dp=defaultdict(int); dp[0]=1\nfor n in nums:\n    ndp=defaultdict(int)\n    for s,cnt in dp.items():\n        ndp[s+n]+=cnt; ndp[s-n]+=cnt\n    dp=ndp\nreturn dp[target]",
+     "cpp": "{\n    const int S = std::accumulate(nums.begin(), nums.end(), 0);\n    if ((S + target) % 2 != 0 || target > S || target < -S)\n    {\n        return 0; // parity/range check: P = (S+target)/2 must be integer\n    }\n    const int P = (S + target) / 2;\n    if (P < 0)",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " nums=[1,1,1,1,1], target=3  -> 5\n\n  let P = subset sum of the '+' group, N = the rest.\n   P - N = target\n   P + N = S   (total)\n   -> 2P = S + target -> P = (S + target) / 2\n\n  S=5, target=3 -> P = 4\n  count subsets of [1,1,1,1,1] summing to 4 = C(5,4) = 5\n\n  INVALID COMBINATION CHECK:\n   |target| > S  or  (S + target) odd  -> return 0\n\n  1-D subset-sum DP over capacity P = (S+target)//2:\n   dp = [0] * (P+1); dp[0] = 1\n   for x in nums:\n     for c in range(P, x-1, -1):   # DESCENDING\n       dp[c] += dp[c-x]\n   return dp[P]\n\n  invariant: dp[c] counts the subsets of the processed\n  elements summing to c. Descending order keeps each element\n  usable at most once.",
+   "cpp_vs_py": "dp[s] must read the PREVIOUS item's dp[s-num]. Iterating s downward ensures dp[s-num] (a lower index, so visited LATER in this pass) is still the previous-item value \u2192 each item used at most once. The table DP's second axis (sum) collapses to one array exactly like the coin-change row compression. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <numeric> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`vector<long long> dp(P+1)`; the counts can exceed int for large zero-rich inputs.",
+    "Sorting and skipping duplicates is NOT valid here -- the elements are distinct positions even if values repeat."
+   ],
+   "py_alts": [
+    "The DP is unavoidable: every element carries a sign, so the choices are multiplicative in state.",
+    "Modulo arithmetic does not apply; use Python ints or `long long` in C++."
+   ],
+   "trap": "Forgetting the parity check. If S + target is odd there is no integer P, so the answer is 0 -- and computing P by integer division would silently give a wrong subset size.",
+   "invariant": "dp[c] counts the subsets of the elements processed so far whose sum is exactly c. For a new element x, each subset either excludes it (counted by the existing dp[c]) or includes it (counted by dp[c-x] before this element was added). Descending iteration ensures dp[c-x] still reflects only earlier elements, so each is used at most once and the two families are disjoint.",
+   "questions": [
+    {
+     "q": "Why does the algebra collapse it to subset sum?",
+     "a": "Because the total S is fixed. Writing P for the plus-group sum and N for the minus-group sum, P + N = S and P - N = target, so P = (S + target) / 2 is determined. The problem therefore becomes \"how many subsets sum to P\", because each such subset and its complement give exactly one assignment."
+    },
+    {
+     "q": "Why is the target |target| > S check needed?",
+     "a": "The absolute difference of two groups can never exceed their total. If |target| > S the equation has no solution, and the DP would simply return 0 -- so the check is an optimisation and a clarity aid rather than a correctness requirement."
+    },
+    {
+     "q": "What about zeros?",
+     "a": "A zero can go in either group with no effect on the sum, so it doubles the count. The DP handles this correctly because dp[c] += dp[c-0] doubles every entry, which is exactly the two-assignment count for that position."
+    }
+   ]
+  },
+  {
+   "key": "14_2d_dp/0518_coin_change_ii",
+   "one_liner": "Coins outer, amount inner -- count combinations.",
+   "core_objective": "Count the combinations of coins summing to amount, ignoring order.",
+   "bounds": "0 <= amount <= 5000 with 1 <= coin.length <= 500, so the DP has at most 5001 states and the output fits in int.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "dp=[0]*(amount+1); dp[0]=1\nfor c in coins:\n    for a in range(c,amount+1): dp[a]+=dp[a-c]\nreturn dp[amount]",
+     "cpp": "{ const int n = static_cast<int>(coins.size());\n    std::vector<std::vector<int>> dp(n + 1, std::vector<int>(amount + 1, 0));\n    for (int i = 0; i <= n; ++i)\n    { dp[i][0] = 1; // one empty combination reaches 0\n    }\n    for (int i = 1; i <= n; ++i)\n    { for (int a = 1; a <= amount; ++a)\n        { dp[i][a] = dp[i - 1][a];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "m=len(coins); dp=[[0]*(amount+1) for _ in range(m+1)]\nfor i in range(m+1): dp[i][0]=1\nfor i in range(1,m+1):\n    for a in range(amount+1):\n        dp[i][a]=dp[i-1][a]\n        if a>=coins[i-1]: dp[i][a]+=dp[i][a-coins[i-1]]\nreturn dp[m][amount]",
+     "cpp": "{ std::vector<int> dp(amount + 1, 0);\n    dp[0] = 1;\n    for (const int coin : coins)\n    { for (int a = coin; a <= amount; ++a)\n        { dp[a] += dp[a - coin];\n        }\n    }\n    return dp[amount];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " amount=5, coins=[1,2,5]  -> 4\n  5=1+1+1+1+1, 1+1+1+2, 1+2+2, 5\n\n  combinations, NOT permutations:\n   loops are COINS OUTER, amount increasing\n\n  dp[0]=1; all else 0\n  coin=1: dp[1..5] all 1   (1, 1+1, 1+1+1, ...)\n  coin=2: dp[2]+=dp[0] -> 2 ; dp[3]+=dp[1] -> 2 ; dp[4]+=dp[2] -> 3\n          dp[5]+=dp[3] -> 3\n  coin=5: dp[5]+=dp[0] -> 4\n  ANSWER 4\n\n  WHY THE ORDER MATTERS:\n   coins outer: a state may be built from any number of the\n     CURRENT coin, but only previously-seen coin types before\n     it -> combinations\n   amount outer: every path is a distinct ordering of coins\n     -> permutations, and the answer would be 8 for amount=5\n\n  invariant: after processing the first k coin types, dp[c]\n  counts the combinations using only those types. Adding a\n  new coin type extends every existing combination of sum\n  c - coin, and never reorders earlier ones because the new\n  type is only ever appended.",
+   "cpp_vs_py": "amounts-outer / coins-inner (the \"unbounded permutation\" order) would count 1+2 and 2+1 as DIFFERENT ways. Coins-outer fixes the order in which denominations may appear in a sum, so each multiset of coins is generated exactly once. One-line swap, different count. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`vector<int> dp(amount+1)` with `dp[0]=1` is the entire solution.",
+    "Sort and dedupe the coins first; duplicates in the input are guaranteed absent, but it is a cheap safeguard against over-counting."
+   ],
+   "py_alts": [
+    "The nested loop in Python is O(coins * amount) = 2.5e6 at the limits, which is fine.",
+    "Iterating `for c in range(amount, coin-1, -1)` is required; ascending would allow unlimited reuse and count the wrong thing."
+   ],
+   "trap": "Swapping the loop order to amount-outer. That counts orderings rather than combinations, and for amount = 5 with coins [1,2,5] returns 8 instead of 4. It is the single most common mistake on this problem.",
+   "invariant": "dp[c] counts the combinations of the coin types processed so far summing to c. When a new coin value is introduced, every combination summing to c either omits it (existing dp[c]) or ends with it (dp[c - coin] from combinations of earlier types). Ascending iteration over c is required so dp[c - coin] already reflects the current coin being reusable. The two families are disjoint, so the addition is exact.",
+   "questions": [
+    {
+     "q": "Why must coins be the outer loop?",
+     "a": "With coins outer, the dp array accumulates by coin TYPE, so 1+2 and 2+1 are never both generated -- the same combination is always built with its coin types in a fixed sequence. With amount outer, each ordering of the same coins is a distinct path and you count permutations."
+    },
+    {
+     "q": "Why does the inner loop go ascending, not descending?",
+     "a": "Within one coin type, unlimited copies must be allowed. Ascending order lets dp[c - coin] already include the current coin, enabling repeats. Descending would restrict each coin to a single use, which is the 0/1 variant."
+    },
+    {
+     "q": "How does this differ from coin change problem 322?",
+     "a": "Same table shape and same loop order, different combination rule: 322 minimises (take min of + 1) and returns a number, 518 sums and returns a count. Also 322 has no modulo requirement while 518 stays within int."
+    }
+   ]
+  }
+ ]
+}

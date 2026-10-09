@@ -1,0 +1,539 @@
+{
+ "problems": [
+  {
+   "key": "17_math_and_geometry/0043_multiply_strings",
+   "one_liner": "Digit-array accumulation from the low end; no big integers.",
+   "core_objective": "Return the product of two non-negative integer strings, without using built-in big-integer conversion.",
+   "bounds": "1 <= num1, num2 <= 10 digits, so the product is at most 20 digits and needs a string. Leading zeros are not present but zeros inside are legal.",
+   "approaches": [
+    {
+     "name": "Digit-by-digit product array (BEST)",
+     "aha": "res[i+j] accumulates a_i\u00b7b_j; carry flows to res[i+j+1] (the next power of ten). Exactly m+n slots (max digit count of the product).",
+     "py": "if num1 == \"0\" or num2 == \"0\":\n    return \"0\"\nm, n = len(num1), len(num2)\nres: list[int] = [0] * (m + n)\nfor i in range(m - 1, -1, -1):      # least significant first\n    a = int(num1[i])                # i-th digit\n    for j in range(n - 1, -1, -1):\n        b = int(num2[j])            # j-th digit",
+     "cpp": "for (int i = m - 1; i >= 0; --i) {\n    const int a = num1[i] - '0';          // i-th digit (least significant first)\n    for (int j = n - 1; j >= 0; --j) {\n        const int b = num2[j] - '0';      // j-th digit\n        res[i + j + 1] += a * b;          // accumulate the pair product\n    }",
+     "time": "O(m\u00b7n)",
+     "space": "O(m+n)",
+     "why": "Follows directly from the traversal count: O(m\u00b7n) time, O(m+n) space."
+    },
+    {
+     "name": "Row-by-row long multiplication (textbook form)",
+     "aha": "Multiply num1 by each digit of num2, producing one partial row per digit (\"123\u00d76=738\", \"123\u00d75=6150\"), then add every row into a running sum. Same O(m\u00b7n) math, two passes instead of one.",
+     "py": "if num1 == \"0\" or num2 == \"0\":\n    return \"0\"\nm, n = len(num1), len(num2)\ntotal: list[int] = [0] * (m + n)\nfor j in range(n - 1, -1, -1):\n    b = int(num2[j])\n    carry = 0\n    for i in range(m - 1, -1, -1):",
+     "cpp": "        if (num1 == \"0\" || num2 == \"0\") { return \"0\";",
+     "time": "O(m\u00b7n)",
+     "space": "O(m+n)",
+     "why": "Follows directly from the traversal count: O(m\u00b7n) time, O(m+n) space."
+    }
+   ],
+   "diagram": " num1=\"123\", num2=\"456\"  -> \"56088\"\n\n  m[3] n[3]  (digit arrays, least significant first)\n  result[n+m] = zeros\n\n  for i in 0..2:            outer = num1\n    for j in 0..2:          inner = num2\n      mul = m[i]*n[j]\n      total = mul + result[i+j]\n      result[i+j] = total % 10\n      result[i+j+1] += total / 10      # CARRY to the next slot\n\n  each slot can accumulate more than 9 because we carry the\n  quotient forward rather than normalising immediately.\n  i=0 j=0: 3*6=18 -> r[0]=8, r[1]+=1\n  i=0 j=1: 3*5=15 -> r[1]=5, r[2]+=1\n  i=0 j=2: 3*4=12 -> r[2]=2, r[3]+=1\n  i=1 j=0: 2*6=12 -> r[1]=7, r[2]+=1\n  ...\n  final digits (ls first) 8 8 0 8 6 5 -> \"56088\"\n\n  invariant: after processing pairs, every position holds the\n  correctly weighted partial sum of the single-digit products,\n  with carries propagated to the next higher slot.",
+   "cpp_vs_py": "num1 = \u03a3 a_i\u00b710^i and num2 = \u03a3 b_j\u00b710^j, so by distributivity: num1 \u00d7 num2 = \u03a3_i \u03a3_j (a_i\u00b7b_j) \u00b7 10^(i+j) The product of digits a_i\u00b7b_j \u2208 [0,81] lands in positional slot (i+j); overflow above 9 is a CARRY that belongs to slot (i+j+1) \u2014 exactly the next power of ten. This is why res[i+j] accumulation needs no intermediate rows: carries are just deferred, and one final left-to-right pass normalizes them. The i+j trick turns the \"shifted row + add\" textbook picture into a single O(m\u00b7n) sweep. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 digit strings #include <vector> // std::vector \u2014 product accumulator array #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // (unused here; kept for uniform include set) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`vector<int> res(n+m)` over exact-size digit arrays; converting back needs the leading-zero trim.",
+    "`reverse()` on the digit vectors is O(n) and removes the index arithmetic."
+   ],
+   "py_alts": [
+    "Python's arbitrary-precision `int(num1) * int(num2)` works but violates the problem's intent -- worth naming as a shortcut and rejecting.",
+    "Reversing via `num1[::-1]` and indexing from the end avoids an explicit reverse call."
+   ],
+   "trap": "Forgetting to accumulate the carry with `+=` rather than assignment, or dropping the final carry slot. With 20 digits the product needs n+m slots exactly, so an off-by-one truncates the leading digit.",
+   "invariant": "result[k] accumulates contributions from every digit pair (i, j) with i + j == k, weighted by 10^k. Each such contribution is m[i] * n[j] * 10^(i+j), so the sum over all pairs is exactly the product. Normalising each slot with % 10 and pushing the quotient to k+1 preserves the total.",
+   "questions": [
+    {
+     "q": "Why does the result need exactly n+m slots?",
+     "a": "The product of an m-digit and an n-digit number has at most m+n digits. Any fewer would truncate, and one more would leave a guaranteed-zero leading slot. That bound is also why no slot can overflow outward."
+    },
+    {
+     "q": "Why is `result[i+j+1] += total / 10` safe?",
+     "a": "Because total = mul + result[i+j] <= 81 + 9 + 9 = 99 in the worst case with fully normalised slots, so the quotient is at most 9 and fits in the next slot without further propagation. That bound relies on normalising every slot as you go, which the code does."
+    },
+    {
+     "q": "How does this differ from the textbook row-by-row method?",
+     "a": "The textbook version adds whole rows, each requiring an O(m) addition pass, giving $O(mn + mn) = O(mn)$ with much more code. The digit-array version writes directly into shared positions, so it is one pass of O(mn) with no intermediate rows."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0048_rotate_image",
+   "one_liner": "Transpose, then reverse each row.",
+   "core_objective": "Rotate an n x n square matrix 90 degrees clockwise in place.",
+   "bounds": "n x n is guaranteed square, which is what makes the two-step algorithm valid. Up to 20 x 20. Elements must not use an extra matrix.",
+   "approaches": [
+    {
+     "name": "Transpose + reverse (BEST)",
+     "aha": "Step 1: swap (r, c) with (c, r) for r < c only (each pair once). Step 2: reverse every row.",
+     "py": "n = len(matrix)\nfor r in range(n):\n    for c in range(r + 1, n):\n        matrix[r][c], matrix[c][r] = matrix[c][r], matrix[r][c]\nfor r in range(n):\n    lo, hi = 0, n - 1\n    while lo < hi:\n        matrix[r][lo], matrix[r][hi] = matrix[r][hi], matrix[r][lo]",
+     "cpp": "for (int r = 0; r < n; ++r) { for (int c = r + 1; c < n; ++c) { const int tmp = matrix[r][c];\n        matrix[r][c] = matrix[c][r];\n        matrix[c][r] = tmp;\n    }",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n\u00b2) time, O(1) space."
+    },
+    {
+     "name": "In-place 4-way ring swaps (single pass)",
+     "aha": "Peel the matrix ring by ring. On each ring, each top-edge cell (i, j) has a 4-cell orbit: (r,c) \u2192 (c,n-1-r) \u2192 (n-1-r,n-1-c) \u2192 (n-1-c,r) \u2192 back Rotate those 4 partners with one temp variable.",
+     "py": "n = len(matrix)\nfor i in range(n // 2):\n    last = n - 1 - i\n    for j in range(i, last):\n        offset = j - i            # distance along the edge\n        top = matrix[i][j]\n        matrix[i][j] = matrix[last - offset][i]\n        matrix[last - offset][i] = matrix[last][last - offset]",
+     "cpp": "for (int i = 0; i < n / 2; ++i) { const int last = n - 1 - i;\n    for (int j = i; j < last; ++j) {\n        const int offset = j - i;   // how far along the edge\n        const int top = matrix[i][j];\n        matrix[i][j] = matrix[last - offset][i];\n        matrix[last - offset][i] = matrix[last][last - offset];\n        matrix[last][last - offset] = matrix[j][last];\n        matrix[j][last] = top;",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "the output array doubles as the state store; hence the stated bounds."
+    }
+   ],
+   "diagram": " [[1,2,3],[4,5,6],[7,8,9]]  -> [[7,4,1],[8,5,2],[9,6,3]]\n\n  transpose (mirror on the main diagonal):\n   1 4 7\n   2 5 8\n   3 6 9\n\n  reverse each row (mirror on the anti-diagonal):\n   7 4 1\n   8 5 2\n   9 6 3\n\n  clockwise = transpose then reverse rows\n  counterclockwise = reverse rows then transpose\n\n  WHY: a 90-degree clockwise rotation maps (r,c) -> (c, n-1-r).\n  Transposing maps (r,c) -> (c,r); reversing the row maps\n  (c,r) -> (c, n-1-r). The composition is the rotation.\n\n  transpose in place:\n   for r in 0..n-1:\n     for c in r+1..n-1:\n       swap(m[r][c], m[c][r])",
+   "cpp_vs_py": "Rotation is the linear map R = [[0,-1],[1,0]] in matrix form. Transpose T swaps indices; row-reversal F flips the second index. The identity F\u00b7T = R (right-multiply check: (F\u00b7T)(r,c) = F(c,r) = (c, n-1-r)) is why \"transpose then reverse rows\" is EXACTLY a 90\u00b0 turn \u2014 no angles, no trigonometry, just index arithmetic. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 formatting rows for output #include <vector> // std::vector \u2014 the matrix #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // (unused here; kept for uniform include set) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`std::swap` plus two nested loops with the upper-triangular bound; the whole matrix stays in cache.",
+    "`std::reverse` on each row of a `vector<int>` is a single library call per row."
+   ],
+   "py_alts": [
+    "`[list(row) for row in zip(*matrix)]` transposes in one line, then reverse each row.",
+    "`matrix.reverse()` on the outer list would rotate 180, not 90 -- the common slip."
+   ],
+   "trap": "Reversing the outer list instead of each row, which produces a 180-degree rotation. Also, looping the transpose over the full square rather than the strict upper triangle, which double-swaps and undoes itself.",
+   "invariant": "After the transpose, entry (r, c) holds what was at (c, r); the strict-upper-triangle loop guarantees each pair is swapped exactly once. After the per-row reversal, entry (c, r') holds what the transpose put at (c, n-1-r'), which is the clockwise rotation.",
+   "questions": [
+    {
+     "q": "Why must the matrix be square?",
+     "a": "The two-step method composes two reflections of the same square, so it is only a rotation when the dimensions match. For a non-square matrix you would need padding, or the explicit four-way ring rotation."
+    },
+    {
+     "q": "What is the alternative single-pass algorithm?",
+     "a": "Four-way ring swaps: for each layer, swap the four elements at offsets 0, 1, 2, 3 of each ring position. That is one pass with O(1) extra space and no intermediate transpose state, at the cost of harder-to-read index arithmetic."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n^2)$ time and $O(1)$ extra space. The transpose visits n(n-1)/2 pairs and the reversal touches every element once."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0050_pow_x_n",
+   "one_liner": "Exponentiation by squaring: halve n, square x.",
+   "core_objective": "Return x raised to n for integer n, handling negative exponents.",
+   "bounds": "-2^31 <= n <= 2^31 - 1, so the exponent needs 64-bit arithmetic in C++ to shift safely. x can be 0, and 0 to the 0th power is 1.",
+   "approaches": [
+    {
+     "name": "Iterative exponentiation by squaring (BEST)",
+     "aha": "Sweep the BITS of n. Maintain base = x^(2^k) (doubling k each step via base *= base). Whenever bit k of n is set, multiply base into the running result.",
+     "py": "exp = n\nif exp < 0:\n    x = 1.0 / x\n    exp = -exp\nresult = 1.0\nbase = x                 # base = x^(2^k) as the loop advances k\nwhile exp > 0:\n    if exp % 2 == 1:",
+     "cpp": "if (exp < 0) { x = 1.0 / x;\n    exp = -exp;",
+     "time": "O(log n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(log n) time, O(1) space."
+    },
+    {
+     "name": "Recursive halving",
+     "aha": "Recurrence: n even \u2192 p = pow(x, n//2), return p\u00b7p; n odd \u2192 return x \u00b7 p \u00b7 p.",
+     "py": "if n == 0:\n    return 1.0            # x^0 = 1 for every x\nif n < 0:\n    return 1.0 / self.myPow(x, -n)\np = self.myPow(x, n // 2)  # halve: p = x^(n//2) (floor for odd n)\nreturn p * p if n % 2 == 0 else p * p * x",
+     "cpp": "        if (n == 0) { return 1.0;                 // x^0 = 1 for any x",
+     "time": "O(log n)",
+     "space": "O(log n)",
+     "why": "Follows directly from the traversal count: O(log n) time, O(log n) space."
+    }
+   ],
+   "diagram": " x=2, n=10  -> 1024\n\n  binary: 10 = 1010 = 8 + 2\n\n  result=1, base=2, exp=10\n   exp even -> exp=5,  base=4    (square)\n   exp odd  -> result*=4=4, exp=4, base=16\n   exp even -> exp=2,  base=256\n   exp even -> exp=1,  base=65536\n   exp odd  -> result *= 65536 -> 262144? no\n\n  trace carefully:\n   r=1  b=2  e=10  e even -> e=5,  b=4\n   r=1  b=4  e=5   e odd  -> r=4, e=4, b=16\n   r=4  b=16 e=4   e even -> e=2,  b=256\n   r=4  b=256 e=2  e even -> e=1,  b=65536\n   r=4  b=65536 e=1 e odd  -> r=262144, e=0 -> stop\n   result 262144 != 1024 -> the doubling is wrong\n\n  CORRECT algorithm:\n   r=1  b=2  e=10\n   e even -> e=5,  b=b*b=4\n   e odd  -> r=r*b=4, e=4, b=b*b=16\n   e even -> e=2,  b=256\n   e even -> e=1,  b=65536\n   e odd  -> r=r*b=262144, e=0\n   262144 = 2^18, not 2^10. The binary of 10 is 1010;\n   the squares used were 2^2,2^4,2^8,2^16 and r took 2^2\n   and 2^16 -> so the update order must be:\n     if e odd: r *= b; e -= 1\n     b *= b; e //= 2\n   r=1 b=2 e=10\n     e even: b=4, e=5\n     e odd: r=4, e=4; b=16, e=2\n     e even: b=256, e=1\n     e odd: r=4*256=1024, e=0  CORRECT",
+   "cpp_vs_py": "The recurrence is: pow(x, n) = pow(x, n/2)\u00b2 (n even) pow(x, n) = x \u00b7 pow(x, n/2)\u00b2 (n odd, integer div) because n = 2k \u21d2 x^n = (x^k)\u00b2, and n = 2k+1 \u21d2 x^n = x\u00b7(x^k)\u00b2. Subtlety: exponent n = -2^31 cannot be negated in a signed 32-bit int (overflow!). Safe pattern: if n < 0, return 1.0 / pow(x, -n) using a LONG (64-bit) negated exponent. Doubles need no overflow worries \u2014 multiplication and division are IEEE-754 exact enough. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 formatting result lines #include <vector> // std::vector \u2014 (unused; uniform include set) #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // (unused here; kept for uniform include set) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`long long n` is mandatory: shifting a 32-bit n right is fine but the multiplication needs 64-bit intermediates.",
+    "`unsigned long long` for the accumulator avoids signed-overflow UB on intermediate squares even though the final answer fits."
+   ],
+   "py_alts": [
+    "Python's `**` handles this in one operation; writing the loop is about demonstrating the algorithm.",
+    "`pow(x, n)` with three arguments does modular exponentiation, useful if a modulus is added."
+   ],
+   "trap": "Squaring the base before consuming the odd bit, or decrementing e after halving it. The two lines must be ordered: multiply into the result and subtract one while odd, THEN square and halve.",
+   "invariant": "The loop maintains result * base^e == x^n_original. Each iteration either squares (preserving base^e as (base^2)^(e/2) when e is even) or extracts one factor of base into result and decrements e (preserving the product). When e reaches 0, result is the answer.",
+   "questions": [
+    {
+     "q": "Why is the algorithm logarithmic?",
+     "a": "Every iteration halves e, so there are at most log2(|n|) iterations -- at most 31 for a 32-bit exponent. Naive repeated multiplication is O(n) and would be astronomically slow for n = 2^31."
+    },
+    {
+     "q": "How are negative exponents handled?",
+     "a": "They are not, structurally: the halving loop terminates only for positive e. You must first convert x^-k into (1/x)^k, which requires either a float or integer division, and x = 0 with a negative exponent is undefined."
+    },
+    {
+     "q": "Why does 0^0 equal 1 here?",
+     "a": "Because result is initialised to 1 and the loop returns result when e becomes 0, before any base multiplication. That is the standard convention and matches the judge's expectation."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0054_spiral_matrix",
+   "one_liner": "Four boundaries that shrink after each pass.",
+   "core_objective": "Return all elements of a matrix in spiral order.",
+   "bounds": "m, n >= 1 with up to 1e6 elements, so a single row or column must terminate correctly. The 1 x n case is the classic off-by-one source.",
+   "approaches": [
+    {
+     "name": "Boundary shrinking with 4 pointers (BEST)",
+     "aha": "Track top, bottom, left, right. Sweep each of the four edges of the current layer in turn, shrinking its bound after the sweep. Two guards (top <= bottom / left <= right) keep single-row and single-column layers from being double-visited.",
+     "py": "out: List[int] = []\ntop, bottom = 0, len(matrix) - 1\nleft, right = 0, len(matrix[0]) - 1\nwhile top <= bottom and left <= right:\n    for c in range(left, right + 1):\n        out.append(matrix[top][c])\n    top += 1                    # top edge consumed \u2192 shrink\n    for r in range(top, bottom + 1):",
+     "cpp": "while (top <= bottom && left <= right) { for (int c = left; c <= right; ++c) { out.push_back(matrix[top][c]);\n    }\n    ++top;   // top edge consumed \u2192 shrink from above\n    for (int r = top; r <= bottom; ++r) { out.push_back(matrix[r][right]);\n    }\n    --right; // right edge consumed \u2192 shrink from the right\n    if (top <= bottom) { for (int c = right; c >= left; --c) { out.push_back(matrix[bottom][c]);\n        }",
+     "time": "O(m\u00b7n)",
+     "space": "O(1) extra",
+     "why": "Follows directly from the traversal count: O(m\u00b7n) time, O(1) extra space."
+    },
+    {
+     "name": "Layer-by-layer recursive peeling",
+     "aha": "Same spiral as a recursion: peel the outer layer, recurse on the inner (m-2)\u00d7(n-2) rectangle. Same O(m\u00b7n) work; the recursion stack costs O(min(m, n)/2) memory instead of O(1).",
+     "py": "out: List[int] = []\nself._peel(matrix, 0, len(matrix) - 1, 0, len(matrix[0]) - 1, out)\nreturn out\n      l: int, r: int, out: List[int]) -> None:",
+     "cpp": "if (t > b || l > r) {\n    return;   // layer collapsed \u2192 whole spiral is emitted",
+     "time": "O(m\u00b7n)",
+     "space": "O(min(m, n)/2)",
+     "why": "Follows directly from the traversal count: O(m\u00b7n) time, O(min(m, n)/2) space."
+    }
+   ],
+   "diagram": " [[1,2,3],[4,5,6],[7,8,9]]  -> 1 2 3 6 9 8 7 4 5\n\n  top=0 bottom=2 left=0 right=2\n\n  while top <= bottom and left <= right:\n    top row:    1 2 3      (c from left to right)\n    right col: 6 9        (r from top+1 to bottom)\n    top++\n    bottom row: 8 7        (only if top <= bottom!)\n    right--\n    left col:  4           (only if left <= right!)\n    bottom--\n\n  THE GUARDS ARE ESSENTIAL:\n   after the top row, bottom-- must be conditional on\n   top <= bottom, else a 1-row matrix emits a duplicate row.\n   after the right col, right-- must be conditional on\n   left <= right, else a 1-column matrix emits duplicates.\n\n  trace:\n   top row 1 2 3 ; right col 6 9 ; top=1\n   bottom row 8 7 (bottom=2 >= top=1 ok) ; right=1 ; bottom=1\n   left col 4 ; bottom=0 -> loop ends",
+   "cpp_vs_py": "The spiral partitions the grid into disjoint segments: every cell belongs to exactly one of the four sweeps of exactly one layer. Invariant: after processing layer k, all cells with k \u2264 min(r, c, m-1-r, n-1-c) are visited. The layer index of any cell is min of its 4 edge distances \u2014 exactly what the guards track. Total work = \u03a3 over layers of (perimeter) = m\u00b7n. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 formatting result lines #include <vector> // std::vector \u2014 matrix + spiral output #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // (unused here; kept for uniform include set) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "Four `int` boundaries and a lambda `push` that appends and advances; one lambda removes four duplicated lines.",
+    "`vector<int> out; out.reserve(m*n)` avoids repeated reallocation."
+   ],
+   "py_alts": [
+    "A list of four boundaries with `while top <= bottom and left <= right` is the cleanest form.",
+    "`out.extend(row[left:right+1])` for the top row is C-speed, though the explicit loop is more uniform."
+   ],
+   "trap": "Emitting the bottom row or left column without re-checking the corresponding boundary condition. On a single-row matrix that duplicates every element; on a single-column matrix it duplicates the column.",
+   "invariant": "The four boundaries always delimit the unvisited rectangle. Each pass emits exactly the outer ring and then shrinks the appropriate boundaries by one, so every element is emitted exactly once and the loop terminates when the rectangle is empty.",
+   "questions": [
+    {
+     "q": "Why is there no extra space?",
+     "a": "The traversal order is determined entirely by the four boundaries, so no visited array or queue is needed. A BFS-based spiral would need O(mn) extra space; the boundary walk uses O(1) beyond the output."
+    },
+    {
+     "q": "What is the output space complexity?",
+     "a": "$O(mn)$ for the result, which is unavoidable since every element is returned. Auxiliary space is $O(1)$, making this an output-optimal $O(mn)$ algorithm."
+    },
+    {
+     "q": "How do you handle a 1 x n matrix?",
+     "a": "The top row emits all n elements, then the loop must not emit a bottom row. The `if top <= bottom` guard before the bottom-row pass is what enforces that; without it you emit the row twice."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0066_plus_one",
+   "one_liner": "Scan from the right, carry until a non-9 is found.",
+   "core_objective": "Increment a number represented as an array of digits by one.",
+   "bounds": "1 <= digits.length <= 100, so the array can represent a number far beyond any fixed integer type. All elements are 0..9 and the leading digit is never zero, except for the array [0].",
+   "approaches": [
+    {
+     "name": "Backwards scan with carry (BEST)",
+     "aha": "carry = 1 at the last digit; for each digit right \u2192 left: add carry; 10 \u2192 set 0 and continue; otherwise return immediately. All-9 input \u2192 prepend a leading 1.",
+     "py": "out = digits[:]                    # work on a copy\nfor i in range(len(out) - 1, -1, -1):\n    if out[i] < 9:\n        out[i] += 1                # carry absorbed right here\n        return out                 # done \u2014 left digits unchanged\n    out[i] = 0                     # 9+1 = 10 \u2192 0, carry on\nreturn [1] + out                   # [9,9,9] \u2192 [1,0,0,0]",
+     "cpp": "for (int i = static_cast<int>(out.size()) - 1; i >= 0; --i) { if (out[i] < 9) {\n        out[i] += 1;             // carry absorbed right here\n        return out;              // done \u2014 digits left unchanged\n    }\n    out[i] = 0;                  // 9+1 = 10 \u2192 0, carry propagates",
+     "time": "O(n)",
+     "space": "O(1) extra",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) extra space."
+    },
+    {
+     "name": "Integer round-trip (contrast)",
+     "aha": "int(digits) + 1 \u2192 back to digits. Correct only while the value fits a machine int; silently wrong beyond ~19 digits.",
+     "py": "value = 0\nfor d in digits:\n    value = value * 10 + d\nvalue += 1\nout: List[int] = []\nwhile value > 0:\n    out.append(value % 10)\n    value //= 10",
+     "cpp": "        for (const int d : digits) { value = value * 10 + d;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "Follows directly from the traversal count: O(n) time, O(n) space."
+    }
+   ],
+   "diagram": " [1,2,5]      -> [1,2,6]\n  [4,3,2,2,9]  -> [4,3,2,3,0]\n  [9,9]        -> [1,0,0]   (new leading digit)\n  [0]          -> [1]\n\n  i = n-1\n  while i >= 0 and digits[i] == 9:\n     digits[i] = 0     # 9 -> 0, carry out\n     i -= 1\n  if i >= 0:\n     digits[i] += 1\n  else:\n     digits.insert(begin, 1)   # every digit was 9\n\n  WHY THE 9-RUN MATTERS: only trailing 9s produce a carry.\n  The first non-9 from the right absorbs the carry and stops\n  it. If no non-9 exists, the answer gains a digit.\n\n  trace [4,3,2,2,9]:\n   i=4 digits[4]=9 -> 0, i=3\n   i=3 digits[3]=2 != 9 -> stop\n   digits[3] += 1 -> [4,3,2,3,0]  CORRECT",
+   "cpp_vs_py": "The carry propagates exactly until the first non-9 digit from the right. Average case: a uniformly random digit is 9 with probability 1/10, so the expected walk length is 1 + 1/10 + 1/100 + \u2026 = 10/9 \u2192 O(1) average! Only the worst case (all 9s) costs the full O(n) walk. Amortized over many increments, this is the same analysis as a binary counter's carry chain. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 formatting result lines #include <vector> // std::vector \u2014 the digit array #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // (unused here; kept for uniform include set) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`digits.insert(digits.begin(), 1)` is $O(n)$ and fine; a two-pointer fill into a preallocated vector is $O(1)$ amortised instead.",
+    "The int-to-string conversion is deliberately forbidden -- that is the point of the problem."
+   ],
+   "py_alts": [
+    "`[int(d) for d in str(int(s) + 1)]` violates the intent; it also fails on a 100-digit string in fixed-width languages but works in Python, which is exactly why the loop is the right answer here.",
+    "`digits.insert(0, 1)` is a single O(n) operation and reads clearly."
+   ],
+   "trap": "Checking only the last digit. [9,9] and [1,9,9] both need the carry to propagate and a new leading digit, and treating them as single-digit cases returns wrong answers.",
+   "invariant": "After the while loop, all digits at indices greater than i have been set to 0 and i is the highest index whose digit is not 9 (or -1 if none exists). Those trailing zeros are exactly the carry-out positions, and incrementing digits[i] -- or prepending 1 when i == -1 -- performs the addition with no further propagation.",
+   "questions": [
+    {
+     "q": "Why does only trailing 9s carry?",
+     "a": "Because adding 1 to a digit d yields d+1 unless d == 9, which yields 10 and writes 0 with a carry. So the carry propagates leftward precisely through a maximal run of 9s and stops at the first smaller digit."
+    },
+    {
+     "q": "What if every digit is 9?",
+     "a": "Then i reaches -1 and the answer needs one more digit than the input. That is the [9,9] to [1,0,0] case, and prepending 1 is the only correct handling."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time -- each digit is touched at most twice -- and $O(1)$ extra space apart from the possible insert, which is $O(n)$ and happens at most once."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0073_set_matrix_zeroes",
+   "one_liner": "Use the first row and column as the marker storage.",
+   "core_objective": "Set every cell sharing a row or column with an original zero to zero, in place.",
+   "bounds": "m, n up to 200 and the output matrix is huge -- copying it is explicitly disallowed. The first row and first column may themselves be zeroed, which is the whole subtlety.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "ROWS, COLS = len(matrix), len(matrix[0])\nrowZero = False\nfor r in range(ROWS):\n    for c in range(COLS):\n        if matrix[r][c] == 0:\n            matrix[0][c] = 0\n            if r > 0: matrix[r][0] = 0\n            else: rowZero = True",
+     "cpp": "for (int r = 0; r < m; ++r) { for (int c = 0; c < n; ++c) { if (matrix[r][c] == 0) { if (c == 0) {\n                zero_first_col = true;   // (0,0) is taken by row 0\n            } else { matrix[0][c] = 0;\n            }\n            matrix[r][0] = 0;\n        }\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "r_zero = set(); c_zero = set()\nfor r in range(len(matrix)):\n    for c in range(len(matrix[0])):\n        if matrix[r][c] == 0:\n            r_zero.add(r); c_zero.add(c)\nfor r in range(len(matrix)):\n    for c in range(len(matrix[0])):\n        if r in r_zero or c in c_zero:",
+     "cpp": "for (int r = 0; r < m; ++r) { for (int c = 0; c < n; ++c) { if (matrix[r][c] == 0) { zero_row[r] = true;\n            zero_col[c] = true;\n        }\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " [[1,1,1],[1,0,1],[1,1,1]]\n\n  the 0 at (1,1) means row 1 and column 1 become 0:\n   1 0 1\n   0 0 0\n   1 0 1\n\n  THREE-STEP ALGORITHM:\n  1. mark rows/cols that contain a zero, storing the flags\n     IN THE FIRST ROW and FIRST COLUMN\n  2. for each cell (r,c) with r>0 and c>0:\n       if row_flag[r] or col_flag[c]: m[r][c] = 0\n  3. zero out the first row and first column from their flags\n\n  the first row/column are used as the marker array because\n  the problem forbids extra space. If m[0][0] itself is a\n  zero, every cell must be zero -- step 3 handles that from\n  the flags, not from the overwritten value.\n\n  why the corner cell needs a separate flag:\n   if only m[0][0] were zero we'd wipe the marker storage\n   before reading it. Keeping the flags in row 0 / col 0 and\n   processing them LAST avoids the ordering problem.",
+   "cpp_vs_py": "The failure mode of a naive in-place attempt: you zero a row, and the zeros you just WROTE get re-read as \"original zeros\", cascading the zeroing everywhere. The marker trick sidesteps it because Pass 1 only READS original data and only WRITES to the marker row/column; Pass 2 only READS markers. The two passes never interleave \u2014 that separation is the whole algorithm. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 formatting result lines #include <vector> // std::vector \u2014 the matrix #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // (unused here; kept for uniform include set) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`vector<bool> rowFlag(m), colFlag(n)` is the $O(m+n)$ extra space version the problem forbids but interviewers often accept as the first attempt.",
+    "`std::vector<char>` avoids vector<bool>'s proxy overhead and is clearer than a bitset."
+   ],
+   "py_alts": [
+    "`rows = set()`, `cols = set()` is the readable $O(m+n)$ version.",
+    "The three-step in-place version is what the problem asks for; the marker row/column trick is the point."
+   ],
+   "trap": "Using m[0][0] as the sole marker for row 0 and column 0 simultaneously. If the original m[0][0] was a zero, the marker loses its meaning and the answer is wrong; separate flags in row 0 and column 0, applied last, are required.",
+   "invariant": "After step 1, `rowFlag[r]` and `colFlag[c]` record whether row r and column c contained an original zero, and the interior of the matrix is still unmodified. Step 2 therefore zeroes exactly the cells sharing a row or column with a zero, using only original information. Step 3 applies the flags to the marker row and column last, so their values are read before being destroyed.",
+   "questions": [
+    {
+     "q": "Why must the first row/column be processed last?",
+     "a": "Because they hold the flags. If you zeroed them earlier you would lose the record of whether rows 0 or columns 0 contained zeros. Applying them last means the information has already been consumed by the interior pass."
+    },
+    {
+     "q": "What is the alternative with extra space?",
+     "a": "Two boolean arrays of size m and n. That is $O(m+n)$ space, trivially correct, and worth writing first -- the in-place version is the interesting follow-up that the constraint forces."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(mn)$ time for the three passes and $O(1)$ extra space for the in-place version. Each cell is examined a constant number of times."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0201_bitwise_and_of_numbers_range",
+   "one_liner": "The AND of a range is the common prefix; right-shift to find it.",
+   "core_objective": "Return m & (m+1) & ... & n for 0 <= m <= n <= 2^31-1.",
+   "bounds": "0 <= m <= n <= 2^31 - 1, so 31 bits suffice. m == n returns m. The answer is always a power-of-two-aligned block.",
+   "approaches": [
+    {
+     "name": "\u00b7 Clear the lowest set bit (best)",
+     "aha": "while left < right: right &= right - 1. Converges to the common prefix.",
+     "py": "while left < right:\n    right &= right - 1\nreturn right",
+     "cpp": "while (left != right) {                    // find common prefix\n    left >>= 1;\n    right >>= 1;\n    ++shift;",
+     "time": "?",
+     "space": "?",
+     "why": "each element is probed once; pairs cancel or are recorded; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 Shift both until equal, shift back",
+     "aha": "Shift left/right rightwards until they match; the prefix shifted back left is the answer. --------------------------------------------------------------------- DEEP DIVE \u00b7 Why the prefix survives Where left and right first differ, the range spans the carry boundary (e.g. 5=101 to 7=111: the middle bit flips) \u2014 so that bit and everything below is 0 in the AND. Only bits where both endpoints (hence every number) agree stay 1. right&(right-1) removes the lowest set bit; iterating until right \u2264 left lands exactly on the shared prefix. --------------------------------------------------------------------- TIME COMPLEXITY : O(1) \u2014 at most 31 iterations. MEMORY COMPLEXITY: O(1) =====================================================================",
+     "py": "shift = 0\nwhile left != right:\n    left >>= 1\n    right >>= 1\n    shift += 1\nreturn left << shift",
+     "cpp": "while (left != right) {                    // find common prefix\n    left >>= 1;\n    right >>= 1;\n    ++shift;",
+     "time": "O(1) \u2014 at most 31 iterations.",
+     "space": "O(1)",
+     "why": "one shift-and-mask per bit position; hence the stated bounds."
+    }
+   ],
+   "diagram": " m=5, n=7  -> 4\n\n  5 = 101\n  6 = 110\n  7 = 111\n  AND:\n    101\n    110\n    111\n    ---\n    100 = 4\n\n  COMMON PREFIX: the top bit (bit 2) is shared; everything\n  below differs because the range crosses a power-of-two\n  boundary at 8.\n\n  shift-right approach:\n   sh = 0\n   while m != n: m >>= 1; n >>= 1; sh += 1\n   return m << sh\n\n   m=5 n=7 -> 2,3 sh=1 -> 1,1 sh=2 -> stop\n   return 1 << 2 = 4  CORRECT\n\n  shift-until-equal alternative:\n   while m < n: m >>= 1; n >>= 1\n   return m\n\n  invariant: shifting both endpoints right by the same amount\n  preserves the common prefix, and they become equal exactly\n  when the remaining bits are all that they share. Shifting\n  back left restores the zeroes below the prefix, which is the\n  required AND.",
+   "cpp_vs_py": "Where left and right first differ, the range spans the carry boundary (e.g. 5=101 to 7=111: the middle bit flips) \u2014 so that bit and everything below is 0 in the AND. Only bits where both endpoints (hence every number) agree stay 1. right&(right-1) removes the lowest set bit; iterating until right \u2264 left lands exactly on the shared prefix. --------------------------------------------------------------------- TIME COMPLEXITY : O(1) \u2014 at most 31 iterations.\n\n=====================================================================",
+   "cpp_alts": [
+    "`unsigned` avoids sign extension on `>>` for the 31-bit bound, though int is also correct since both operands stay non-negative.",
+    "The shift-counter form generalises to any range type; the `while m < n` form is a C++/Python one-liner but relies on m <= n."
+   ],
+   "py_alts": [
+    "`m ^ n` gives the bits that differ; their highest set bit marks the shift amount, so `shift = m ^ n .bit_length()` is an equivalent single-expression form.",
+    "Python's `>>` is a logical shift on positive ints, so no masking is needed anywhere in this problem."
+   ],
+   "trap": [
+    "U",
+    "s",
+    "i",
+    "n",
+    "g",
+    " ",
+    "`",
+    "w",
+    "h",
+    "l",
+    "e",
+    "m",
+    "!",
+    "=",
+    ":",
+    ">",
+    "1",
+    ";",
+    "t",
+    "o",
+    "u",
+    "a",
+    "f",
+    "c",
+    "r",
+    "d",
+    ".",
+    "T",
+    "p",
+    "x",
+    ",",
+    "5",
+    "7",
+    "v",
+    "4"
+   ],
+   "invariant": [
+    "A",
+    "t",
+    " ",
+    "e",
+    "v",
+    "r",
+    "y",
+    "s",
+    "p",
+    "b",
+    "o",
+    "h",
+    "n",
+    "d",
+    "i",
+    "a",
+    "f",
+    "g",
+    "m",
+    "u",
+    ",",
+    "l",
+    ".",
+    "T",
+    "c",
+    "q",
+    "x",
+    "w",
+    "N",
+    "D"
+   ],
+   "questions": [
+    {
+     "q": "Why does m == n after shifting imply the answer?",
+     "a": "When both endpoints collapse to the same value v, every number in the range agrees with v on all remaining high bits and the lower bits of the range contain a transition, so the AND of those low bits is 0. Hence the answer is v followed by sh zeros."
+    },
+    {
+     "q": "What is the simpler formulation?",
+     "a": "`while m < n: m >>= 1; n >>= 1; return m`. Because m <= n always, and m < n guarantees a differing low bit, the loop shifts out exactly the non-common part, so no shift counter is needed."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(\\log n)$ time -- at most 31 shifts -- and $O(1)$ space. In C++ use `unsigned` to avoid sign-extension issues on the right shift; in Python the integers are arbitrary-precision and never negative here."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/0202_happy_number",
+   "one_liner": "Floyd cycle detection over the digit-square-sum chain.",
+   "core_objective": "Return true if repeatedly summing the squares of the digits reaches 1.",
+   "bounds": "Any integer, typically within int. Numbers above 243 always fall into a cycle, so the chain is bounded and the loop must terminate.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "visit = set()\nwhile n not in visit:\n    visit.add(n)\n    n = self.sumOfSquares(n)\n    if n == 1: return True\noutput = 0\nwhile n:\n    digit = n % 10",
+     "cpp": "while (n > 0) { const int d = n % 10;       // peel the last digit\n    sum += d * d;               // square it into the sum\n    n /= 10;                    // drop the digit",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "slow, fast = n, self.sumOfSquares(n)\nwhile fast != 1 and slow != fast:\n    slow = self.sumOfSquares(slow)\n    fast = self.sumOfSquares(self.sumOfSquares(fast))\nreturn fast == 1\noutput = 0\nwhile n:\n    digit = n % 10",
+     "cpp": "while (n > 0) { const int d = n % 10;\n    sum += d * d;\n    n /= 10;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " n=19 -> true\n  19 -> 1 + 81 = 82\n   82 -> 64 + 4  = 68\n   68 -> 36 + 64 = 100\n  100 -> 1 + 0 + 0 = 1   HAPPY\n\n  n=2 -> false\n   2 -> 4 -> 16 -> 37 -> 58 -> 89 -> 145 -> 42 -> 20\n      -> 4 (cycle detected)\n\n  Floyd on the function f(n) = sum of digit squares:\n   slow = f(n), fast = f(f(n))\n   while fast != 1 and slow != fast:\n      slow = f(slow); fast = f(fast))\n   return fast == 1\n\n  WHY IT TERMINATES: any n >= 1000 maps to at most 4*81=324,\n  and 999 -> 243, so the chain is bounded by 243 and must\n  eventually repeat. Floyd detects the repeat in O(1) space.\n\n  ALTERNATIVE: a set of visited values, O(1) space in\n  practice since the chain is bounded by 243, and clearer.",
+   "cpp_vs_py": "For a k-digit number the successor is \u2264 k\u00b781. For k \u2265 4 that is strictly smaller than the number itself (10^(k-1) > 81k for k \u2265 4), so every chain drops into \u2264 3-digit territory fast and the state space is bounded \u2192 cycles are GUARANTEED to be found, never an infinite walk. This is the same argument that proves termination of the whole process. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <string> // std::string \u2014 formatting result lines #include <vector> // std::vector \u2014 (unused; uniform include set) #include <unordered_map> // (unused here; kept for uniform include set) #include <unordered_set> // std::unordered_set \u2014 seen-state set (A1) #include <chrono> // std::chrono \u2014 steady_clock timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`int sumOfSquares(int n)` with a `while (n) { s += (n%10)*(n%10); n /= 10; }` loop.",
+    "An `unordered_set<int>` visited set is simpler but allocates; Floyd avoids that entirely."
+   ],
+   "py_alts": [
+    "`sum(int(c)**2 for c in str(n))` is concise and readable at this scale.",
+    "`divmod(n, 10)` gives digit and quotient in one operation, avoiding two separate divisions."
+   ],
+   "trap": "Using a visited set without a termination bound, or forgetting that the cycle may not include 1 -- so the loop condition must check both `fast == 1` and `slow == fast`, otherwise a non-1 cycle spins forever.",
+   "invariant": "The chain n -> f(n) -> f(f(n)) -> ... is eventually periodic because it is bounded. Floyd's two pointers advance at speeds 1 and 2, so they must meet inside the cycle; meeting at a value of 1 means the chain reaches 1, and meeting elsewhere means it is trapped.",
+   "questions": [
+    {
+     "q": "Why is the chain bounded?",
+     "a": "A number with d digits maps to at most 81d. For d = 4 that is 324, and 324 has three digits so it maps to at most 243. From then on the chain stays inside 1..243, a finite set, so it must repeat."
+    },
+    {
+     "q": "What is the general technique here?",
+     "a": "Cycle detection on a deterministic function of a bounded domain -- exactly Floyd's tortoise and hare, identical in structure to linked-list cycle detection and to the duplicate-number problem. The invariant is that the two pointers meet inside the cycle."
+    },
+    {
+     "q": "Why does meeting at 1 mean happy?",
+     "a": "If the chain reaches 1 then it stays at 1, since f(1) = 1. So 1 is a fixed point, and the fast pointer reaches it within at most one full cycle of steps. Meeting elsewhere means the chain entered a cycle that does not contain 1."
+    }
+   ]
+  },
+  {
+   "key": "17_math_and_geometry/2013_detect_squares",
+   "one_liner": "Pick the bottom-left corner, then count pairs along its edges.",
+   "core_objective": "Return the total number of axis-aligned squares in which at least one other point shares the bottom row and at least one shares the left column.",
+   "bounds": "0 <= points.length <= 1000 with 0 <= x[i], y[i] <= 1000, so coordinates fit in 10 bits and a 1001 x 1001 counting grid is about 4 MB. Duplicate points are legal and are the reason the answer multiplies two counts.",
+   "approaches": [
+    {
+     "name": "Approach 1",
+     "aha": "Approach 1 -- see the kernel below.",
+     "py": "rows, cols = Counter(), Counter()\nfor x, y in points:\n    rows[y] += 1\n    cols[x] += 1\nres = 0\nfor x, y in points:\n    right = rows[y] - 1          # minus (x, y) itself\n    up    = cols[x] - 1\n    if right > 0 and up > 0: res += right * up\nreturn res",
+     "cpp": "unordered_map<int, int> rowCnt, colCnt;\nfor (auto& p : points) { ++rowCnt[p.second]; ++colCnt[p.first]; }\nint res = 0;\nfor (auto& p : points) {\n    int right = rowCnt[p.second] - 1;\n    int up    = colCnt[p.first] - 1;\n    if (right > 0 && up > 0) res += right * up;\n}\nreturn res;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "Approach 2",
+     "aha": "Approach 2 -- see the kernel below.",
+     "py": "cnt = Counter(points)\nrow, col = Counter(), Counter()\nfor (x, y) in points:\n    row[y] += cnt[(x, y)]   # weight duplicates\n    col[x] += cnt[(x, y)]\nres = 0\nfor (x, y) in points:\n    right = row[y] - cnt[(x, y)]\n    up    = col[x] - cnt[(x, y)]\n    if right > 0 and up > 0: res += right * up * cnt[(x, y)]\nreturn res",
+     "cpp": "// weight every point by how many times it occurs,\n// then the same row/col product scales by that weight",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " points = [(0,0),(1,0),(0,1),(1,1),(0,2)]  -> 1\n\n  for each (x, y) treat it as the BOTTOM-LEFT corner:\n   (0,0): right = # points at (x'>0, y)   = 2  -> (1,0),(1,1)\n          up    = # points at (x, y'>0)   = 2  -> (0,1),(0,2)\n          both sides present -> +1 * 1 = 1 square\n   (1,0): right = 0 -> skip\n   (0,1): right = 1 -> (1,1); up = 1 -> (0,2)\n          -> +1 square (0,1)-(1,1)-(1,2)? (1,2) absent\n          but the opposite orientation also counts:\n          the point (0,1) can be the TOP-LEFT of the\n          square whose bottom-left is (0,0). So every\n          square is found twice unless you only count\n          the (x, y) = bottom-left orientation and use\n          right * up.\n\n  RIGHT * UP IS THE TRAP: a square needs a point strictly to\n  the RIGHT (x' > x) and one strictly ABOVE (y' > y), and\n  the two must pair up into a distinct square. Multiplying\n  the two counts is valid because each pair determines a\n  unique corner (x', y').",
+   "cpp_vs_py": "These problems are arithmetic on small integers, so both languages are fast. The C++ concern is overflow -- intermediate products in multiply-strings, reverse-integer, and pow can exceed 32 bits -- while Python's arbitrary precision removes that class of bug entirely. Matrix rotations differ more meaningfully: both work in place on the same memory, but C++ gets in-register swaps where Python writes through list indirection.",
+   "cpp_alts": [
+    "`unordered_map<int, unordered_map<int,int>>` counts per point in O(1) expected but allocates two nodes per lookup; a flat 1001 x 1001 int grid indexed `x * 1001 + y` is a single 4 MB block with perfect locality.",
+    "Sorting by (x, y) lets the right-count be read off from a running group size, avoiding the nested map entirely."
+   ],
+   "py_alts": [
+    "`collections.Counter` over the points gives per-point counts, but the row and column tallies need two separate counters keyed by y and by x.",
+    "A 2-D list of 1001 x 1001 ints is about 8 MB of pointers plus small-int caching; a flat list of 1e6 entries indexed `x * 1001 + y` is one allocation."
+   ],
+   "trap": "Using `>=` instead of `>` for the neighbour tests, which makes a point on the same row or column count as a side and inflates the answer. Also iterating both the (right, up) and (left, down) products, which double-counts every square.",
+   "invariant": "For each point (x, y), right(x, y) counts points on row y strictly right of x and up(x, y) counts points on column x strictly above y. Every square has exactly one bottom-left corner, and its two far sides are exactly one member of each set, so right * up counts each square exactly once from that corner.",
+   "questions": [
+    {
+     "q": "Why is `right * up` correct rather than a combination count?",
+     "a": "Because the problem defines the square by one point on the bottom row and one on the left column of the chosen corner. Each ordered pair (right point, up point) determines one unique opposite corner, so the number of squares is exactly the product of the two counts."
+    },
+    {
+     "q": "Why does a single corner orientation avoid double counting?",
+     "a": "Every axis-aligned square has a unique bottom-left corner and a unique top-right corner. Anchoring on the bottom-left with strict right/up neighbours means each square is visited only at its bottom-left point, so no counting rule needs a divide-by-two."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time for n points, with $O(1)$ expected lookup per point. Space is $O(\\sigma)$ for the coordinate maps or $O(10^6)$ for a flat counting grid when the coordinate range is bounded."
+    }
+   ]
+  }
+ ]
+}

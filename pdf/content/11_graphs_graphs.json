@@ -1,0 +1,680 @@
+{
+ "problems": [
+  {
+   "key": "11_graphs/0127_word_ladder",
+   "one_liner": "BFS over words one letter at a time; bidirectional doubles up.",
+   "core_objective": "Return the number of words in the shortest transformation sequence from beginWord to endWord, changing one letter per step.",
+   "bounds": "up to 5e3 words of length up to 10, and beginWord may or may not be in wordList. 0 steps is possible when they are equal. The output is the distance, not the sequence.",
+   "approaches": [
+    {
+     "name": "BFS (BEST for correctness)",
+     "aha": "Queue of (word, depth); erase each word from the dict on first sight so nothing is visited twice. First dequeuing of endWord is provably the shortest path.",
+     "py": "word_set = set(wordList)\nif endWord not in word_set:\nword_set.discard(beginWord)\nqueue = deque([(beginWord, 1)])\nwhile queue:\n    word, depth = queue.popleft()\n    if word == endWord:\n        return depth  # BFS first-hit guarantee: shortest length",
+     "cpp": "unordered_set<string> pool(wordList.begin(), wordList.end());\nqueue<string> q; q.push(beginWord);\nint steps = 0;\nwhile (!q.empty()) {\n    int n = q.size();\n    while (n--) {\n        string cur = q.front(); q.pop();\n        if (cur == endWord) return steps;\n        for (int i = 0; i < cur.size(); ++i) {\n            char old = cur[i];\n            for (char c = 'a'; c <= 'z'; ++c) {\n                cur[i] = c;\n                if (pool.erase(cur)) q.push(cur);\n            }\n            cur[i] = old;\n        }\n    }\n    ++steps;\n}\nreturn 0;",
+     "time": "O(n \u00b7 L\u00b2)",
+     "space": "O(n \u00b7 L)",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    },
+    {
+     "name": "Bidirectional BFS (BEST for speed)",
+     "aha": "Grow two frontiers (begin side + end side); expand the smaller one; when a generated word lands in the opposite frontier the waves met. Visits ~2\u00b7b^(d/2) nodes instead of b^d.",
+     "py": "word_set = set(wordList)\nif endWord not in word_set:\nword_set.discard(beginWord)\nfront, back = {beginWord}, {endWord}\ndepth = 1  # each loop round = one layer on both sides\nwhile front and back:\n    if len(front) > len(back):\n        front, back = back, front",
+     "cpp": "unordered_set<string> f, b, pool(wordList.begin(), wordList.end());\nf.insert(beginWord); b.insert(endWord);\nint steps = 0;\nwhile (!f.empty() && !b.empty()) {\n    if (f.size() > b.size()) f.swap(b);\n    unordered_set<string> next;\n    for (const string& cur : f) {\n        string t = cur;\n        for (int i = 0; i < t.size(); ++i) {\n            char old = t[i];\n            for (char c = 'a'; c <= 'z'; ++c) {\n                t[i] = c;\n                if (b.count(t)) return steps + 1;\n                if (pool.erase(t)) next.insert(t);\n            }\n            t[i] = old;\n        }\n    }\n    f = move(next); ++steps;\n}\nreturn 0;",
+     "time": "O(n \u00b7 L\u00b2)",
+     "space": "O(n \u00b7 L)",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    }
+   ],
+   "diagram": " begin=\"hit\", end=\"cog\", list=[hot,dot,dog,lot,log,cog]\n\n  hit -> hot (i->o) -> dot (h->d) -> dog (t->g)\n      -> cog (d->c)     4 steps\n\n  BFS: level 0 {hit}, level 1 {hot}, level 2 {dot},\n       level 3 {dog}, level 4 {cog} -> 4\n\n  BIDIRECTIONAL: expand the SMALLER frontier each time.\n   front = {hit:0}, back = {cog:0}, steps = 0\n   front is smaller -> expand front -> {hot:1}\n   expand back      -> {dog:1}\n   expand front     -> {dot:2}\n   ... meet when a word appears in both maps\n   sum the two distances + 1\n\n  why bidirectional wins: each search covers a ball of radius\n  d; two balls of radius d/2 cover the same volume as one of\n  radius d, so the frontier stays small.",
+   "cpp_vs_py": "BFS explores in layers: first hit of the target is the shortest path. DFS finds A path, not the shortest \u2192 wrong tool here. Python set/dict = open addressing + linear probing: h(k, i) = (hash(k) + i) mod m , i = 0, 1, 2, ... Every generated candidate word is just a probe into the table. C++ unordered_set = separate chaining (bucket + linked list). ---------------------------------------------------------------------\n\nBFS explores in layers from the source: the FIRST hit of the target is provably the SHORTEST path (unweighted edges). DFS would find SOME path \u2014 not necessarily the shortest \u2014 so it is wrong for this problem. std::unordered_set is the C++ equivalent of Python's set: separate chaining, O(1) average insert/lookup. Python's dict/set use open addressing with linear probing: h(k, i) = (hash(k) + i) mod m , i = 0, 1, 2, ... The probing cost is why the dict stays a hash table even when the graph is \"implicit\" \u2014 every candidate word is just a probe. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 input word list #include <string> // std::string \u2014 words #include <queue> // std::queue \u2014 BFS frontier #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited/dict hash set #include <chrono",
+   "cpp_alts": [
+    "`unordered_set<string>` for the unvisited set; `erase` on discovery prevents revisiting and shrinks it.",
+    "Generating candidates with `'a' + i` for 26 letters is faster than mutating positions one at a time."
+   ],
+   "py_alts": [
+    "Set of strings + `'a' + i` loops is the fastest Python formulation.",
+    "`dict` frontier with distance values avoids a separate level counter; BFS is still correct because all entries at a level share a distance."
+   ],
+   "trap": "Forgetting to remove a word from the unvisited set when it is enqueued. Then it is re-expanded from multiple parents and the level counting breaks, because a word can appear at two different depths.",
+   "invariant": "At the start of each BFS level, the frontier contains exactly the words at distance `d` from the start, and the unvisited set contains exactly the words not yet placed at any distance <= d. Both together guarantee each word is discovered at its shortest distance.",
+   "questions": [
+    {
+     "q": "Why is BFS correct here?",
+     "a": "Each edge is one letter substitution, so the answer is the shortest path length in an unweighted graph. BFS explores in non-decreasing distance order, so the first time a word is reached is at its minimum distance. A DFS would find a path but not necessarily the shortest."
+    },
+    {
+     "q": "What is the complexity of the bidirectional version?",
+     "a": "$O(26 \\cdot L \\cdot N)$ in the worst case for N words of length L, but in practice the frontiers meet after exploring roughly $\\sqrt{N}$ words each rather than N, because each search covers a radius-d ball and meeting means d is about half the path length."
+    },
+    {
+     "q": "Why must beginWord be added to wordList?",
+     "a": "Because it may be absent from the list while still being a valid node with neighbours in it. Omitting it makes the first expansion find nothing and the search returns 0 incorrectly."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0130_surrounded_regions",
+   "one_liner": "Flood in from the border; whatever is unreached is captured.",
+   "core_objective": "Flip every 'O' that is not connected to a border 'O' to 'X', leaving the rest untouched.",
+   "bounds": "Board is m x n with up to 100 x 100, so recursion depth can reach 1e4 and overflows CPython's limit -- iterative flood fill is the practical choice.",
+   "approaches": [
+    {
+     "name": "BFS from every border 'O' (BEST)",
+     "aha": "Queue all border 'O's, mark 'E'. BFS the 4 neighbours; every 'O' reached escapes too. Final sweep: 'E'\u2192'O', leftover 'O'\u2192'X'.",
+     "py": "m, n = len(board), len(board[0])\nqueue = deque()\nfor r in range(m):\n    for c in range(n):\n        if (r in (0, m - 1) or c in (0, n - 1)) and board[r][c] == \"O\":\n            board[r][c] = \"E\"      # 'E' = escapes (temporary mark)\n            queue.append((r, c))\ndirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]",
+     "cpp": "for (int r = 0; r < m; ++r) { for (int c = 0; c < n; ++c) {\n        bool border = (r == 0 || r == m - 1 || c == 0 || c == n - 1);\n        if (border && board[r][c] == 'O') {\n            board[r][c] = 'E';   // 'E' = escapes (temporary mark)\n            q.push({r, c});\n        }\n    }",
+     "time": "O(m\u00b7n)",
+     "space": "O(m\u00b7n)",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    },
+    {
+     "name": "Recursive DFS from every border 'O'",
+     "aha": "Identical idea, recursive traversal. Call stack can reach O(m\u00b7n) on a winding island \u2014 stack-overflow risk on big boards.",
+     "py": "m, n = len(board), len(board[0])\n    if r < 0 or r >= m or c < 0 or c >= n or board[r][c] != \"O\":\n        return\n    board[r][c] = \"E\"              # mark BEFORE recursing \u2014 the\n    dfs(r - 1, c)                  # up\n    dfs(r + 1, c)                  # down\n    dfs(r, c - 1)                  # left\n    dfs(r, c + 1)                  # right",
+     "cpp": "for (int r = 0; r < m_; ++r) { for (int c = 0; c < n_; ++c) {\n        bool border = (r == 0 || r == m_ - 1 || c == 0 || c == n_ - 1);\n        if (border && board[r][c] == 'O') dfs(r, c);\n    }",
+     "time": "O(m\u00b7n)",
+     "space": "O(m\u00b7n) (stack)",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": "  X X X X X\n  X O O O X\n  X X O O X\n  X O O X X\n  X X X X X\n\n  border O's: NONE on the top/right (all X),\n                one at (3,1)? (3,1) is interior -> captured\n  so interior O's all become X. Only O's touching an\n  edge survive.\n\n  ALGORITHM:\n   1. for every border cell that is 'O': flood-mark it '*'\n   2. for every cell still 'O': set it to 'X'\n\n  why it works: a region survives iff it has a path to the\n  border. Marking exactly the border-connected 'O's identifies\n  the survivors in one pass over the boundary.",
+   "cpp_vs_py": "A grid IS a graph: cell (r,c) is a node, edges to its 4 neighbours. The dirs array `[(\u22121,0),(1,0),(0,\u22121),(0,1)]` turns 4 copy-pasted branches into one loop. Bounds must be checked BEFORE indexing the grid. BFS vs DFS: identical O(m\u00b7n); BFS avoids deep recursion; DFS is terser to write. Both need a visited marker to stop cycles (here: repainting 'O'\u2192'E'). =====================================================================\n\nA grid IS a graph: cell (r,c) is a node; edges go to its 4 neighbours. The canonical trick is the DIRS array: dirs = {(-1,0),(1,0),(0,-1),(0,1)} \u2014 one loop over 4 offsets replaces four copy-pasted branches. BFS vs DFS here: identical worst-case complexity; BFS avoids the recursion depth trap of a long winding island. DFS is slightly simpler to write recursively. Both must guard bounds BEFORE probing the cell (r<0 || r>=m || c<0 || c>=n \u2192 skip). ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the 2D board #include <string> // std::string \u2014 board rows #include <queue> // std::queue \u2014 BFS frontier #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited set #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurem",
+   "cpp_alts": [
+    "An explicit `queue<pair<int,int>>` BFS from all border cells avoids the recursion depth problem entirely.",
+    "`vector<pair<int,int>>` as a manual stack is equivalent and usually faster than `std::queue`."
+   ],
+   "py_alts": [
+    "Iterative flood with an explicit list-as-stack avoids both the recursion limit and the tuple allocation of `collections.deque`.",
+    "Flattening to a 1-D index of `m*n` cuts coordinate bookkeeping and makes the four neighbours pure arithmetic."
+   ],
+   "trap": "Flooding from every 'O' instead of from the border. That marks everything and nothing changes. The whole algorithm hinges on the source being the boundary.",
+   "invariant": "After step 1, the set of cells marked '*' is exactly the set of 'O' cells with a path to the border. That is true because step 1 explores precisely the connected components that touch a border cell, and no others.",
+   "questions": [
+    {
+     "q": "Why is boundary-flood the right frame?",
+     "a": "The property being tested is connectivity to the boundary, so the natural search space is the set of border cells and their connected components. Flooding inward from those components marks exactly the cells that must be preserved, leaving the complement as the answer."
+    },
+    {
+     "q": "What is the time and space complexity?",
+     "a": "$O(mn)$ time -- each cell is visited at most once in each of the two passes -- and $O(mn)$ space in the worst case for the queue or stack holding a large frontier. In practice the frontier is O(m + n)."
+    },
+    {
+     "q": "What is the difference from number-of-islands?",
+     "a": "Only the source of the flood. Islands flood from every unvisited land cell; this floods from the boundary only. Same traversal, different seeds, opposite classification."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0133_clone_graph",
+   "one_liner": "Map original node to copy so cycles terminate.",
+   "core_objective": "Deep-copy an undirected connected graph with node values, returning the clone of the given node.",
+   "bounds": "1 to 1e4 nodes, values in [-1e4, 1e4], no self-loops, and the graph may contain cycles -- the aliasing is the whole problem.",
+   "approaches": [
+    {
+     "name": "Recursive DFS + hash map (BEST for clarity)",
+     "aha": "clone(node): memoised. Store the fresh clone in the map BEFORE recursing so cycles self-resolve, then clone neighbours.",
+     "py": "self.memo: Dict[Node, Node] = {}\nself.memo = {}                    # fresh memo table per call\nreturn self._clone(node)\nif node is None:\nif node in self.memo:\n    return self.memo[node]\ncopy = Node(node.val)\nself.memo[node] = copy",
+     "cpp": "while (!q.empty()) { Node* cur = q.front();\n    q.pop();\n    for (Node* nb : cur->neighbors) { if (memo.find(nb) == memo.end()) { memo[nb] = new Node(nb->val);\n            q.push(nb);\n        }\n        memo[cur]->neighbors.push_back(memo[nb]);\n    }",
+     "time": "O(V + E)",
+     "space": "O(V)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "Iterative BFS + hash map",
+     "aha": "Same memo table; a queue drives the traversal. No recursion depth risk; the frontier may hold O(V) nodes.",
+     "py": "if node is None:\nmemo: Dict[Node, Node] = {}\nroot_copy = Node(node.val)\nmemo[node] = root_copy\nqueue = deque([node])\nwhile queue:\n    cur = queue.popleft()\n    for nb in cur.neighbors:",
+     "cpp": "while (!q.empty()) { Node* cur = q.front();\n    q.pop();\n    for (Node* nb : cur->neighbors) { if (memo.find(nb) == memo.end()) { memo[nb] = new Node(nb->val);\n            q.push(nb);\n        }\n        memo[cur]->neighbors.push_back(memo[nb]);\n    }",
+     "time": "O(V + E)",
+     "space": "O(V)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": "  1 -- 2 -- 3 -- 4\n       |         |\n       +---------+\n\n  naive recursion on 1: creates copy 1, recurses into 2,\n  creates copy 2, recurses into 3, creates copy 3, ...\n  coming back to 1 via the edge 4->1 would create a SECOND\n  copy of 1 -> infinite/wrong.\n\n  memo: dict orig -> copy\n   clone(1): 1 not in memo -> create 1'\n            for nb in 1.neighbors:\n                clone(nb)  (fills memo as it goes)\n            return 1'\n   when 4 is processed and reaches 1, `1 in memo` -> reuse 1'\n\n  invariant: memo[o] exists and equals the copy of o from the\n  moment o's copy is created, so every node is copied exactly\n  once and all references share the same copy.",
+   "cpp_vs_py": "Python dict = open addressing + LINEAR PROBING: h(k, i) = (hash(k) + i) mod m , i = 0, 1, 2, ... colliding keys walk to the next free slot in ONE contiguous array \u2192 cache-friendly. C++ unordered_map = separate chaining (bucket of colliding keys). Both give O(1) average per op. The recursion is a DEEP COPY: allocations unwind on the call stack, every node is brand new \u2014 no aliasing with the original. =====================================================================\n\nPython dict / C++ unordered_map answer \"seen this key?\" in O(1) average. Python uses open addressing with LINEAR PROBING: h(k, i) = (hash(k) + i) mod m , i = 0, 1, 2, ... colliding keys walk to the next free slot in one contiguous array. C++ std::unordered_map uses separate chaining: each slot is a bucket (linked list) of colliding keys. The recursion in Approach 1 is a DEEP COPY: allocations happen on the unwinding call stack \u2014 every node is new, no aliasing with the original. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 neighbour lists #include <string> // std::string \u2014 result printing helpers #include <queue> // std::queue \u2014 BFS frontier #include <unordered_map> // std::unordered_map \u2014 old\u2192clone memo table #include <unordered_set> // std::unordered_set \u2014 visited marker set #include <chro",
+   "cpp_alts": [
+    "`unordered_map<Node*, Node*>` is the memo; node identity is the pointer value.",
+    "An explicit stack with `(node, copy)` pairs gives the BFS version, which is often preferred for very deep graphs."
+   ],
+   "py_alts": [
+    "A `defaultdict(Node)` for the memo, with the original object as key -- relies on `__hash__`/`__eq__` defaults (identity), which is what you want.",
+    "`copy.deepcopy` on a self-referential graph works but hides the algorithm; mention it only as a library observation."
+   ],
+   "trap": "Copying neighbours without consulting the map, or checking membership only after recursing. Both create duplicate copies of a revisited node and break the sharing that makes the graph a graph.",
+   "invariant": "`memo[o]` is created at the moment `clone(o)` first runs and never replaced. Therefore when an edge points back to an already-cloned node, the recursion returns the existing copy, and the resulting graph is isomorphic to the original with exactly one copy per original node.",
+   "questions": [
+    {
+     "q": "Why is the map keyed by node object rather than value?",
+     "a": "Values are not unique in a graph -- two nodes may share value 5. Identity is the only sound key, and in both languages the default hash/equality for objects is identity, so using the object as the key is exactly right."
+    },
+    {
+     "q": "Why does the undirected property matter?",
+     "a": "Because edges are symmetric, the same node is reachable by many paths, and the cycle detection requirement is what forces the memo. In a directed acyclic graph a plain DFS would suffice."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(V + E)$ time: each node is cloned once and each edge is traversed twice (once per direction). Space is $O(V)$ for the memo plus $O(V)$ for the recursion stack, which can be the binding constraint on a long chain."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0200_number_of_islands",
+   "one_liner": "Flood fill each unvisited land cell; each seed is an island.",
+   "core_objective": "Count the connected components of '1' cells in the grid using four-directional adjacency.",
+   "bounds": "up to 300 x 300, so 9e4 cells and a recursion that can reach 9e4 deep -- far beyond CPython's limit, so iterative is the practical form.",
+   "approaches": [
+    {
+     "name": "Recursive DFS flood fill (BEST for clarity)",
+     "aha": "Scan the grid; on '1' \u2192 count++, sink the whole component by recursion (mark '0' on entry). In-place marking = O(1) extra memory, no visited array.",
+     "py": "m, n = len(grid), len(grid[0])\n    if r < 0 or r >= m or c < 0 or c >= n or grid[r][c] != \"1\":\n        return\n    grid[r][c] = \"0\"\n    dfs(r - 1, c)   # up\n    dfs(r + 1, c)   # down\n    dfs(r, c - 1)   # left\n    dfs(r, c + 1)   # right",
+     "cpp": "for (int r = 0; r < rows_; ++r) { for (int c = 0; c < cols_; ++c) { if (grid[r][c] == '1') { ++count;      // new island discovered\n            dfs(grid, r, c);  // sink it so it is never counted again\n        }\n    }",
+     "time": "O(m\u00b7n)",
+     "space": "O(m\u00b7n) (stack)",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "Iterative BFS flood fill (no recursion)",
+     "aha": "Same scan-and-sink, queue-driven flood. Identical O(m\u00b7n) work, no call-stack overflow risk on tall islands.",
+     "py": "m, n = len(grid), len(grid[0])\ndirs = [(-1, 0), (1, 0), (0, -1), (0, 1)]\ncount = 0\nfor r in range(m):\n    for c in range(n):\n        if grid[r][c] != \"1\":\n            continue\n        count += 1            # new island",
+     "cpp": "for (int r = 0; r < m; ++r) { for (int c = 0; c < n; ++c) { if (grid[r][c] != '1') continue;\n        ++count;              // new island\n        std::queue<std::pair<int, int>> q;\n        q.push({r, c});\n        grid[r][c] = '0';     // sink on enqueue (visited marker)\n        while (!q.empty()) { auto [cr, cc] = q.front();\n            q.pop();\n            for (int d = 0; d < 4; ++d) { int nr = cr + dirs[d][0];",
+     "time": "O(m\u00b7n)",
+     "space": "O(m\u00b7n)",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    }
+   ],
+   "diagram": "  1 1 0 0 0\n  1 1 0 0 0\n  0 0 1 0 0\n  0 0 0 1 0        -> 3 islands\n\n  flood from (0,0): marks (0,0),(0,1),(1,0),(1,1)\n  scan continues: (2,2) unvisited -> island 2\n                 (3,3) unvisited -> island 3\n\n  key: MUTATE the grid. Setting visited cells to '0' removes\n  the need for a separate visited matrix and halves the space.\n\n  four neighbours only -- 8-directional adjacency is a\n  different problem with different answers.",
+   "cpp_vs_py": "Two ways to track visited: an auxiliary bool grid (extra O(m\u00b7n) memory) or in-place mutation (O(1) extra). Sinking '1'\u2192'0' is the classic trick when mutation is allowed. BFS vs DFS: same complexity; DFS recursion is terser, BFS never stack-overflows. The dirs array [(\u22121,0),(1,0),(0,\u22121),(0,1)] walks all 4 neighbours in one loop; bounds must be checked before indexing. =====================================================================\n\nTwo ways to track visited cells: an auxiliary bool grid (extra O(m\u00b7n) memory) or in-place mutation of the input (O(1) memory). Since the problem does not forbid modifying `grid`, sinking '1'\u2192'0' is the classic trick. BFS vs DFS: same complexity; DFS recursion is terser, BFS is immune to deep-recursion crashes. The dirs array {( -1,0),(1,0),(0,-1),(0,1)} keeps the neighbour walk in one loop. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the 2D grid #include <string> // std::string \u2014 grid rows #include <queue> // std::queue \u2014 BFS frontier #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited set #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement #include <utility> // std::pair \u2014 (r,c) ",
+   "cpp_alts": [
+    "In-place mutation to '0' avoids a visited vector; a stack-based flood avoids recursion depth.",
+    "`std::stack` or `std::queue` of `pair<int,int>`; the manual-vector-as-stack is measurably faster than `std::queue` here."
+   ],
+   "py_alts": [
+    "A flat list-as-stack of `(r, c)` tuples avoids `collections.deque` overhead.",
+    "Flattening to index `r*n + c` makes neighbour checks pure integer arithmetic and avoids tuple allocation entirely."
+   ],
+   "trap": "Using 8-directional adjacency, or forgetting the out-of-bounds check before indexing -- with in-place mutation a missing bounds check reads out of range and can loop forever.",
+   "invariant": "When the outer scan reaches an unvisited land cell, that cell's connected component has not been marked yet, so the flood that follows marks exactly that component and nothing else. Each component is therefore counted exactly once, at its first-encountered cell.",
+   "questions": [
+    {
+     "q": "Why is in-place mutation acceptable and preferable here?",
+     "a": "The problem does not forbid modifying the input, and marking a cell as visited by setting it to '0' is indistinguishable from it being water. That removes an $O(mn)$ visited array entirely, which for 9e4 cells is a real memory saving."
+    },
+    {
+     "q": "What is the complexity, and why does the flood not re-visit cells?",
+     "a": "$O(mn)$ time -- each cell is examined once by the outer scan and marked once by a flood. Space is $O(mn)$ worst case for the stack in a pathological all-land grid, but typically $O(\\min(m,n))$."
+    },
+    {
+     "q": "How would 8-directional adjacency change the answer?",
+     "a": "Diagonal land cells would connect components that four-directional treats as separate, so the count can only decrease or stay equal. It is a one-line change to the neighbour offsets and a good sanity question to ask yourself."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0207_course_schedule",
+   "one_liner": "Kahn's algorithm: peel off nodes with indegree zero.",
+   "core_objective": "Decide whether all courses can be finished, i.e. whether the dependency graph is acyclic.",
+   "bounds": "1 <= numCourses <= 5000 with up to 1e5 prerequisites, so the graph can have far more edges than nodes. Duplicate prerequisites are allowed and must not corrupt the indegree bookkeeping.",
+   "approaches": [
+    {
+     "name": "Kahn's algorithm (BEST, iterative)",
+     "aha": "Count in-degrees (prerequisites per course). Repeatedly remove a course with in-degree 0 \u2014 \"ready now\". All n removed \u21d4 acyclic.",
+     "py": "adj: List[List[int]] = [[] for _ in range(numCourses)]\nindegree = [0] * numCourses\nfor a, b in prerequisites:\n    adj[a].append(b)   # a depends on b\n    indegree[b] += 1   # b has one more dependent\nready = deque(i for i in range(numCourses) if indegree[i] == 0)\nprocessed = 0  # how many courses were fully scheduled\nwhile ready:",
+     "cpp": "for (const auto& p : prerequisites) { adj[p[0]].push_back(p[1]);  // a depends on b\n    ++indegree[p[1]];           // b has one more dependent",
+     "time": "O(V + E)",
+     "space": "O(V + E)",
+     "why": "each node enters the queue once; each edge decremented once; hence the stated bounds."
+    },
+    {
+     "name": "DFS with colours (0=unvisited, 1=in-stack, 2=done)",
+     "aha": "Hitting a node still ON the current stack (colour 1) = back edge = cycle. Colour 2 (finished) nodes are safe to skip.",
+     "py": "adj: List[List[int]] = [[] for _ in range(numCourses)]\nfor a, b in prerequisites:\n    adj[a].append(b)\ncolour = [0] * numCourses\n    if colour[v] == 1:\n    if colour[v] == 2:\n    colour[v] = 1             # enter: mark \"in progress\"\n    for nb in adj[v]:",
+     "cpp": "        for (int nb : adj_[v]) { if (!dfs(nb)) return false;",
+     "time": "O(V + E)",
+     "space": "O(V + E)",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    }
+   ],
+   "diagram": "  0 -> 1 -> 2\n  cycle example: 1->2->3->1\n\n  KAHN:\n   indeg = [0,1,1]\n   queue = [0]\n   pop 0, visited=1 -> decrement indeg[1] -> 0 -> push 1\n   pop 1, visited=2 -> decrement indeg[2] -> 0 -> push 2\n   pop 2, visited=3 -> nothing left\n   visited == numCourses -> acyclic -> True\n\n  CYCLE 1->2->3->1:\n   indeg all 1 -> queue EMPTY -> visited 0 < 3 -> False\n\n  why it works: a graph is acyclic iff it has a topological\n  ordering iff there is always a node of indegree 0. Kahn\n  consumes exactly the nodes that can be removed without\n  breaking an edge -- so it exhausts the graph iff acyclic.",
+   "cpp_vs_py": "A plain boolean visited array is NOT enough for directed graphs: a visited node may be finished (fine) or still on the current path (cycle!). The third state \u2014 \"in progress\" \u2014 distinguishes a BACK EDGE from a cross edge. Kahn's is iterative (no recursion risk) and produces the topological order as a by-product (210). =====================================================================\n\nColour 1 (\"in progress\") distinguishes a BACK EDGE from a cross edge: a node can be visited but fully finished (colour 2) and safely skipped \u2014 only nodes in the CURRENT recursion stack imply a cycle. A plain boolean visited array is NOT enough for directed graphs \u2014 the third state is the whole trick. Kahn's is iterative (no recursion risk) and produces the order too (see 210). ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 adjacency lists #include <string> // std::string \u2014 result printing helpers #include <queue> // std::queue \u2014 Kahn's ready queue #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited set #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`vector<vector<int>> adj` plus an `int` indegree array; `queue<int>` for the frontier.",
+    "A `vector<int> used` serving as the queue avoids the `std::queue` allocation."
+   ],
+   "py_alts": [
+    "`defaultdict(int)` for indegree is slower than a preallocated list because of hashing.",
+    "`from collections import deque` and `popleft()` gives O(1) FIFO; using a list with an index pointer is equivalent."
+   ],
+   "trap": "Decrementing the indegree of a node for an edge you already processed, or failing to decrement when a prerequisite is popped. The classic symptom is a cycle reported where there is none.",
+   "invariant": "`processed` counts nodes whose prerequisites are all satisfied. A node enters the queue exactly when its indegree reaches 0, i.e. when all its incoming edges come from processed nodes. So `processed == numCourses` means every node was orderable, which holds exactly when there is no cycle.",
+   "questions": [
+    {
+     "q": "Why does an empty queue prove a cycle exists?",
+     "a": "If the queue is empty while nodes remain, every remaining node has an incoming edge from another remaining node. Following those predecessors forever in a finite graph must revisit a node, which is precisely a cycle."
+    },
+    {
+     "q": "How do you handle duplicate prerequisites?",
+     "a": "Increment the indegree once per duplicate edge and decrement once per processed edge, so the two counts stay consistent. The algorithm is then correct; the extra work is simply redundant."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(V + E)$ time -- each node enters and leaves the queue once, each edge is decremented once. Space is $O(V + E)$ for the adjacency list plus $O(V)$ for the indegree array and queue."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0210_course_schedule_ii",
+   "one_liner": "Same Kahn, but keep the dequeue order as the answer.",
+   "core_objective": "Return one ordering of courses that satisfies all prerequisites.",
+   "bounds": "1 <= numCourses <= 5e3 with up to 1e5 edges. The problem guarantees a valid ordering exists, so no cycle check is needed.",
+   "approaches": [
+    {
+     "name": "Kahn's algorithm (BEST)",
+     "aha": "In-degree array + queue of \"ready\" courses; dequeue order IS the answer. Fewer than n courses output \u21d2 cycle \u21d2 return [].",
+     "py": "adj: List[List[int]] = [[] for _ in range(numCourses)]\nindegree = [0] * numCourses\nfor a, b in prerequisites:\n    adj[b].append(a)   # edge b -> a : finish b before a\n    indegree[a] += 1   # a gains one unsatisfied prerequisite\nready = deque(i for i in range(numCourses) if indegree[i] == 0)\norder: List[int] = []\nwhile ready:",
+     "cpp": "for (const auto& p : prerequisites) {\n    adj[p[1]].push_back(p[0]);  // edge b \u2192 a : finish b before a\n    ++indegree[p[0]];           // a gains one unsatisfied prereq",
+     "time": "O(V + E)",
+     "space": "O(V + E)",
+     "why": "each node enters the queue once; each edge decremented once; hence the stated bounds."
+    },
+    {
+     "name": "DFS (post-order prepending)",
+     "aha": "Colour DFS; when a node finishes (colour 2) prepend it to the answer. Detecting a back edge aborts with an empty array.",
+     "py": "adj: List[List[int]] = [[] for _ in range(numCourses)]\nfor a, b in prerequisites:\n    adj[b].append(a)\ncolour = [0] * numCourses\norder: List[int] = []\n    if colour[v] == 1:\n    if colour[v] == 2:\n    colour[v] = 1",
+     "cpp": "        for (int nb : adj_[v]) { if (!dfs(nb)) return false;",
+     "time": "O(V + E)",
+     "space": "O(V + E)",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": "  0 -> 1, 0 -> 2, 1 -> 3, 2 -> 3\n\n  indeg = [0, 1, 1, 2]\n  queue = [0]\n  pop 0 -> order=[0] -> indeg[1]=0 push 1, indeg[2]=0 push 2\n  pop 1 -> order=[0,1] -> indeg[3]=1\n  pop 2 -> order=[0,1,2] -> indeg[3]=0 push 3\n  pop 3 -> order=[0,1,2,3]\n\n  ANSWER [0,1,2,3]\n\n  ties: when several nodes have indegree 0 the order is not\n  unique; any of them may be taken. Using a QUEUE (FIFO)\n  gives a deterministic answer; a stack (LIFO) gives a valid\n  but different one.",
+   "cpp_vs_py": "Kahn's: BFS-like, iterative, the in-degree array is the \"remaining dependencies\" book. DFS: recursion \u2014 children always finish before their parent, so prepending on exit keeps prerequisites first. Both O(V+E); Kahn's has no recursion-depth risk and handles disconnected graphs in one pass. =====================================================================\n\nKahn's: BFS-like, iterative, naturally produces the order; the in-degree array is itself the \"remaining dependencies\" book. DFS: recursion; the trick is that finish-time REVERSE order is topological \u2014 children always finish before their parent, so prepending on exit keeps parents first. Both O(V+E); Kahn's has no recursion-depth risk and handles disconnected graphs in the same pass. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 adjacency lists + order #include <string> // std::string \u2014 order formatting #include <queue> // std::queue \u2014 Kahn's ready queue #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited set #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement #include <algorithm> // std::reverse \u2014 DFS finish-time reversal",
+   "cpp_alts": [
+    "`vector<int> used` as both the queue and, in reverse, the answer -- an O(1) in-place trick.",
+    "`priority_queue` gives a lexicographically smallest ordering at $O(E \\log V)$ if that is asked."
+   ],
+   "py_alts": [
+    "A list used as a stack gives a valid order with slightly less code but no FIFO determinism.",
+    "`deque` + `popleft()` is the canonical BFS-frontier form."
+   ],
+   "trap": "Returning the reverse of the dequeue order. With an edge a -> b meaning \"a before b\", the dequeue order already satisfies the constraints; reversing breaks them.",
+   "invariant": "A node is dequeued only when its indegree is 0, meaning every prerequisite has already been dequeued and is earlier in `order`. Therefore every edge u -> v has position(u) < position(v), which is exactly the required property.",
+   "questions": [
+    {
+     "q": "Is the ordering unique?",
+     "a": "No. Whenever two or more nodes have indegree 0 simultaneously, any of them may be taken next, producing different valid orderings. The problem accepts any of them; using a queue gives one deterministic choice."
+    },
+    {
+     "q": "How do you get the lexicographically smallest valid ordering?",
+     "a": "Replace the FIFO queue with a min-heap. The first node available is then always the smallest, giving a canonical answer at $O((V+E) \\log V)$ instead of $O(V+E)$."
+    },
+    {
+     "q": "What if a cycle existed, since the problem guarantees it does not?",
+     "a": "The dequeue order would be shorter than numCourses and you would return an empty list or signal failure. Since existence is guaranteed, the check is unnecessary -- but adding it makes the function total."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0261_graph_valid_tree",
+   "one_liner": "n - 1 edges plus no cycle plus connected.",
+   "core_objective": "Decide whether the given edge list forms a valid tree over n labelled nodes.",
+   "bounds": "1 <= n <= 2e4 with 0 <= edges.length <= 2e4. n = 1 with zero edges IS a valid tree, and n = 1 with one self-loop is not.",
+   "approaches": [
+    {
+     "name": "Union-Find with path compression (BEST)",
+     "aha": "Merge endpoints of every edge. Edge with both endpoints ALREADY in one set \u2192 cycle \u2192 invalid. Require n\u22121 edges, no cycle, and one final component.",
+     "py": "if len(edges) != n - 1:\nparent = list(range(n))\nrank = [0] * n\n    while parent[x] != x:\n        parent[x] = parent[parent[x]]  # grandparent jump\n        x = parent[x]\n    return x\n    ra, rb = find(a), find(b)",
+     "cpp": "else {\n    parent[rb] = ra;          // equal ranks: attach + bump one\n    ++rank[ra];",
+     "time": "O(n + E\u00b7\u03b1(n))  \u2014 \u03b1 = inverse Ackermann,",
+     "space": "O(n)           \u2014 parent + rank arrays.",
+     "why": "O(alpha(n)) amortised per union with path compression; hence the stated bounds."
+    },
+    {
+     "name": "DFS from node 0",
+     "aha": "Iterative DFS with (node, parent); revisit of a non-parent \u2192 cycle. Then verify every node was visited (connected).",
+     "py": "if len(edges) != n - 1:\nadj: List[List[int]] = [[] for _ in range(n)]\nfor a, b in edges:\n    adj[a].append(b)\n    adj[b].append(a)\nvisited = [False] * n\nstack = [(0, -1)]\nvisited[0] = True",
+     "cpp": "for (const auto& e : edges) { adj[e[0]].push_back(e[1]);\n    adj[e[1]].push_back(e[0]);",
+     "time": "O(n + E)",
+     "space": "O(n + E)",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": " n=3, edges=[[0,1],[1,2]]  -> valid\n   undirected, 2 = n-1 edges, connected, acyclic\n\n n=3, edges=[[0,1],[1,0]]  -> invalid (duplicate edge;\n   treated as a 2-cycle)  edges=2 but the component is\n   only {0,1}, node 2 isolated\n\n UNION-FIND:\n   parent = list(range(n))\n   for u, v in edges:\n      ru, rv = find(u), find(v)\n      if ru == rv: return False      <-- CYCLE detected\n      parent[ru] = rv                 <-- union\n   return edges == n - 1              <-- connectivity proxy\n\n why edges == n-1 implies connected, given no cycle:\n   an acyclic forest with V vertices and C components has\n   exactly V - C edges. So V-1 edges forces C = 1.",
+   "cpp_vs_py": "parent[x] chains x to its component root; find() flattens the path; union() attaches the smaller-rank root under the larger. With both optimisations the amortised cost is the INVERSE ACKERMANN function \u03b1(n) \u2014 \u2264 4 for any practical n. Node labels are 0..n\u22121 so plain arrays index directly \u2014 no hash table needed (Python dict probing h(k,i)=(hash(k)+i) mod m is only for sparse/arbitrary labels). =====================================================================\n\nparent[x] chains x to its component root. find() compresses the path (each hop flattens toward the root); union() attaches the smaller-rank root under the larger so trees stay shallow. With both optimisations the amortised cost is the INVERSE ACKERMANN function \u03b1(n) \u2014 growth so slow it is \u2264 4 for any practical n. Python dict/set hashing (open addressing, linear probing h(k,i)=(hash(k)+i) mod m) is NOT needed here \u2014 node labels are 0..n\u22121, so plain arrays index directly. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 edge list, adjacency #include <string> // std::string \u2014 printing helpers #include <queue> // std::queue \u2014 BFS/DFS frontier #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited set #include <chrono> // std::chrono \u2014",
+   "cpp_alts": [
+    "`std::vector<int> parent, size` with path compression and union by rank is near-O(1) per op.",
+    "A BFS/DFS from node 0 plus an edge count is simpler to explain and uses O(n) space without a DSU."
+   ],
+   "py_alts": [
+    "Iterative `find` with path halving avoids Python's recursion limit at 2e4 depth.",
+    "The BFS-from-0 approach needs only a set and is easier to get right in an interview."
+   ],
+   "trap": "Checking only `edges == n - 1`. That passes for two disjoint 3-node trees, so the edge count alone is not sufficient -- acyclicity must also be established, or connectivity checked directly.",
+   "invariant": "Union-Find maintains the partition of nodes into connected components of the edges processed so far. `find(u) == find(v)` before a union means the new edge closes a cycle; otherwise the union merges two components, decreasing the count by one. After all edges, no cycle means the graph is a forest, so the edge count decides connectivity.",
+   "questions": [
+    {
+     "q": "Why is the edge count the right connectivity proxy?",
+     "a": "An acyclic undirected graph with V vertices and C connected components has exactly V - C edges. So if the graph is acyclic and has V - 1 edges, then C must be 1. The count therefore substitutes for an explicit connectivity check once acyclicity is known."
+    },
+    {
+     "q": "What does DSU detect that a cycle check alone does not?",
+     "a": "DSU detects a cycle implicitly: adding an edge whose endpoints are already connected is exactly a cycle. Combined with the edge-count check you get both conditions without a traversal, and each operation is near-O(1) amortised."
+    },
+    {
+     "q": "How do you handle parallel edges?",
+     "a": "The DSU approach handles them naturally: the second copy of an edge has endpoints already in the same component, so it is rejected as a cycle. An approach that only counts edges and checks connectivity would wrongly accept them."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0286_walls_and_gates",
+   "one_liner": "Multi-source BFS from every zero, dist is the answer.",
+   "core_objective": "Set each empty cell's value to its minimum distance to any gate, where 0 marks a gate and -1 an open empty room.",
+   "bounds": "up to 200 x 200 = 4e4 cells, so a BFS with an explicit queue is the right shape; recursion depth would blow up.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "if not rooms: return\nrows,cols=len(rooms),len(rooms[0]); q=deque()\nfor r in range(rows):\n    for c in range(cols):\n        if rooms[r][c]==0: q.append((r,c))\nwhile q:\n    r,c=q.popleft()\n    for dr,dc in [(1,0),(-1,0),(0,1),(0,-1)]:",
+     "cpp": "for (int r = 0; r < m; ++r) { for (int c = 0; c < n; ++c) { if (rooms[r][c] == 0) q.push({r, c});\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "rows,cols=len(rooms),len(rooms[0])\n    if r<0 or r>=rows or c<0 or c>=cols or rooms[r][c]<dist: return\n    rooms[r][c]=dist\n    dfs(r+1,c,dist+1);dfs(r-1,c,dist+1);dfs(r,c+1,dist+1);dfs(r,c-1,dist+1)\nfor r in range(rows):\n    for c in range(cols):\n        if rooms[r][c]==0: dfs(r,c,0)",
+     "cpp": "for (int r = 0; r < m; ++r) { for (int c = 0; c < n; ++c) { if (rooms[r][c] != 0) continue;\n        std::vector<std::tuple<int, int, int>> stack;\n        stack.push_back({r, c, 0});\n        while (!stack.empty()) { auto [cr, cc, d] = stack.back();\n            stack.pop_back();\n            for (int k = 0; k < 4; ++k) { int nr = cr + dirs[k][0];\n                int nc = cc + dirs[k][1];\n                if (nr < 0 || nr >= m || nc < 0 || nc >= n) continue;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "  0 -1 -1 -1\n -1 -1 -1 -1\n -1 -1 -1 -1\n -1 -1 -1 0\n\n  multi-source: seed the queue with ALL zeros, dist 0\n\n  wave 1: cells adjacent to a zero get dist 1\n          (0,1)=1 (1,0)=1 (1,3)=1 (3,2)=1\n  wave 2: dist 2 cells\n  wave 3: dist 3 cells\n  wave 4: dist 4  <- centre (1,1) and (2,2) etc\n\n  result:\n   0 1 2 3\n   1 2 3 4\n   2 3 4 3\n   3 4 3 0\n\n  why multi-source: BFS from all sources at once gives the\n  distance to the NEAREST source, because BFS explores in\n  order of increasing distance from ANY seed. Running BFS\n  once per gate would be O(gates * RC) and give the last\n  gate's answer instead.",
+   "cpp_vs_py": "Pushing every gate before the first pop is the trick: the queue starts with ALL layer-0 nodes, so layer numbers (distances) stay globally consistent \u2014 this is BFS on a \"super-source\" graph where a virtual node connects to every gate. Compare with Approach 2: the brute version repeats work per gate; multi-source BFS shares one wave. The dirs array {( -1,0),(1,0),(0,-1),(0,1)} keeps the neighbourhood walk in one loop; bounds checked before indexing. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 the 2D grid #include <string> // std::string \u2014 printing helpers #include <queue> // std::queue \u2014 BFS frontier #include <unordered_map> // std::unordered_map \u2014 hash table (chaining) #include <unordered_set> // std::unordered_set \u2014 visited set #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RAM measurement #include <utility> // std::pair \u2014 (r,c) coordinates #include <climits> // INT_MAX \u2014 the INF placeholder",
+   "cpp_alts": [
+    "A single `queue<pair<int,int>>` seeded with all gates; in-place mutation to distances removes the visited set.",
+    "An explicit index vector avoids `std::queue`'s block churn."
+   ],
+   "py_alts": [
+    "A `deque` seeded with all zeros is the idiomatic multi-source BFS.",
+    "Flatten to `r*cols + c` so the queue holds ints rather than tuples."
+   ],
+   "trap": "Overwriting gate cells during the BFS, or revisiting cells that already have a distance. The `if gate[r][c] == -1` guard must be checked before both writing and enqueueing, and the new cell must be marked as soon as it is enqueued.",
+   "invariant": "BFS pops cells in non-decreasing order of their distance from the seed set. Because every seed starts at distance 0, the distance assigned when a cell is first enqueued is the minimum over all sources, which is the problem's definition.",
+   "questions": [
+    {
+     "q": "Why must all gates be seeded before the BFS starts?",
+     "a": "BFS's correctness relies on processing in non-decreasing distance order. Seeding all gates at distance 0 simultaneously establishes that order over the union of the searches, so the first time a cell is reached is via the nearest gate."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(RC)$ time -- each cell is enqueued and expanded once, with four neighbour checks. Space is $O(RC)$ for the queue. Running BFS per gate would be $O(\\text{gates} \\cdot RC)$, which for many gates is the difference between passing and timing out."
+    },
+    {
+     "q": "How does this differ from the wall/flood problem?",
+     "a": "Same grid traversal, opposite source and target. Here you flood FROM all zeros and write distances; there you flood from the border and then flip the unmarked. The shared skill is multi-source flood fill."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0323_number_of_connected_components",
+   "one_liner": "Union nodes; a union that fails means a cycle, not a new component.",
+   "core_objective": "Return the number of connected components in an undirected graph with n nodes and some edges.",
+   "bounds": "0 <= n <= 200 with up to n*(n-1)/2 edges, so a dense graph is possible and duplicate edges are allowed.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "parent=list(range(n)); rank=[0]*n\n    while parent[x]!=x: parent[x]=parent[parent[x]]; x=parent[x]\n    return x\ncount=n\nfor a,b in edges:\n    pa,pb=find(a),find(b)\n    if pa==pb: continue\n    if rank[pa]<rank[pb]: pa,pb=pb,pa",
+     "cpp": "vector<int> parent(n), sz(n, 1);\niota(parent.begin(), parent.end(), 0);\nint count = n;\nfor (auto& e : edges) {\n    int ru = find(parent, e[0]), rv = find(parent, e[1]);\n    if (ru == rv) continue;      // already joined: no cycle\n    if (sz[ru] < sz[rv]) swap(ru, rv);\n    parent[rv] = ru; sz[ru] += sz[rv]; --count;\n}\nreturn count;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "graph=defaultdict(list)\nfor a,b in edges: graph[a].append(b); graph[b].append(a)\nvisited=set(); count=0\n    visited.add(node)\n    for nb in graph[node]:\n        if nb not in visited: dfs(nb)\nfor i in range(n):\n    if i not in visited: count+=1; dfs(i)",
+     "cpp": "vector<vector<int>> adj(n);\nfor (auto& e : edges) { adj[e[0]].push_back(e[1]);\n                         adj[e[1]].push_back(e[0]); }\nvector<char> seen(n, 0);\nint count = 0;\nfor (int i = 0; i < n; ++i) {\n    if (seen[i]) continue;\n    ++count;\n    stack<int> st; st.push(i); seen[i] = 1;\n    while (!st.empty()) {\n        int u = st.top(); st.pop();\n        for (int v : adj[u]) if (!seen[v]) {\n            seen[v] = 1; st.push(v);\n        }\n    }\n}\nreturn count;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " n=5, edges=[[0,1],[0,2],[3,4]]  -> 3 components\n\n  DSU: components = 5\n   union(0,1) different -> components-- = 4\n   union(0,2) different -> components-- = 3\n   union(3,4) different -> components-- = 2 ?!\n\n  WAIT -- components starts at n=5 and each SUCCESSFUL union\n  decrements. 3 successful unions -> 5 - 3 = 2. But the\n  answer is 3: {0,1,2} {3,4} and node 5 is isolated.\n\n  count again: n=5, so components={0},{1},{2},{3},{4}\n   union(0,1): {0,1},{2},{3},{4}   -> 4\n   union(0,2): {0,1,2},{3},{4}     -> 3\n   union(3,4): {0,1,2},{3,4}       -> 2\n  components = 2 but the true answer with node 5 isolated is\n  3. n=5 means nodes 0..4, and there is no node 5 -- so the\n  components are {0,1,2} and {3,4} = 2. Correct: 2.\n\n  invariant: components = n - (number of successful unions),\n  and each successful union merges exactly two distinct sets.",
+   "cpp_vs_py": "Graph traversal is memory-latency bound: each neighbour fetch is a pointer chase into an adjacency structure. C++ `vector<vector<int>>` gives per-node contiguous vectors, so a node's neighbours are one cache line. CPython's `list` of lists is comparable in structure but each inner list is a separate object, and the loop around the deque adds dispatch cost. Union-Find shifts the trade-off entirely toward $O(1)$ space with no adjacency structure at all.",
+   "cpp_alts": [
+    "`vector<int> parent` with path compression; a `vector<int> size` for union by rank.",
+    "DFS over an adjacency list is simpler to explain: O(n + E) time, O(n + E) space."
+   ],
+   "py_alts": [
+    "Iterative `find` with path halving; avoid recursion at n = 200 by using a loop.",
+    "An adjacency-list DFS avoids DSU entirely and is often the faster-to-verify answer."
+   ],
+   "trap": "Forgetting that n may be 0, so the answer is 0 and the DSU must handle an empty parent array. Also, decrementing the count on a failed union, which is what would make a cyclic graph report too few components.",
+   "invariant": "`components` always equals the number of distinct sets in the partition maintained by DSU. A union of two different sets decreases it by exactly one; a union within a single set leaves it unchanged. Since DSU's partition is exactly the graph's connected components once all edges are processed, the final count is the answer.",
+   "questions": [
+    {
+     "q": "Why is a failed union not a new component?",
+     "a": "Because the two nodes are already reachable from each other, so the edge adds no new connectivity. Only a union between distinct sets changes the component count, which is why the guard is on the find comparison rather than on the edge itself."
+    },
+    {
+     "q": "When would the DFS version be better?",
+     "a": "When the graph is given as an adjacency list you already have, DFS is one pass with no union-find setup, and it handles the components directly. DSU wins when edges arrive one at a time or when you only need the count and not the membership."
+    },
+    {
+     "q": "What is the space complexity of the DSU version?",
+     "a": "$O(n)$ for the parent and rank arrays -- independent of the number of edges. That is a genuine advantage over DFS, which needs $O(n + E)$ space for the adjacency structure."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0417_pacific_atlantic_water_flow",
+   "one_liner": "Two reverse BFS floods, one from each ocean.",
+   "core_objective": "Return the coordinates of cells from which water can reach BOTH the Pacific and the Atlantic.",
+   "bounds": "heights is m x n with 1 <= m, n <= 50, and height can be 0. A cell on a border touches both oceans and is always valid.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "rows, cols = len(heights), len(heights[0])\npac, atl = set(), set()\n    if r<0 or r>=rows or c<0 or c>=cols or (r,c) in visit or heights[r][c]<prev_h: return\n    visit.add((r,c))\n    for dr,dc in [(1,0),(-1,0),(0,1),(0,-1)]: dfs(r+dr,c+dc,visit,heights[r][c])\nfor c in range(cols): dfs(0,c,pac,heights[0][c]); dfs(rows-1,c,atl,heights[rows-1][c])\nfor r in range(rows): dfs(r,0,pac,heights[r][0]); dfs(r,cols-1,atl,heights[r][cols-1])\nreturn [[r,c] for r,c in pac & atl]",
+     "cpp": "void flood(vector<vector<int>>& h, vector<char>& seen,\n                int r, int c, vector<vector<char>>& out) {\n    int m = h.size(), n = h[0].size();\n    stack<pair<int,int>> st; st.push({r, c}); seen[r][c] = 1;\n    while (!st.empty()) {\n        auto [x, y] = st.top(); st.pop();\n        out[x][y] = 1;\n        for (int d = 0; d < 4; ++d) {\n            int nx = x + DR[d], ny = y + DC[d];\n            if (nx < 0 || ny < 0 || nx >= m || ny >= n) continue;\n            if (seen[nx][ny] || h[nx][ny] < h[x][y]) continue;\n            seen[nx][ny] = 1; st.push({nx, ny});\n        }\n    }\n}",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "rows, cols = len(heights), len(heights[0])\n    visit = set(starts); q = deque(starts)\n    while q:\n        r,c = q.popleft()\n        for dr,dc in [(1,0),(-1,0),(0,1),(0,-1)]:\n            nr,nc = r+dr,c+dc\n            if 0<=nr<rows and 0<=nc<cols and (nr,nc) not in visit and heights[nr][nc]>=heights[r][c]:\n                visit.add((nr,nc)); q.append((nr,nc))",
+     "cpp": "vector<vector<char>> reach(m, vector<char>(n, 0));\n// seed the top row and the left column (Pacific), then\n// seed the bottom row and right column (Atlantic) into a\n// SECOND reach grid; intersect the two grids afterwards",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " reverse thinking: instead of asking which cells DRAIN to an\n ocean, ask which cells an ocean can CLIMB TO.\n\n  pacific  seeds: (0,0) and (0,n-1)\n  atlantic seeds: (m-1,0) and (m-1,n-1)\n\n  canReachPacific(r,c):\n    if grid[r][c] is a seed: true\n    for each neighbour with height >= grid[r][c]:\n       if canReachPacific(nb): true\n\n  answer = cells where BOTH reachabilities hold\n\n  visited must be PER-OCEAN -- a shared visited set would\n  let the pacific search's marks block the atlantic search.\n\n  invariant: the flood from an ocean covers exactly the cells\n  with a non-increasing path to that ocean, which is exactly\n  the set that can drain there.",
+   "cpp_vs_py": "Graph traversal is memory-latency bound: each neighbour fetch is a pointer chase into an adjacency structure. C++ `vector<vector<int>>` gives per-node contiguous vectors, so a node's neighbours are one cache line. CPython's `list` of lists is comparable in structure but each inner list is a separate object, and the loop around the deque adds dispatch cost. Union-Find shifts the trade-off entirely toward $O(1)$ space with no adjacency structure at all.",
+   "cpp_alts": [
+    "Two `queue<pair<int,int>>` runs with separate visited grids; the recursive DFS version is fine at m,n <= 50.",
+    "`vector<vector<bool>>` visited is compact; a plain char grid avoids vector<bool>'s proxy semantics."
+   ],
+   "py_alts": [
+    "Iterative flood with a list-as-stack avoids recursion depth issues for the 50x50 bound.",
+    "Flattening to index `r*n + c` makes neighbour checks arithmetic and keeps the visited a flat bytearray."
+   ],
+   "trap": "Sharing one visited set between the two searches. The first flood claims cells the second flood then cannot enter, so valid intersections are missed. Two independent visited sets (or a bitmask of two flags per cell) are required.",
+   "invariant": "`reach(ocean, r, c)` is true iff there is a path from (r,c) to that ocean along which heights never increase. This is exactly the condition for water to flow downhill from the cell to the ocean, so the intersection of the two predicates is precisely the answer.",
+   "questions": [
+    {
+     "q": "Why search backwards, from the oceans?",
+     "a": "The predicate is \"can reach the ocean\", which is a backward reachability question. Flooding from the ocean along non-decreasing heights computes exactly the set of cells that have such a path, in one pass per ocean, instead of searching from every cell."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(mn)$ time -- two floods each visiting every cell at most once, with four neighbour checks. Space is $O(mn)$ for the visited flags and the flood structure. Doing it from every cell instead would be $O(m^2 n^2)$."
+    },
+    {
+     "q": "How would you return only the intersection without two grids?",
+     "a": "Use a single 2-bit mask per cell: bit 0 set when reachable from the Pacific, bit 1 from the Atlantic. Then answer = cells where mask == 3. One grid, both bits, and the two floods do not interfere because they test different bits."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0684_redundant_connection",
+   "one_liner": "Union-Find: the first edge whose endpoints are already joined.",
+   "core_objective": "Given a tree plus one extra edge, return the single edge whose removal restores a tree.",
+   "bounds": "n >= 3 and edges.length == n, so exactly one cycle exists. A self-loop and a duplicate edge are both possible and both have a unique answer.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "parent=list(range(len(edges)+1)); rank=[0]*(len(edges)+1)\n    while parent[x]!=x: parent[x]=parent[parent[x]]; x=parent[x]\n    return x\nfor a,b in edges:\n    pa,pb=find(a),find(b)\n    if pa==pb: return [a,b]\n    if rank[pa]<rank[pb]: pa,pb=pb,pa\n    parent[pb]=pa",
+     "cpp": "vector<int> parent(n + 1), sz(n + 1, 1);\niota(parent.begin(), parent.end(), 0);\nfor (auto& e : edges) {\n    int ru = find(parent, e[0]), rv = find(parent, e[1]);\n    if (ru == rv) return e;      // first cycle-closing edge\n    parent[rv] = ru;\n}\nreturn {};",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "from collections import defaultdict\ngraph=defaultdict(set)\n    if src==dst: return True\n    visited.add(src)\n    for nb in graph[src]:\n        if nb not in visited and dfs(nb,dst,visited): return True\nfor a,b in edges:\n    if dfs(a,b,set()): return [a,b]",
+     "cpp": "vector<vector<int>> adj(n + 1);\nfor (auto& e : edges) {\n    adj[e[0]].push_back(e[1]);\n    adj[e[1]].push_back(e[0]);\n}\nvector<char> seen(n + 1, 0);\nseen[1] = 1;\nqueue<int> q; q.push(1);\nwhile (!q.empty()) {\n    int u = q.front(); q.pop();\n    for (int v : adj[u]) {\n        if (seen[v]) return {u, v};   // edge back to a visited node\n        seen[v] = 1; q.push(v);\n    }\n}\nreturn {};",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " n=3, edges=[[1,2],[1,3],[2,3]]  -> answer [2,3]\n\n  union(1,2): different -> merge {1,2}\n  union(1,3): different -> merge {1,2,3}\n  union(2,3): find(2)==find(3) SAME -> REDUNDANT\n\n  invariant: after processing i edges, DSU's partition is the\n  connected components of the first i edges. So a redundant\n  edge is precisely one whose endpoints were already joined --\n  adding it closes a cycle.\n\n  because only ONE extra edge exists, the FIRST such edge is\n  the answer; you may return immediately.",
+   "cpp_vs_py": "Graph traversal is memory-latency bound: each neighbour fetch is a pointer chase into an adjacency structure. C++ `vector<vector<int>>` gives per-node contiguous vectors, so a node's neighbours are one cache line. CPython's `list` of lists is comparable in structure but each inner list is a separate object, and the loop around the deque adds dispatch cost. Union-Find shifts the trade-off entirely toward $O(1)$ space with no adjacency structure at all.",
+   "cpp_alts": [
+    "`vector<int> parent` with path compression; the whole loop is near-O(n) amortised.",
+    "Detecting the extra edge by counting parity with an XOR array works for a tree plus one edge and is a neat alternative."
+   ],
+   "py_alts": [
+    "Iterative `find` with path halving avoids recursion; at n = 1000 a loop is safer.",
+    "A `defaultdict(set)` adjacency plus an edge-set for lookup works but is heavier."
+   ],
+   "trap": "Continuing the loop after finding a redundant edge, or recording the LAST redundant edge. With exactly one extra edge both work here, but the code reads as if multiple were possible, and the problem guarantees exactly one.",
+   "invariant": "DSU's partition equals the connected components of the edges processed so far. Adding an edge within one component creates a cycle and is therefore redundant; adding one across components cannot. Since the input has exactly n edges over n nodes, exactly one such edge exists.",
+   "questions": [
+    {
+     "q": "Why is the first cycle-closing edge the answer?",
+     "a": "Because the input is a spanning tree plus one edge, so exactly one edge is redundant. An edge is redundant precisely when its endpoints are already connected when it is processed, so the first (and only) such edge is it."
+    },
+    {
+     "q": "How do you handle a self-loop [1,1]?",
+     "a": "A self-loop has find(1) == find(1) trivially, so it is detected as redundant immediately and returned. That is correct, since removing it restores the tree."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n \\alpha(n))$ time with union-find (the inverse Ackermann factor is effectively constant), or $O(n \\log n)$ worst case with only path compression and no union by rank. Space is $O(n)$."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0695_max_area_of_island",
+   "one_liner": "Flood fill each island, tracking its size.",
+   "core_objective": "Return the area of the largest group of 1s connected four-directionally.",
+   "bounds": "up to 300 x 300 with 0/1 cells, so 9e4 cells and a flood that can reach 9e4 stack entries -- an iterative fill is the practical form.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "rows, cols, mx = len(grid), len(grid[0]), 0\n    if r<0 or r>=rows or c<0 or c>=cols or grid[r][c]!=1: return 0\n    grid[r][c]=0\n    return 1+dfs(r+1,c)+dfs(r-1,c)+dfs(r,c+1)+dfs(r,c-1)\nfor r in range(rows):\n    for c in range(cols): mx=max(mx, dfs(r,c))\nreturn mx",
+     "cpp": "int area(vector<vector<int>>& g, int r, int c) {\n    int m = g.size(), n = g[0].size();\n    if (r < 0 || c < 0 || r >= m || c >= n || g[r][c] != 1)\n        return 0;\n    g[r][c] = 0;                     // mark on entry\n    return 1 + area(g, r+1, c) + area(g, r-1, c)\n             + area(g, r, c+1) + area(g, r, c-1);\n}",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "rows, cols, mx = len(grid), len(grid[0]), 0\nfor r in range(rows):\n    for c in range(cols):\n        if grid[r][c]==1:\n            area=0; q=deque([(r,c)]); grid[r][c]=0\n            while q:\n                cr,cc=q.popleft(); area+=1\n                for dr,dc in [(1,0),(-1,0),(0,1),(0,-1)]:",
+     "cpp": "stack<int> st;\nfor each land cell (r,c) with g[r][c] == 1:\n    st.push(r * n + c); g[r][c] = 0; area = 0;\n    while (!st.empty()) {\n        int p = st.top(); st.pop(); ++area;\n        int y = p % n, x = p / n;\n        for (int d = 0; d < 4; ++d) {\n            int nx = x + DR[d], ny = y + DC[d];\n            if (nx < 0 || ny < 0 || nx >= m || ny >= n) continue;\n            if (g[nx][ny] != 1) continue;\n            g[nx][ny] = 0; st.push(nx * n + ny);\n        }\n    }\n    best = max(best, area);",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "  0 0 1 0\n  0 1 1 0\n  1 0 0 1\n  0 0 1 0      -> largest area 3\n\n  scan: (0,2) seed, flood covers (0,2),(1,1),(1,2) -> area 3\n        (2,0) seed, area 1\n        (2,3) seed, area 1\n        (3,2) seed, area 1\n  max = 3\n\n  invariant: each cell is marked the moment it is counted, so\n  the flood from a seed covers exactly that seed's component\n  and the area counter equals the component size.",
+   "cpp_vs_py": "Graph traversal is memory-latency bound: each neighbour fetch is a pointer chase into an adjacency structure. C++ `vector<vector<int>>` gives per-node contiguous vectors, so a node's neighbours are one cache line. CPython's `list` of lists is comparable in structure but each inner list is a separate object, and the loop around the deque adds dispatch cost. Union-Find shifts the trade-off entirely toward $O(1)$ space with no adjacency structure at all.",
+   "cpp_alts": [
+    "In-place mutation to 0 removes the visited grid; a `stack<pair<int,int>>` avoids recursion depth.",
+    "A flat index stack with `r*n + c` arithmetic is faster than pairs."
+   ],
+   "py_alts": [
+    "Flatten to a `bytearray` for the grid so marking is an int assignment, not a nested list store.",
+    "Mutate `grid[i]` in place in a list of strs by converting rows to lists first."
+   ],
+   "trap": "Incrementing the area counter before marking the cell, or marking after recursing. Both cause the same cell to be counted twice, inflating the area.",
+   "invariant": "The flood from an unvisited land cell visits each cell of its component exactly once, because the cell is marked at the moment it is counted. Hence the accumulated counter equals the component's size and the maximum over all seeds is the answer.",
+   "questions": [
+    {
+     "q": "Why is the flood O(mn) overall rather than O((mn)^2)?",
+     "a": "Each cell is marked once, and a marked cell is never entered again -- the flood's entry test is the same as the outer scan's. So the total work across all floods is proportional to the number of cells, not to the number of seeds times the grid."
+    },
+    {
+     "q": "What does the mark-then-count ordering guarantee?",
+     "a": "That the four-neighbour expansion never re-enters a cell already counted, so no cell contributes twice. This is the standard in-place visited pattern: write the mark before recursing, and restore only if you need the original grid."
+    },
+    {
+     "q": "How would you handle an all-zeros grid?",
+     "a": "The outer scan finds no seeds and the answer stays at its initial value, which must be 0. Initialising best to 0 rather than 1 is what makes that case correct."
+    }
+   ]
+  },
+  {
+   "key": "11_graphs/0994_rotting_oranges",
+   "one_liner": "Multi-source BFS from all rotten oranges, minute by minute.",
+   "core_objective": "Return the number of minutes until no fresh orange remains, or -1 if some orange can never rot.",
+   "bounds": "up to 10 x 10, so 100 cells and at most 100 minutes. Multiple rotten oranges at t=0 are the defining case, and an all-rotten grid must return 0.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "rows,cols=len(grid),len(grid[0]); q=deque(); fresh=0\nfor r in range(rows):\n    for c in range(cols):\n        if grid[r][c]==2: q.append((r,c,0))\n        elif grid[r][c]==1: fresh+=1\ntime_val=0\nwhile q:\n    r,c,t=q.popleft(); time_val=max(time_val,t)",
+     "cpp": "int m = grid.size(), n = grid[0].size();\nqueue<pair<int,int>> q; int fresh = 0;\nfor (int r = 0; r < m; ++r) for (int c = 0; c < n; ++c)\n    if (grid[r][c] == 2) q.push({r, c});\n    else if (grid[r][c] == 1) ++fresh;\nint minutes = 0;\nwhile (!q.empty() && fresh > 0) {\n    int size = q.size();                  // one minute per level\n    while (size--) {\n        auto [r, c] = q.front(); q.pop();\n        for (int d = 0; d < 4; ++d) {\n            int nr = r + DR[d], nc = c + DC[d];\n            if (nr < 0 || nc < 0 || nr >= m || nc >= n) continue;\n            if (grid[nr][nc] != 1) continue;\n            grid[nr][nc] = 2; --fresh; q.push({nr, nc});\n        }\n    }\n    ++minutes;\n}\nreturn fresh ? -1 : minutes;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "rows,cols=len(grid),len(grid[0]); q=deque(); fresh=0\nfor r in range(rows):\n    for c in range(cols):\n        if grid[r][c]==2: q.append((r,c))\n        elif grid[r][c]==1: fresh+=1\nminutes=0\nwhile q and fresh:\n    minutes+=1",
+     "cpp": "queue<pair<int,int>> q; int fresh = 0, minutes = 0;\nfor each cell: 2 -> q.push, 1 -> ++fresh;\n// repeatedly do a full BFS wave, counting waves until no\n// new cell rots in that wave (or fresh == 0)",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "  2 1 1 1 1\n  1 1 1 1 1\n  1 1 0 1 1\n  1 1 1 1 1\n  1 1 1 0 1\n\n  t=0: two rots at (0,0) and (2,2)\n  t=1: (0,1) (1,0) (1,2) (2,1) (2,3) (3,2)\n  t=2: (0,2) (1,3) (1,1) (3,1) (3,3) (4,2)\n  ...\n  a 0 at (4,4) surrounded by 1s -> reachable\n  a 0 at (4,4)? all cells eventually rotted -> answer 11\n\n  BFS:\n   queue seeded with all 2s, count fresh = total - rotten\n   while queue and fresh > 0:\n       for _ in range(len(queue)):   process one minute\n           spread to 1 neighbours, mark 2, fresh--\n       minutes++\n   return minutes if fresh == 0 else -1\n\n  the `len(queue)` snapshot is what makes one BFS level = one\n  minute, exactly like level-order traversal.",
+   "cpp_vs_py": "Graph traversal is memory-latency bound: each neighbour fetch is a pointer chase into an adjacency structure. C++ `vector<vector<int>>` gives per-node contiguous vectors, so a node's neighbours are one cache line. CPython's `list` of lists is comparable in structure but each inner list is a separate object, and the loop around the deque adds dispatch cost. Union-Find shifts the trade-off entirely toward $O(1)$ space with no adjacency structure at all.",
+   "cpp_alts": [
+    "`queue<pair<int,int>>` with `int levelSize = q.size()` per minute.",
+    "An in-place 0->2 mutation removes the fresh counter, but the counter is clearer."
+   ],
+   "py_alts": [
+    "`deque` with a per-level `for _ in range(len(q))` is the idiomatic minute-by-minute BFS.",
+    "Early-exit as soon as fresh hits 0 avoids the final drained levels."
+   ],
+   "trap": "Using a single counter for elapsed time incremented per node rather than per level. That counts nodes processed, not minutes, and produces a number larger than the true answer.",
+   "invariant": "At the start of each level, the queue holds exactly the cells that rot at minute `t`, and `fresh` is the number of cells still unrotted. Processing one level rots every cell adjacent to a minute-t cell, so the level boundary corresponds exactly to one minute of propagation.",
+   "questions": [
+    {
+     "q": "Why does the level size snapshot equal one minute?",
+     "a": "BFS expands in waves. All cells in the queue at the start of a level were reached at the same minute, and their newly discovered neighbours are exactly one minute later. Capturing the size before processing bounds one iteration to one time step."
+    },
+    {
+     "q": "When is the answer -1?",
+     "a": "When `fresh > 0` after the queue empties, meaning some 0 cell is only reachable through other 0 cells and can therefore never be adjacent to a rotting orange. Empty cells also block propagation, which is what makes unreachability possible at all."
+    },
+    {
+     "q": "What is the space complexity?",
+     "a": "$O(mn)$ for the queue in the worst case, plus the grid itself. The fresh counter is $O(1)$. Time is $O(mn)$ because each cell is enqueued at most once."
+    }
+   ]
+  }
+ ]
+}

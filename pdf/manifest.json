@@ -1,0 +1,2201 @@
+[
+  {
+    "key": "01_arrays_and_hashing/0001_two_sum",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "1",
+    "slug": "0001_two_sum",
+    "title": "Two Sum",
+    "difficulty": "Easy",
+    "approaches": [
+      "One-pass hash map (BEST)",
+      "Sort + two pointers (no hash map)"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0001_two_sum.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0001_two_sum.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0036_valid_sudoku",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "36",
+    "slug": "0036_valid_sudoku",
+    "title": "Valid Sudoku",
+    "difficulty": "Medium",
+    "approaches": [
+      "Bitmask per row / column / box (MEMORY-OPTIMAL)",
+      "Set of (owner, digit) tuples (simplest to write)"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0036_valid_sudoku.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0036_valid_sudoku.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0049_group_anagrams",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "49",
+    "slug": "0049_group_anagrams",
+    "title": "Group Anagrams",
+    "difficulty": "Medium",
+    "approaches": [
+      "Count-tuple key (BEST for long words)",
+      "Sorted-string key"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0049_group_anagrams.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0049_group_anagrams.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0128_longest_consecutive_sequence",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "128",
+    "slug": "0128_longest_consecutive_sequence",
+    "title": "Longest Consecutive Sequence",
+    "difficulty": "Medium",
+    "approaches": [
+      "Hash set + head-of-run growth (BEST)",
+      "Sort + linear scan"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0128_longest_consecutive_sequence.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0128_longest_consecutive_sequence.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0217_contains_duplicate",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "217",
+    "slug": "0217_contains_duplicate",
+    "title": "Contains Duplicate",
+    "difficulty": "Easy",
+    "approaches": [
+      "Hash set (BEST)",
+      "Sort + adjacent scan (zero extra memory)"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0217_contains_duplicate.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0217_contains_duplicate.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0238_product_of_array_except_self",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "238",
+    "slug": "0238_product_of_array_except_self",
+    "title": "Product of Array Except Self",
+    "difficulty": "Medium",
+    "approaches": [
+      "Prefix \u00d7 suffix in the output array (BEST)",
+      "Divide-by-self (CONTRAST, rejected by the problem)"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0238_product_of_array_except_self.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0238_product_of_array_except_self.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0242_valid_anagram",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "242",
+    "slug": "0242_valid_anagram",
+    "title": "Valid Anagram",
+    "difficulty": "Easy",
+    "approaches": [
+      "Fixed-size frequency array (BEST)",
+      "Sort both strings"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0242_valid_anagram.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0242_valid_anagram.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0271_encode_and_decode_strings",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "271",
+    "slug": "0271_encode_and_decode_strings",
+    "title": "Encode and Decode Strings",
+    "difficulty": "Medium",
+    "approaches": [
+      "Length-prefix framing (BEST, robust)",
+      "Escaped delimiter ('#' \u2192 \"/#\", '/' \u2192 \"//\")"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0271_encode_and_decode_strings.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0271_encode_and_decode_strings.cpp"
+  },
+  {
+    "key": "01_arrays_and_hashing/0347_top_k_frequent_elements",
+    "category_dir": "01_arrays_and_hashing",
+    "category": "Arrays & Hashing",
+    "number": "347",
+    "slug": "0347_top_k_frequent_elements",
+    "title": "Top K Frequent Elements",
+    "difficulty": "Medium",
+    "approaches": [
+      "Counter + bucket sort (BEST)",
+      "Counter + min-heap of size k"
+    ],
+    "py": "neetcode150/01_arrays_and_hashing/0347_top_k_frequent_elements.py",
+    "cpp": "neetcode150/01_arrays_and_hashing/0347_top_k_frequent_elements.cpp"
+  },
+  {
+    "key": "02_two_pointers/0011_container_with_most_water",
+    "category_dir": "02_two_pointers",
+    "category": "Two Pointers",
+    "number": "11",
+    "slug": "0011_container_with_most_water",
+    "title": "Container With Most Water",
+    "difficulty": "Medium",
+    "approaches": [
+      "Brute force (baseline, O(n\u00b2))",
+      "Two pointers (BEST, O(n))"
+    ],
+    "py": "neetcode150/02_two_pointers/0011_container_with_most_water.py",
+    "cpp": "neetcode150/02_two_pointers/0011_container_with_most_water.cpp"
+  },
+  {
+    "key": "02_two_pointers/0015_3sum",
+    "category_dir": "02_two_pointers",
+    "category": "Two Pointers",
+    "number": "15",
+    "slug": "0015_3sum",
+    "title": "3Sum",
+    "difficulty": "Medium",
+    "approaches": [
+      "Sort + two pointers (BEST, O(n\u00b2))",
+      "Hash map with dedupe set (O(n\u00b2) time, O(n) space)"
+    ],
+    "py": "neetcode150/02_two_pointers/0015_3sum.py",
+    "cpp": "neetcode150/02_two_pointers/0015_3sum.cpp"
+  },
+  {
+    "key": "02_two_pointers/0042_trapping_rain_water",
+    "category_dir": "02_two_pointers",
+    "category": "Two Pointers",
+    "number": "42",
+    "slug": "0042_trapping_rain_water",
+    "title": "Trapping Rain Water",
+    "difficulty": "Hard",
+    "approaches": [
+      "Prefix/suffix max arrays (intuitive, O(n) space)",
+      "Two pointers (BEST, O(1) space)"
+    ],
+    "py": "neetcode150/02_two_pointers/0042_trapping_rain_water.py",
+    "cpp": "neetcode150/02_two_pointers/0042_trapping_rain_water.cpp"
+  },
+  {
+    "key": "02_two_pointers/0125_valid_palindrome",
+    "category_dir": "02_two_pointers",
+    "category": "Two Pointers",
+    "number": "125",
+    "slug": "0125_valid_palindrome",
+    "title": "Valid Palindrome",
+    "difficulty": "Easy",
+    "approaches": [
+      "Two pointers with in-place normalization (BEST, O(1) space)",
+      "Filter + reverse compare"
+    ],
+    "py": "neetcode150/02_two_pointers/0125_valid_palindrome.py",
+    "cpp": "neetcode150/02_two_pointers/0125_valid_palindrome.cpp"
+  },
+  {
+    "key": "02_two_pointers/0167_two_sum_ii",
+    "category_dir": "02_two_pointers",
+    "category": "Two Pointers",
+    "number": "0167",
+    "slug": "0167_two_sum_ii",
+    "title": "Two Sum Ii",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/02_two_pointers/0167_two_sum_ii.py",
+    "cpp": "neetcode150/02_two_pointers/0167_two_sum_ii.cpp"
+  },
+  {
+    "key": "03_sliding_window/0003_longest_substring_without_repeating_characters",
+    "category_dir": "03_sliding_window",
+    "category": "Sliding Window",
+    "number": "3",
+    "slug": "0003_longest_substring_without_repeating_characters",
+    "title": "Longest Substring Without Repeating Characters",
+    "difficulty": "Medium",
+    "approaches": [
+      "Sliding window + set (shrink step-by-step)",
+      "Sliding window + last-seen index map (JUMP past dupe)"
+    ],
+    "py": "neetcode150/03_sliding_window/0003_longest_substring_without_repeating_characters.py",
+    "cpp": "neetcode150/03_sliding_window/0003_longest_substring_without_repeating_characters.cpp"
+  },
+  {
+    "key": "03_sliding_window/0076_minimum_window_substring",
+    "category_dir": "03_sliding_window",
+    "category": "Sliding Window",
+    "number": "76",
+    "slug": "0076_minimum_window_substring",
+    "title": "Minimum Window Substring",
+    "difficulty": "Hard",
+    "approaches": [
+      "Sliding window + two dicts (formed/required)",
+      "Sliding window + 128-slot count arrays (no hashing)"
+    ],
+    "py": "neetcode150/03_sliding_window/0076_minimum_window_substring.py",
+    "cpp": "neetcode150/03_sliding_window/0076_minimum_window_substring.cpp"
+  },
+  {
+    "key": "03_sliding_window/0121_best_time_to_buy_and_sell_stock",
+    "category_dir": "03_sliding_window",
+    "category": "Sliding Window",
+    "number": "121",
+    "slug": "0121_best_time_to_buy_and_sell_stock",
+    "title": "Best Time to Buy and Sell Stock",
+    "difficulty": "Easy",
+    "approaches": [
+      "Brute force (all buy/sell pairs)",
+      "One pass, track the minimum price (BEST)"
+    ],
+    "py": "neetcode150/03_sliding_window/0121_best_time_to_buy_and_sell_stock.py",
+    "cpp": "neetcode150/03_sliding_window/0121_best_time_to_buy_and_sell_stock.cpp"
+  },
+  {
+    "key": "03_sliding_window/0239_sliding_window_maximum",
+    "category_dir": "03_sliding_window",
+    "category": "Sliding Window",
+    "number": "239",
+    "slug": "0239_sliding_window_maximum",
+    "title": "Sliding Window Maximum",
+    "difficulty": "Hard",
+    "approaches": [
+      "Monotonic deque of indices (BEST)",
+      "Max-heap with lazy deletion"
+    ],
+    "py": "neetcode150/03_sliding_window/0239_sliding_window_maximum.py",
+    "cpp": "neetcode150/03_sliding_window/0239_sliding_window_maximum.cpp"
+  },
+  {
+    "key": "03_sliding_window/0424_longest_repeating_character_replacement",
+    "category_dir": "03_sliding_window",
+    "category": "Sliding Window",
+    "number": "424",
+    "slug": "0424_longest_repeating_character_replacement",
+    "title": "Longest Repeating Character Replacement",
+    "difficulty": "Medium",
+    "approaches": [
+      "Sliding window + running max frequency (BEST)",
+      "Brute force (every start, expand while valid)"
+    ],
+    "py": "neetcode150/03_sliding_window/0424_longest_repeating_character_replacement.py",
+    "cpp": "neetcode150/03_sliding_window/0424_longest_repeating_character_replacement.cpp"
+  },
+  {
+    "key": "03_sliding_window/0567_permutation_in_string",
+    "category_dir": "03_sliding_window",
+    "category": "Sliding Window",
+    "number": "567",
+    "slug": "0567_permutation_in_string",
+    "title": "Permutation in String",
+    "difficulty": "Medium",
+    "approaches": [
+      "Fixed window + 26-array counters + matches (BEST)",
+      "Fixed window + Counter (dict) comparison"
+    ],
+    "py": "neetcode150/03_sliding_window/0567_permutation_in_string.py",
+    "cpp": "neetcode150/03_sliding_window/0567_permutation_in_string.cpp"
+  },
+  {
+    "key": "04_stack/0020_valid_parentheses",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "20",
+    "slug": "0020_valid_parentheses",
+    "title": "Valid Parentheses",
+    "difficulty": "Easy",
+    "approaches": [
+      "Stack + dict (BEST)",
+      "Repeated pair erasure (no stack, no dict)"
+    ],
+    "py": "neetcode150/04_stack/0020_valid_parentheses.py",
+    "cpp": "neetcode150/04_stack/0020_valid_parentheses.cpp"
+  },
+  {
+    "key": "04_stack/0022_generate_parentheses",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "22",
+    "slug": "0022_generate_parentheses",
+    "title": "Generate Parentheses",
+    "difficulty": "Medium",
+    "approaches": [
+      "Backtracking DFS (BEST)",
+      "Iterative BFS (explicit queue, no recursion)"
+    ],
+    "py": "neetcode150/04_stack/0022_generate_parentheses.py",
+    "cpp": "neetcode150/04_stack/0022_generate_parentheses.cpp"
+  },
+  {
+    "key": "04_stack/0084_largest_rectangle_in_histogram",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "84",
+    "slug": "0084_largest_rectangle_in_histogram",
+    "title": "Largest Rectangle in Histogram",
+    "difficulty": "Hard",
+    "approaches": [
+      "Monotonic increasing stack (BEST)",
+      "Brute force (contrast)"
+    ],
+    "py": "neetcode150/04_stack/0084_largest_rectangle_in_histogram.py",
+    "cpp": "neetcode150/04_stack/0084_largest_rectangle_in_histogram.cpp"
+  },
+  {
+    "key": "04_stack/0150_evaluate_reverse_polish_notation",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "150",
+    "slug": "0150_evaluate_reverse_polish_notation",
+    "title": "Evaluate Reverse Polish Notation",
+    "difficulty": "Medium",
+    "approaches": [
+      "Stack + operator set (BEST)",
+      "Stack + char switch (no hash set)"
+    ],
+    "py": "neetcode150/04_stack/0150_evaluate_reverse_polish_notation.py",
+    "cpp": "neetcode150/04_stack/0150_evaluate_reverse_polish_notation.cpp"
+  },
+  {
+    "key": "04_stack/0155_min_stack",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "155",
+    "slug": "0155_min_stack",
+    "title": "Min Stack",
+    "difficulty": "Medium",
+    "approaches": [
+      "Two parallel stacks (BEST)",
+      "Single stack of (value, runningMin) pairs"
+    ],
+    "py": "neetcode150/04_stack/0155_min_stack.py",
+    "cpp": "neetcode150/04_stack/0155_min_stack.cpp"
+  },
+  {
+    "key": "04_stack/0739_daily_temperatures",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "739",
+    "slug": "0739_daily_temperatures",
+    "title": "Daily Temperatures",
+    "difficulty": "Medium",
+    "approaches": [
+      "Monotonic decreasing stack (BEST)",
+      "Brute force (contrast)"
+    ],
+    "py": "neetcode150/04_stack/0739_daily_temperatures.py",
+    "cpp": "neetcode150/04_stack/0739_daily_temperatures.cpp"
+  },
+  {
+    "key": "04_stack/0853_car_fleet",
+    "category_dir": "04_stack",
+    "category": "Stack",
+    "number": "853",
+    "slug": "0853_car_fleet",
+    "title": "Car Fleet",
+    "difficulty": "Medium",
+    "approaches": [
+      "Sort + stack of arrival times (BEST)",
+      "Sort + running maximum (no stack)"
+    ],
+    "py": "neetcode150/04_stack/0853_car_fleet.py",
+    "cpp": "neetcode150/04_stack/0853_car_fleet.cpp"
+  },
+  {
+    "key": "05_binary_search/0004_median_of_two_sorted_arrays",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "0004",
+    "slug": "0004_median_of_two_sorted_arrays",
+    "title": "Median of Two Sorted Arrays",
+    "difficulty": "Hard",
+    "approaches": [
+      "Merge, then pick the middle (baseline, O(m+n))",
+      "Binary search on the partition (BEST, O(log min(m,n)))"
+    ],
+    "py": "neetcode150/05_binary_search/0004_median_of_two_sorted_arrays.py",
+    "cpp": "neetcode150/05_binary_search/0004_median_of_two_sorted_arrays.cpp"
+  },
+  {
+    "key": "05_binary_search/0033_search_in_rotated_sorted_array",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "0033",
+    "slug": "0033_search_in_rotated_sorted_array",
+    "title": "Search in Rotated Sorted Array",
+    "difficulty": "Medium",
+    "approaches": [
+      "Direct BS: find the sorted half, decide, discard",
+      "Find the pivot, then plain BS in the right segment"
+    ],
+    "py": "neetcode150/05_binary_search/0033_search_in_rotated_sorted_array.py",
+    "cpp": "neetcode150/05_binary_search/0033_search_in_rotated_sorted_array.cpp"
+  },
+  {
+    "key": "05_binary_search/0074_search_a_2d_matrix",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "0074",
+    "slug": "0074_search_a_2d_matrix",
+    "title": "Search a 2D Matrix",
+    "difficulty": "Medium",
+    "approaches": [
+      "Flattened-index binary search (BEST, O(log(m\u00b7n)))",
+      "Two-level binary search (O(log m + log n))"
+    ],
+    "py": "neetcode150/05_binary_search/0074_search_a_2d_matrix.py",
+    "cpp": "neetcode150/05_binary_search/0074_search_a_2d_matrix.cpp"
+  },
+  {
+    "key": "05_binary_search/0153_find_minimum_in_rotated_sorted_array",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "0153",
+    "slug": "0153_find_minimum_in_rotated_sorted_array",
+    "title": "Find Minimum in Rotated Sorted Array",
+    "difficulty": "Medium",
+    "approaches": [
+      "Binary search: compare mid against the RIGHT edge",
+      "Sort, then take the first (cheating contrast)"
+    ],
+    "py": "neetcode150/05_binary_search/0153_find_minimum_in_rotated_sorted_array.py",
+    "cpp": "neetcode150/05_binary_search/0153_find_minimum_in_rotated_sorted_array.cpp"
+  },
+  {
+    "key": "05_binary_search/0704_binary_search",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "704",
+    "slug": "0704_binary_search",
+    "title": "Binary Search",
+    "difficulty": "Easy",
+    "approaches": [
+      "Classic lo <= hi loop (find ANY hit)",
+      "lo < hi loop (lower bound, then verify)"
+    ],
+    "py": "neetcode150/05_binary_search/0704_binary_search.py",
+    "cpp": "neetcode150/05_binary_search/0704_binary_search.cpp"
+  },
+  {
+    "key": "05_binary_search/0875_koko_eating_bananas",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "0875",
+    "slug": "0875_koko_eating_bananas",
+    "title": "Koko Eating Bananas",
+    "difficulty": "Medium",
+    "approaches": [
+      "Binary search on speed (BEST, O(n log M))",
+      "Linear sweep of speeds (contrast, O(n\u00b7M))"
+    ],
+    "py": "neetcode150/05_binary_search/0875_koko_eating_bananas.py",
+    "cpp": "neetcode150/05_binary_search/0875_koko_eating_bananas.cpp"
+  },
+  {
+    "key": "05_binary_search/0981_time_based_key_value_store",
+    "category_dir": "05_binary_search",
+    "category": "Binary Search",
+    "number": "0981",
+    "slug": "0981_time_based_key_value_store",
+    "title": "Time Based Key-Value Store",
+    "difficulty": "Medium",
+    "approaches": [
+      "dict[str, list[(ts,val)]] + bisect (BEST)",
+      "Linear scan of the per-key list (contrast)"
+    ],
+    "py": "neetcode150/05_binary_search/0981_time_based_key_value_store.py",
+    "cpp": "neetcode150/05_binary_search/0981_time_based_key_value_store.cpp"
+  },
+  {
+    "key": "06_linked_list/0002_add_two_numbers",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "2",
+    "slug": "0002_add_two_numbers",
+    "title": "Add Two Numbers",
+    "difficulty": "Medium",
+    "approaches": [
+      "Iterative with dummy head + carry (BEST)",
+      "Recursive"
+    ],
+    "py": "neetcode150/06_linked_list/0002_add_two_numbers.py",
+    "cpp": "neetcode150/06_linked_list/0002_add_two_numbers.cpp"
+  },
+  {
+    "key": "06_linked_list/0019_remove_nth_node_from_end_of_list",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "19",
+    "slug": "0019_remove_nth_node_from_end_of_list",
+    "title": "Remove Nth Node From End of List",
+    "difficulty": "Medium",
+    "approaches": [
+      "One pass: dummy + fixed-gap two pointers (BEST)",
+      "Two passes: count, then delete"
+    ],
+    "py": "neetcode150/06_linked_list/0019_remove_nth_node_from_end_of_list.py",
+    "cpp": "neetcode150/06_linked_list/0019_remove_nth_node_from_end_of_list.cpp"
+  },
+  {
+    "key": "06_linked_list/0021_merge_two_sorted_lists",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "21",
+    "slug": "0021_merge_two_sorted_lists",
+    "title": "Merge Two Sorted Lists",
+    "difficulty": "Easy",
+    "approaches": [
+      "Iterative with a dummy head (BEST)",
+      "Recursive"
+    ],
+    "py": "neetcode150/06_linked_list/0021_merge_two_sorted_lists.py",
+    "cpp": "neetcode150/06_linked_list/0021_merge_two_sorted_lists.cpp"
+  },
+  {
+    "key": "06_linked_list/0023_merge_k_sorted_lists",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "23",
+    "slug": "0023_merge_k_sorted_lists",
+    "title": "Merge K Sorted Lists",
+    "difficulty": "Hard",
+    "approaches": [
+      "Min-heap of k heads (BEST)",
+      "Sequential two-list merges"
+    ],
+    "py": "neetcode150/06_linked_list/0023_merge_k_sorted_lists.py",
+    "cpp": "neetcode150/06_linked_list/0023_merge_k_sorted_lists.cpp"
+  },
+  {
+    "key": "06_linked_list/0025_reverse_nodes_in_k_group",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "25",
+    "slug": "0025_reverse_nodes_in_k_group",
+    "title": "Reverse Nodes in k-Group",
+    "difficulty": "Hard",
+    "approaches": [
+      "Iterative, dummy + anchored segment flips (BEST)",
+      "Recursive per group"
+    ],
+    "py": "neetcode150/06_linked_list/0025_reverse_nodes_in_k_group.py",
+    "cpp": "neetcode150/06_linked_list/0025_reverse_nodes_in_k_group.cpp"
+  },
+  {
+    "key": "06_linked_list/0138_copy_list_with_random_pointer",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "138",
+    "slug": "0138_copy_list_with_random_pointer",
+    "title": "Copy List with Random Pointer",
+    "difficulty": "Medium",
+    "approaches": [
+      "Interleaving / weave \u2014 O(1) space (BEST)",
+      "Hash map old \u2192 new"
+    ],
+    "py": "neetcode150/06_linked_list/0138_copy_list_with_random_pointer.py",
+    "cpp": "neetcode150/06_linked_list/0138_copy_list_with_random_pointer.cpp"
+  },
+  {
+    "key": "06_linked_list/0141_linked_list_cycle",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "141",
+    "slug": "0141_linked_list_cycle",
+    "title": "Linked List Cycle",
+    "difficulty": "Easy",
+    "approaches": [
+      "Floyd's tortoise and hare (BEST)",
+      "Hash set of visited nodes"
+    ],
+    "py": "neetcode150/06_linked_list/0141_linked_list_cycle.py",
+    "cpp": "neetcode150/06_linked_list/0141_linked_list_cycle.cpp"
+  },
+  {
+    "key": "06_linked_list/0143_reorder_list",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "143",
+    "slug": "0143_reorder_list",
+    "title": "Reorder List",
+    "difficulty": "Medium",
+    "approaches": [
+      "Split + reverse + weave (BEST)",
+      "Vector weave"
+    ],
+    "py": "neetcode150/06_linked_list/0143_reorder_list.py",
+    "cpp": "neetcode150/06_linked_list/0143_reorder_list.cpp"
+  },
+  {
+    "key": "06_linked_list/0146_lru_cache",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "146",
+    "slug": "0146_lru_cache",
+    "title": "LRU Cache",
+    "difficulty": "Medium",
+    "approaches": [
+      "Hash map key \u2192 node + doubly linked list (BEST)",
+      "Naive: key \u2192 (value, lastUsedTick)"
+    ],
+    "py": "neetcode150/06_linked_list/0146_lru_cache.py",
+    "cpp": "neetcode150/06_linked_list/0146_lru_cache.cpp"
+  },
+  {
+    "key": "06_linked_list/0206_reverse_linked_list",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "206",
+    "slug": "0206_reverse_linked_list",
+    "title": "Reverse Linked List",
+    "difficulty": "Easy",
+    "approaches": [
+      "Iterative, 3 sliding pointers (BEST)",
+      "Recursive"
+    ],
+    "py": "neetcode150/06_linked_list/0206_reverse_linked_list.py",
+    "cpp": "neetcode150/06_linked_list/0206_reverse_linked_list.cpp"
+  },
+  {
+    "key": "06_linked_list/0287_find_the_duplicate_number",
+    "category_dir": "06_linked_list",
+    "category": "Linked List",
+    "number": "287",
+    "slug": "0287_find_the_duplicate_number",
+    "title": "Find the Duplicate Number",
+    "difficulty": "Medium",
+    "approaches": [
+      "Floyd's tortoise and hare on the array (BEST)",
+      "Hash set of seen values"
+    ],
+    "py": "neetcode150/06_linked_list/0287_find_the_duplicate_number.py",
+    "cpp": "neetcode150/06_linked_list/0287_find_the_duplicate_number.cpp"
+  },
+  {
+    "key": "07_trees/0098_validate_binary_search_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "98",
+    "slug": "0098_validate_binary_search_tree",
+    "title": "Validate Binary Search Tree",
+    "difficulty": "Medium",
+    "approaches": [
+      "Recursive interval propagation (BEST)",
+      "Iterative inorder (must be strictly ascending)"
+    ],
+    "py": "neetcode150/07_trees/0098_validate_binary_search_tree.py",
+    "cpp": "neetcode150/07_trees/0098_validate_binary_search_tree.cpp"
+  },
+  {
+    "key": "07_trees/0100_same_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "100",
+    "slug": "0100_same_tree",
+    "title": "Same Tree",
+    "difficulty": "Easy",
+    "approaches": [
+      "Recursive equality (BEST, clearest)",
+      "Iterative BFS (queue of node pairs)"
+    ],
+    "py": "neetcode150/07_trees/0100_same_tree.py",
+    "cpp": "neetcode150/07_trees/0100_same_tree.cpp"
+  },
+  {
+    "key": "07_trees/0102_binary_tree_level_order_traversal",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "102",
+    "slug": "0102_binary_tree_level_order_traversal",
+    "title": "Binary Tree Level Order Traversal",
+    "difficulty": "Medium",
+    "approaches": [
+      "BFS with a per-level snapshot (BEST)",
+      "DFS with depth-indexed rows (no queue at all)"
+    ],
+    "py": "neetcode150/07_trees/0102_binary_tree_level_order_traversal.py",
+    "cpp": "neetcode150/07_trees/0102_binary_tree_level_order_traversal.cpp"
+  },
+  {
+    "key": "07_trees/0104_maximum_depth_of_binary_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "104",
+    "slug": "0104_maximum_depth_of_binary_tree",
+    "title": "Maximum Depth of Binary Tree",
+    "difficulty": "Easy",
+    "approaches": [
+      "Recursive post-order (BEST, canonical)",
+      "Iterative BFS (count the levels)"
+    ],
+    "py": "neetcode150/07_trees/0104_maximum_depth_of_binary_tree.py",
+    "cpp": "neetcode150/07_trees/0104_maximum_depth_of_binary_tree.cpp"
+  },
+  {
+    "key": "07_trees/0105_construct_binary_tree_from_preorder_and_inorder",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "105",
+    "slug": "0105_construct_binary_tree_from_preorder_and_inorder",
+    "title": "Construct Binary Tree from Preorder and Inorder",
+    "difficulty": "Medium",
+    "approaches": [
+      "Hash map of inorder indices (BEST)",
+      "No map: linear scan (conceptually simpler, slower)"
+    ],
+    "py": "neetcode150/07_trees/0105_construct_binary_tree_from_preorder_and_inorder.py",
+    "cpp": "neetcode150/07_trees/0105_construct_binary_tree_from_preorder_and_inorder.cpp"
+  },
+  {
+    "key": "07_trees/0110_balanced_binary_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "110",
+    "slug": "0110_balanced_binary_tree",
+    "title": "Balanced Binary Tree",
+    "difficulty": "Easy",
+    "approaches": [
+      "Single post-order pass (BEST)",
+      "Top-down double recursion (contrast)"
+    ],
+    "py": "neetcode150/07_trees/0110_balanced_binary_tree.py",
+    "cpp": "neetcode150/07_trees/0110_balanced_binary_tree.cpp"
+  },
+  {
+    "key": "07_trees/0124_binary_tree_maximum_path_sum",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "124",
+    "slug": "0124_binary_tree_maximum_path_sum",
+    "title": "Binary Tree Maximum Path Sum",
+    "difficulty": "Hard",
+    "approaches": [
+      "Post-order with best-so-far (BEST)",
+      "Brute force, path-through-every-node (contrast)"
+    ],
+    "py": "neetcode150/07_trees/0124_binary_tree_maximum_path_sum.py",
+    "cpp": "neetcode150/07_trees/0124_binary_tree_maximum_path_sum.cpp"
+  },
+  {
+    "key": "07_trees/0199_binary_tree_right_side_view",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "199",
+    "slug": "0199_binary_tree_right_side_view",
+    "title": "Binary Tree Right Side View",
+    "difficulty": "Medium",
+    "approaches": [
+      "BFS level snapshots (BEST, intuitive)",
+      "DFS, right-first, first-visit-per-depth"
+    ],
+    "py": "neetcode150/07_trees/0199_binary_tree_right_side_view.py",
+    "cpp": "neetcode150/07_trees/0199_binary_tree_right_side_view.cpp"
+  },
+  {
+    "key": "07_trees/0226_invert_binary_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "226",
+    "slug": "0226_invert_binary_tree",
+    "title": "Invert Binary Tree",
+    "difficulty": "Easy",
+    "approaches": [
+      "Recursive swap (BEST, 3 lines of essence)",
+      "Iterative BFS/DFS with an explicit queue"
+    ],
+    "py": "neetcode150/07_trees/0226_invert_binary_tree.py",
+    "cpp": "neetcode150/07_trees/0226_invert_binary_tree.cpp"
+  },
+  {
+    "key": "07_trees/0230_kth_smallest_element_in_bst",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "230",
+    "slug": "0230_kth_smallest_element_in_bst",
+    "title": "Kth Smallest Element in a BST",
+    "difficulty": "Medium",
+    "approaches": [
+      "Iterative inorder with early stop (BEST)",
+      "Recursive inorder with early stop"
+    ],
+    "py": "neetcode150/07_trees/0230_kth_smallest_element_in_bst.py",
+    "cpp": "neetcode150/07_trees/0230_kth_smallest_element_in_bst.cpp"
+  },
+  {
+    "key": "07_trees/0235_lowest_common_ancestor_of_bst",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "0235",
+    "slug": "0235_lowest_common_ancestor_of_bst",
+    "title": "Lowest Common Ancestor Of Bst",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/07_trees/0235_lowest_common_ancestor_of_bst.py",
+    "cpp": "neetcode150/07_trees/0235_lowest_common_ancestor_of_bst.cpp"
+  },
+  {
+    "key": "07_trees/0297_serialize_and_deserialize_binary_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "0297",
+    "slug": "0297_serialize_and_deserialize_binary_tree",
+    "title": "Serialize And Deserialize Binary Tree",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/07_trees/0297_serialize_and_deserialize_binary_tree.py",
+    "cpp": "neetcode150/07_trees/0297_serialize_and_deserialize_binary_tree.cpp"
+  },
+  {
+    "key": "07_trees/0543_diameter_of_binary_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "0543",
+    "slug": "0543_diameter_of_binary_tree",
+    "title": "Diameter Of Binary Tree",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/07_trees/0543_diameter_of_binary_tree.py",
+    "cpp": "neetcode150/07_trees/0543_diameter_of_binary_tree.cpp"
+  },
+  {
+    "key": "07_trees/0572_subtree_of_another_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "0572",
+    "slug": "0572_subtree_of_another_tree",
+    "title": "Subtree Of Another Tree",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/07_trees/0572_subtree_of_another_tree.py",
+    "cpp": "neetcode150/07_trees/0572_subtree_of_another_tree.cpp"
+  },
+  {
+    "key": "07_trees/1448_count_good_nodes_in_binary_tree",
+    "category_dir": "07_trees",
+    "category": "Trees",
+    "number": "1448",
+    "slug": "1448_count_good_nodes_in_binary_tree",
+    "title": "Count Good Nodes In Binary Tree",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/07_trees/1448_count_good_nodes_in_binary_tree.py",
+    "cpp": "neetcode150/07_trees/1448_count_good_nodes_in_binary_tree.cpp"
+  },
+  {
+    "key": "08_tries/0208_implement_trie",
+    "category_dir": "08_tries",
+    "category": "Tries",
+    "number": "208",
+    "slug": "0208_implement_trie",
+    "title": "Implement Trie (Prefix Tree)",
+    "difficulty": "Medium",
+    "approaches": [
+      "26-array trie (BEST for a fixed lowercase alphabet)",
+      "Hash set + linear prefix scan (contrast)"
+    ],
+    "py": "neetcode150/08_tries/0208_implement_trie.py",
+    "cpp": "neetcode150/08_tries/0208_implement_trie.cpp"
+  },
+  {
+    "key": "08_tries/0211_design_add_and_search_words",
+    "category_dir": "08_tries",
+    "category": "Tries",
+    "number": "211",
+    "slug": "0211_design_add_and_search_words",
+    "title": "Design Add and Search Words Data Structure",
+    "difficulty": "Medium",
+    "approaches": [
+      "Trie + recursive DFS (best)",
+      "Trie + iterative BFS (level-by-level frontier)"
+    ],
+    "py": "neetcode150/08_tries/0211_design_add_and_search_words.py",
+    "cpp": "neetcode150/08_tries/0211_design_add_and_search_words.cpp"
+  },
+  {
+    "key": "08_tries/0212_word_search_ii",
+    "category_dir": "08_tries",
+    "category": "Tries",
+    "number": "212",
+    "slug": "0212_word_search_ii",
+    "title": "Word Search II",
+    "difficulty": "Hard",
+    "approaches": [
+      "Trie + grid DFS backtracking (foundation)",
+      "Trie + grid DFS with branch pruning (BEST)"
+    ],
+    "py": "neetcode150/08_tries/0212_word_search_ii.py",
+    "cpp": "neetcode150/08_tries/0212_word_search_ii.cpp"
+  },
+  {
+    "key": "09_heap_priority_queue/0215_kth_largest_element_in_an_array",
+    "category_dir": "09_heap_priority_queue",
+    "category": "Heap / Priority Queue",
+    "number": "215",
+    "slug": "0215_kth_largest_element_in_an_array",
+    "title": "Kth Largest Element in an Array",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Min-heap of size k (best)",
+      "\u00b7 Quickselect (Hoare's partition)"
+    ],
+    "py": "neetcode150/09_heap_priority_queue/0215_kth_largest_element_in_an_array.py",
+    "cpp": "neetcode150/09_heap_priority_queue/0215_kth_largest_element_in_an_array.cpp"
+  },
+  {
+    "key": "09_heap_priority_queue/0295_find_median_from_data_stream",
+    "category_dir": "09_heap_priority_queue",
+    "category": "Heap / Priority Queue",
+    "number": "295",
+    "slug": "0295_find_median_from_data_stream",
+    "title": "Find Median from Data Stream",
+    "difficulty": "Hard",
+    "approaches": [
+      "\u00b7 Two heaps (best)",
+      "\u00b7 Bisect-insert into a sorted list (baseline)"
+    ],
+    "py": "neetcode150/09_heap_priority_queue/0295_find_median_from_data_stream.py",
+    "cpp": "neetcode150/09_heap_priority_queue/0295_find_median_from_data_stream.cpp"
+  },
+  {
+    "key": "09_heap_priority_queue/0355_design_twitter",
+    "category_dir": "09_heap_priority_queue",
+    "category": "Heap / Priority Queue",
+    "number": "355",
+    "slug": "0355_design_twitter",
+    "title": "Design Twitter",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Merge-k with a max-heap (best)",
+      "\u00b7 Gather-all + sort (baseline)"
+    ],
+    "py": "neetcode150/09_heap_priority_queue/0355_design_twitter.py",
+    "cpp": "neetcode150/09_heap_priority_queue/0355_design_twitter.cpp"
+  },
+  {
+    "key": "09_heap_priority_queue/0621_task_scheduler",
+    "category_dir": "09_heap_priority_queue",
+    "category": "Heap / Priority Queue",
+    "number": "621",
+    "slug": "0621_task_scheduler",
+    "title": "Task Scheduler",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Math formula (best)",
+      "\u00b7 Heap simulation"
+    ],
+    "py": "neetcode150/09_heap_priority_queue/0621_task_scheduler.py",
+    "cpp": "neetcode150/09_heap_priority_queue/0621_task_scheduler.cpp"
+  },
+  {
+    "key": "09_heap_priority_queue/0703_kth_largest_element_in_a_stream",
+    "category_dir": "09_heap_priority_queue",
+    "category": "Heap / Priority Queue",
+    "number": "703",
+    "slug": "0703_kth_largest_element_in_a_stream",
+    "title": "Kth Largest Element in a Stream",
+    "difficulty": "Easy",
+    "approaches": [
+      "\u00b7 Min-heap of size k (best)",
+      "\u00b7 Naive sorted list (baseline)"
+    ],
+    "py": "neetcode150/09_heap_priority_queue/0703_kth_largest_element_in_a_stream.py",
+    "cpp": "neetcode150/09_heap_priority_queue/0703_kth_largest_element_in_a_stream.cpp"
+  },
+  {
+    "key": "09_heap_priority_queue/1046_last_stone_weight",
+    "category_dir": "09_heap_priority_queue",
+    "category": "Heap / Priority Queue",
+    "number": "1046",
+    "slug": "1046_last_stone_weight",
+    "title": "Last Stone Weight",
+    "difficulty": "Easy",
+    "approaches": [
+      "\u00b7 Max-heap simulation (best)",
+      "\u00b7 Repeated sort (naive baseline)"
+    ],
+    "py": "neetcode150/09_heap_priority_queue/1046_last_stone_weight.py",
+    "cpp": "neetcode150/09_heap_priority_queue/1046_last_stone_weight.cpp"
+  },
+  {
+    "key": "10_backtracking/0017_letter_combinations_of_a_phone_number",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "17",
+    "slug": "0017_letter_combinations_of_a_phone_number",
+    "title": "Letter Combinations of a Phone Number",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Backtracking (best)",
+      "\u00b7 Iterative product"
+    ],
+    "py": "neetcode150/10_backtracking/0017_letter_combinations_of_a_phone_number.py",
+    "cpp": "neetcode150/10_backtracking/0017_letter_combinations_of_a_phone_number.cpp"
+  },
+  {
+    "key": "10_backtracking/0039_combination_sum",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "39",
+    "slug": "0039_combination_sum",
+    "title": "Combination Sum",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Backtracking with repeat (best)",
+      "\u00b7 DP table of combinations"
+    ],
+    "py": "neetcode150/10_backtracking/0039_combination_sum.py",
+    "cpp": "neetcode150/10_backtracking/0039_combination_sum.cpp"
+  },
+  {
+    "key": "10_backtracking/0040_combination_sum_ii",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "40",
+    "slug": "0040_combination_sum_ii",
+    "title": "Combination Sum II",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Sorted DFS (best)",
+      "\u00b7 Frequency-map branching"
+    ],
+    "py": "neetcode150/10_backtracking/0040_combination_sum_ii.py",
+    "cpp": "neetcode150/10_backtracking/0040_combination_sum_ii.cpp"
+  },
+  {
+    "key": "10_backtracking/0046_permutations",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "46",
+    "slug": "0046_permutations",
+    "title": "Permutations",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Swap-based DFS (best)",
+      "\u00b7 used[] bitmap + running permutation"
+    ],
+    "py": "neetcode150/10_backtracking/0046_permutations.py",
+    "cpp": "neetcode150/10_backtracking/0046_permutations.cpp"
+  },
+  {
+    "key": "10_backtracking/0051_n_queens",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "0051",
+    "slug": "0051_n_queens",
+    "title": "N Queens",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/10_backtracking/0051_n_queens.py",
+    "cpp": "neetcode150/10_backtracking/0051_n_queens.cpp"
+  },
+  {
+    "key": "10_backtracking/0078_subsets",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "78",
+    "slug": "0078_subsets",
+    "title": "Subsets",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Backtracking include/exclude (best)",
+      "\u00b7 Bitmask enumeration"
+    ],
+    "py": "neetcode150/10_backtracking/0078_subsets.py",
+    "cpp": "neetcode150/10_backtracking/0078_subsets.cpp"
+  },
+  {
+    "key": "10_backtracking/0079_word_search",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "79",
+    "slug": "0079_word_search",
+    "title": "Word Search",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 In-place sentinel marking (best)",
+      "\u00b7 visited[][] grid"
+    ],
+    "py": "neetcode150/10_backtracking/0079_word_search.py",
+    "cpp": "neetcode150/10_backtracking/0079_word_search.cpp"
+  },
+  {
+    "key": "10_backtracking/0090_subsets_ii",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "90",
+    "slug": "0090_subsets_ii",
+    "title": "Subsets II",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Backtracking with skip-duplicates (best)",
+      "\u00b7 Set of sorted tuples"
+    ],
+    "py": "neetcode150/10_backtracking/0090_subsets_ii.py",
+    "cpp": "neetcode150/10_backtracking/0090_subsets_ii.cpp"
+  },
+  {
+    "key": "10_backtracking/0131_palindrome_partitioning",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "131",
+    "slug": "0131_palindrome_partitioning",
+    "title": "Palindrome Partitioning",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 DFS + direct palindrome probe (best for short input)",
+      "\u00b7 Precomputed palindrome table"
+    ],
+    "py": "neetcode150/10_backtracking/0131_palindrome_partitioning.py",
+    "cpp": "neetcode150/10_backtracking/0131_palindrome_partitioning.cpp"
+  },
+  {
+    "key": "10_backtracking/0395_longest_substring_with_at_least_k_repeating_characters",
+    "category_dir": "10_backtracking",
+    "category": "Backtracking",
+    "number": "395",
+    "slug": "0395_longest_substring_with_at_least_k_repeating_characters",
+    "title": "Longest Substring with At Least K Repeating Chars",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Divide & conquer on blocker chars (best)",
+      "\u00b7 Sliding window per distinct-count"
+    ],
+    "py": "neetcode150/10_backtracking/0395_longest_substring_with_at_least_k_repeating_characters.py",
+    "cpp": "neetcode150/10_backtracking/0395_longest_substring_with_at_least_k_repeating_characters.cpp"
+  },
+  {
+    "key": "11_graphs/0127_word_ladder",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "127",
+    "slug": "0127_word_ladder",
+    "title": "Word Ladder",
+    "difficulty": "Hard",
+    "approaches": [
+      "BFS (BEST for correctness)",
+      "Bidirectional BFS (BEST for speed)"
+    ],
+    "py": "neetcode150/11_graphs/0127_word_ladder.py",
+    "cpp": "neetcode150/11_graphs/0127_word_ladder.cpp"
+  },
+  {
+    "key": "11_graphs/0130_surrounded_regions",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "130",
+    "slug": "0130_surrounded_regions",
+    "title": "Surrounded Regions",
+    "difficulty": "Medium",
+    "approaches": [
+      "BFS from every border 'O' (BEST)",
+      "Recursive DFS from every border 'O'"
+    ],
+    "py": "neetcode150/11_graphs/0130_surrounded_regions.py",
+    "cpp": "neetcode150/11_graphs/0130_surrounded_regions.cpp"
+  },
+  {
+    "key": "11_graphs/0133_clone_graph",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "133",
+    "slug": "0133_clone_graph",
+    "title": "Clone Graph",
+    "difficulty": "Medium",
+    "approaches": [
+      "Recursive DFS + hash map (BEST for clarity)",
+      "Iterative BFS + hash map"
+    ],
+    "py": "neetcode150/11_graphs/0133_clone_graph.py",
+    "cpp": "neetcode150/11_graphs/0133_clone_graph.cpp"
+  },
+  {
+    "key": "11_graphs/0200_number_of_islands",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "200",
+    "slug": "0200_number_of_islands",
+    "title": "Number of Islands",
+    "difficulty": "Medium",
+    "approaches": [
+      "Recursive DFS flood fill (BEST for clarity)",
+      "Iterative BFS flood fill (no recursion)"
+    ],
+    "py": "neetcode150/11_graphs/0200_number_of_islands.py",
+    "cpp": "neetcode150/11_graphs/0200_number_of_islands.cpp"
+  },
+  {
+    "key": "11_graphs/0207_course_schedule",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "207",
+    "slug": "0207_course_schedule",
+    "title": "Course Schedule",
+    "difficulty": "Medium",
+    "approaches": [
+      "Kahn's algorithm (BEST, iterative)",
+      "DFS with colours (0=unvisited, 1=in-stack, 2=done)"
+    ],
+    "py": "neetcode150/11_graphs/0207_course_schedule.py",
+    "cpp": "neetcode150/11_graphs/0207_course_schedule.cpp"
+  },
+  {
+    "key": "11_graphs/0210_course_schedule_ii",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "210",
+    "slug": "0210_course_schedule_ii",
+    "title": "Course Schedule II",
+    "difficulty": "Medium",
+    "approaches": [
+      "Kahn's algorithm (BEST)",
+      "DFS (post-order prepending)"
+    ],
+    "py": "neetcode150/11_graphs/0210_course_schedule_ii.py",
+    "cpp": "neetcode150/11_graphs/0210_course_schedule_ii.cpp"
+  },
+  {
+    "key": "11_graphs/0261_graph_valid_tree",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "261",
+    "slug": "0261_graph_valid_tree",
+    "title": "Graph Valid Tree",
+    "difficulty": "Medium",
+    "approaches": [
+      "Union-Find with path compression (BEST)",
+      "DFS from node 0"
+    ],
+    "py": "neetcode150/11_graphs/0261_graph_valid_tree.py",
+    "cpp": "neetcode150/11_graphs/0261_graph_valid_tree.cpp"
+  },
+  {
+    "key": "11_graphs/0286_walls_and_gates",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "0286",
+    "slug": "0286_walls_and_gates",
+    "title": "Walls And Gates",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/11_graphs/0286_walls_and_gates.py",
+    "cpp": "neetcode150/11_graphs/0286_walls_and_gates.cpp"
+  },
+  {
+    "key": "11_graphs/0323_number_of_connected_components",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "0323",
+    "slug": "0323_number_of_connected_components",
+    "title": "Number Of Connected Components",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/11_graphs/0323_number_of_connected_components.py",
+    "cpp": "neetcode150/11_graphs/0323_number_of_connected_components.cpp"
+  },
+  {
+    "key": "11_graphs/0417_pacific_atlantic_water_flow",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "0417",
+    "slug": "0417_pacific_atlantic_water_flow",
+    "title": "Pacific Atlantic Water Flow",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/11_graphs/0417_pacific_atlantic_water_flow.py",
+    "cpp": "neetcode150/11_graphs/0417_pacific_atlantic_water_flow.cpp"
+  },
+  {
+    "key": "11_graphs/0684_redundant_connection",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "0684",
+    "slug": "0684_redundant_connection",
+    "title": "Redundant Connection",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/11_graphs/0684_redundant_connection.py",
+    "cpp": "neetcode150/11_graphs/0684_redundant_connection.cpp"
+  },
+  {
+    "key": "11_graphs/0695_max_area_of_island",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "0695",
+    "slug": "0695_max_area_of_island",
+    "title": "Max Area Of Island",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/11_graphs/0695_max_area_of_island.py",
+    "cpp": "neetcode150/11_graphs/0695_max_area_of_island.cpp"
+  },
+  {
+    "key": "11_graphs/0994_rotting_oranges",
+    "category_dir": "11_graphs",
+    "category": "Graphs",
+    "number": "0994",
+    "slug": "0994_rotting_oranges",
+    "title": "Rotting Oranges",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/11_graphs/0994_rotting_oranges.py",
+    "cpp": "neetcode150/11_graphs/0994_rotting_oranges.cpp"
+  },
+  {
+    "key": "12_advanced_graphs/0269_alien_dictionary",
+    "category_dir": "12_advanced_graphs",
+    "category": "Advanced Graphs",
+    "number": "269",
+    "slug": "0269_alien_dictionary",
+    "title": "Alien Dictionary",
+    "difficulty": "Hard",
+    "approaches": [
+      "\u00b7 Kahn's algorithm (best)",
+      "\u00b7 DFS with 3-color cycle detection"
+    ],
+    "py": "neetcode150/12_advanced_graphs/0269_alien_dictionary.py",
+    "cpp": "neetcode150/12_advanced_graphs/0269_alien_dictionary.cpp"
+  },
+  {
+    "key": "12_advanced_graphs/0332_reconstruct_itinerary",
+    "category_dir": "12_advanced_graphs",
+    "category": "Advanced Graphs",
+    "number": "332",
+    "slug": "0332_reconstruct_itinerary",
+    "title": "Reconstruct Itinerary",
+    "difficulty": "Hard",
+    "approaches": [
+      "Hierholzer, recursive DFS (BEST)",
+      "Hierholzer, iterative (no recursion)"
+    ],
+    "py": "neetcode150/12_advanced_graphs/0332_reconstruct_itinerary.py",
+    "cpp": "neetcode150/12_advanced_graphs/0332_reconstruct_itinerary.cpp"
+  },
+  {
+    "key": "12_advanced_graphs/0743_network_delay_time",
+    "category_dir": "12_advanced_graphs",
+    "category": "Advanced Graphs",
+    "number": "743",
+    "slug": "0743_network_delay_time",
+    "title": "Network Delay Time",
+    "difficulty": "Medium",
+    "approaches": [
+      "Dijkstra with a min-heap (BEST)",
+      "Bellman-Ford (no heap, V-1 relaxation rounds)"
+    ],
+    "py": "neetcode150/12_advanced_graphs/0743_network_delay_time.py",
+    "cpp": "neetcode150/12_advanced_graphs/0743_network_delay_time.cpp"
+  },
+  {
+    "key": "12_advanced_graphs/0778_swim_in_rising_water",
+    "category_dir": "12_advanced_graphs",
+    "category": "Advanced Graphs",
+    "number": "778",
+    "slug": "0778_swim_in_rising_water",
+    "title": "Swim in Rising Water",
+    "difficulty": "Hard",
+    "approaches": [
+      "Binary search over t + BFS reachability (BEST)",
+      "Binary search over t + DSU connectivity"
+    ],
+    "py": "neetcode150/12_advanced_graphs/0778_swim_in_rising_water.py",
+    "cpp": "neetcode150/12_advanced_graphs/0778_swim_in_rising_water.cpp"
+  },
+  {
+    "key": "12_advanced_graphs/0787_cheapest_flights_within_k_stops",
+    "category_dir": "12_advanced_graphs",
+    "category": "Advanced Graphs",
+    "number": "0787",
+    "slug": "0787_cheapest_flights_within_k_stops",
+    "title": "Cheapest Flights Within K Stops",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/12_advanced_graphs/0787_cheapest_flights_within_k_stops.py",
+    "cpp": "neetcode150/12_advanced_graphs/0787_cheapest_flights_within_k_stops.cpp"
+  },
+  {
+    "key": "12_advanced_graphs/1584_min_cost_to_connect_all_points",
+    "category_dir": "12_advanced_graphs",
+    "category": "Advanced Graphs",
+    "number": "1584",
+    "slug": "1584_min_cost_to_connect_all_points",
+    "title": "Min Cost To Connect All Points",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/12_advanced_graphs/1584_min_cost_to_connect_all_points.py",
+    "cpp": "neetcode150/12_advanced_graphs/1584_min_cost_to_connect_all_points.cpp"
+  },
+  {
+    "key": "13_1d_dp/0005_longest_palindromic_substring",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "5",
+    "slug": "0005_longest_palindromic_substring",
+    "title": "Longest Palindromic Substring",
+    "difficulty": "Medium",
+    "approaches": [
+      "Expand around centers (BEST)",
+      "DP boolean table"
+    ],
+    "py": "neetcode150/13_1d_dp/0005_longest_palindromic_substring.py",
+    "cpp": "neetcode150/13_1d_dp/0005_longest_palindromic_substring.cpp"
+  },
+  {
+    "key": "13_1d_dp/0070_climbing_stairs",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "70",
+    "slug": "0070_climbing_stairs",
+    "title": "Climbing Stairs",
+    "difficulty": "Easy",
+    "approaches": [
+      "Bottom-up tabulation with rolling variables (BEST)",
+      "Top-down memoized recursion"
+    ],
+    "py": "neetcode150/13_1d_dp/0070_climbing_stairs.py",
+    "cpp": "neetcode150/13_1d_dp/0070_climbing_stairs.cpp"
+  },
+  {
+    "key": "13_1d_dp/0091_decode_ways",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "91",
+    "slug": "0091_decode_ways",
+    "title": "Decode Ways",
+    "difficulty": "Medium",
+    "approaches": [
+      "Bottom-up with rolling variables (BEST)",
+      "Top-down memoized recursion"
+    ],
+    "py": "neetcode150/13_1d_dp/0091_decode_ways.py",
+    "cpp": "neetcode150/13_1d_dp/0091_decode_ways.cpp"
+  },
+  {
+    "key": "13_1d_dp/0139_word_break",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "139",
+    "slug": "0139_word_break",
+    "title": "Word Break",
+    "difficulty": "Medium",
+    "approaches": [
+      "Bottom-up DP + hash set (BEST)",
+      "Top-down memoized DFS (suffix-first)"
+    ],
+    "py": "neetcode150/13_1d_dp/0139_word_break.py",
+    "cpp": "neetcode150/13_1d_dp/0139_word_break.cpp"
+  },
+  {
+    "key": "13_1d_dp/0152_maximum_product_subarray",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "152",
+    "slug": "0152_maximum_product_subarray",
+    "title": "Maximum Product Subarray",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Kadane with running min (best)",
+      "\u00b7 Prefix/suffix sweep"
+    ],
+    "py": "neetcode150/13_1d_dp/0152_maximum_product_subarray.py",
+    "cpp": "neetcode150/13_1d_dp/0152_maximum_product_subarray.cpp"
+  },
+  {
+    "key": "13_1d_dp/0198_house_robber",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "198",
+    "slug": "0198_house_robber",
+    "title": "House Robber",
+    "difficulty": "Medium",
+    "approaches": [
+      "Bottom-up with rolling variables (BEST)",
+      "Top-down memoized recursion"
+    ],
+    "py": "neetcode150/13_1d_dp/0198_house_robber.py",
+    "cpp": "neetcode150/13_1d_dp/0198_house_robber.cpp"
+  },
+  {
+    "key": "13_1d_dp/0213_house_robber_ii",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "213",
+    "slug": "0213_house_robber_ii",
+    "title": "House Robber II",
+    "difficulty": "Medium",
+    "approaches": [
+      "Two linear passes, rolling variables (BEST)",
+      "Two passes with FULL dp tables (contrast)"
+    ],
+    "py": "neetcode150/13_1d_dp/0213_house_robber_ii.py",
+    "cpp": "neetcode150/13_1d_dp/0213_house_robber_ii.cpp"
+  },
+  {
+    "key": "13_1d_dp/0300_longest_increasing_subsequence",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "300",
+    "slug": "0300_longest_increasing_subsequence",
+    "title": "Longest Increasing Subsequence",
+    "difficulty": "Medium",
+    "approaches": [
+      "O(n\u00b2) DP (BEST when n \u2264 2000)",
+      "Patience sorting + binary search (BEST for big n)"
+    ],
+    "py": "neetcode150/13_1d_dp/0300_longest_increasing_subsequence.py",
+    "cpp": "neetcode150/13_1d_dp/0300_longest_increasing_subsequence.cpp"
+  },
+  {
+    "key": "13_1d_dp/0322_coin_change",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "322",
+    "slug": "0322_coin_change",
+    "title": "Coin Change",
+    "difficulty": "Medium",
+    "approaches": [
+      "Bottom-up tabulation (BEST)",
+      "Top-down memoized recursion"
+    ],
+    "py": "neetcode150/13_1d_dp/0322_coin_change.py",
+    "cpp": "neetcode150/13_1d_dp/0322_coin_change.cpp"
+  },
+  {
+    "key": "13_1d_dp/0416_partition_equal_subset_sum",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "0416",
+    "slug": "0416_partition_equal_subset_sum",
+    "title": "Partition Equal Subset Sum",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/13_1d_dp/0416_partition_equal_subset_sum.py",
+    "cpp": "neetcode150/13_1d_dp/0416_partition_equal_subset_sum.cpp"
+  },
+  {
+    "key": "13_1d_dp/0647_palindromic_substrings",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "0647",
+    "slug": "0647_palindromic_substrings",
+    "title": "Palindromic Substrings",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/13_1d_dp/0647_palindromic_substrings.py",
+    "cpp": "neetcode150/13_1d_dp/0647_palindromic_substrings.cpp"
+  },
+  {
+    "key": "13_1d_dp/0746_min_cost_climbing_stairs",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "0746",
+    "slug": "0746_min_cost_climbing_stairs",
+    "title": "Min Cost Climbing Stairs",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/13_1d_dp/0746_min_cost_climbing_stairs.py",
+    "cpp": "neetcode150/13_1d_dp/0746_min_cost_climbing_stairs.cpp"
+  },
+  {
+    "key": "13_1d_dp/1143_longest_common_subsequence",
+    "category_dir": "13_1d_dp",
+    "category": "1-D Dynamic Programming",
+    "number": "1143",
+    "slug": "1143_longest_common_subsequence",
+    "title": "Longest Common Subsequence",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Full DP table",
+      "\u00b7 Rolling two rows (memory-optimized)"
+    ],
+    "py": "neetcode150/13_1d_dp/1143_longest_common_subsequence.py",
+    "cpp": "neetcode150/13_1d_dp/1143_longest_common_subsequence.cpp"
+  },
+  {
+    "key": "14_2d_dp/0010_regular_expression_matching",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "10",
+    "slug": "0010_regular_expression_matching",
+    "title": "Regular Expression Matching",
+    "difficulty": "Hard",
+    "approaches": [
+      "Bottom-up 2D DP (BEST)",
+      "Top-down memoized DFS (same recurrence, recursion-first)"
+    ],
+    "py": "neetcode150/14_2d_dp/0010_regular_expression_matching.py",
+    "cpp": "neetcode150/14_2d_dp/0010_regular_expression_matching.cpp"
+  },
+  {
+    "key": "14_2d_dp/0062_unique_paths",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0062",
+    "slug": "0062_unique_paths",
+    "title": "Unique Paths",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0062_unique_paths.py",
+    "cpp": "neetcode150/14_2d_dp/0062_unique_paths.cpp"
+  },
+  {
+    "key": "14_2d_dp/0063_unique_paths_ii",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "63",
+    "slug": "0063_unique_paths_ii",
+    "title": "Unique Paths II",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 In-place DP (best)",
+      "\u00b7 1-D rolling row"
+    ],
+    "py": "neetcode150/14_2d_dp/0063_unique_paths_ii.py",
+    "cpp": "neetcode150/14_2d_dp/0063_unique_paths_ii.cpp"
+  },
+  {
+    "key": "14_2d_dp/0064_minimum_path_sum",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "64",
+    "slug": "0064_minimum_path_sum",
+    "title": "Minimum Path Sum",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 In-place DP (best)",
+      "\u00b7 1-D rolling row"
+    ],
+    "py": "neetcode150/14_2d_dp/0064_minimum_path_sum.py",
+    "cpp": "neetcode150/14_2d_dp/0064_minimum_path_sum.cpp"
+  },
+  {
+    "key": "14_2d_dp/0072_edit_distance",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0072",
+    "slug": "0072_edit_distance",
+    "title": "Edit Distance",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0072_edit_distance.py",
+    "cpp": "neetcode150/14_2d_dp/0072_edit_distance.cpp"
+  },
+  {
+    "key": "14_2d_dp/0097_interleaving_string",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0097",
+    "slug": "0097_interleaving_string",
+    "title": "Interleaving String",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0097_interleaving_string.py",
+    "cpp": "neetcode150/14_2d_dp/0097_interleaving_string.cpp"
+  },
+  {
+    "key": "14_2d_dp/0115_distinct_subsequences",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0115",
+    "slug": "0115_distinct_subsequences",
+    "title": "Distinct Subsequences",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0115_distinct_subsequences.py",
+    "cpp": "neetcode150/14_2d_dp/0115_distinct_subsequences.cpp"
+  },
+  {
+    "key": "14_2d_dp/0309_best_time_to_buy_and_sell_stock_with_cooldown",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0309",
+    "slug": "0309_best_time_to_buy_and_sell_stock_with_cooldown",
+    "title": "Best Time To Buy And Sell Stock With Cooldown",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0309_best_time_to_buy_and_sell_stock_with_cooldown.py",
+    "cpp": "neetcode150/14_2d_dp/0309_best_time_to_buy_and_sell_stock_with_cooldown.cpp"
+  },
+  {
+    "key": "14_2d_dp/0312_burst_balloons",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0312",
+    "slug": "0312_burst_balloons",
+    "title": "Burst Balloons",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0312_burst_balloons.py",
+    "cpp": "neetcode150/14_2d_dp/0312_burst_balloons.cpp"
+  },
+  {
+    "key": "14_2d_dp/0329_longest_increasing_path_in_a_matrix",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0329",
+    "slug": "0329_longest_increasing_path_in_a_matrix",
+    "title": "Longest Increasing Path In A Matrix",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0329_longest_increasing_path_in_a_matrix.py",
+    "cpp": "neetcode150/14_2d_dp/0329_longest_increasing_path_in_a_matrix.cpp"
+  },
+  {
+    "key": "14_2d_dp/0494_target_sum",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0494",
+    "slug": "0494_target_sum",
+    "title": "Target Sum",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0494_target_sum.py",
+    "cpp": "neetcode150/14_2d_dp/0494_target_sum.cpp"
+  },
+  {
+    "key": "14_2d_dp/0518_coin_change_ii",
+    "category_dir": "14_2d_dp",
+    "category": "2-D Dynamic Programming",
+    "number": "0518",
+    "slug": "0518_coin_change_ii",
+    "title": "Coin Change Ii",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/14_2d_dp/0518_coin_change_ii.py",
+    "cpp": "neetcode150/14_2d_dp/0518_coin_change_ii.cpp"
+  },
+  {
+    "key": "15_greedy/0045_jump_game_ii",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "45",
+    "slug": "0045_jump_game_ii",
+    "title": "Jump Game II",
+    "difficulty": "Medium",
+    "approaches": [
+      "BFS-layered greedy (BEST)",
+      "Reverse greedy (leftmost reachable, O(n\u00b2))"
+    ],
+    "py": "neetcode150/15_greedy/0045_jump_game_ii.py",
+    "cpp": "neetcode150/15_greedy/0045_jump_game_ii.cpp"
+  },
+  {
+    "key": "15_greedy/0053_maximum_subarray",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "53",
+    "slug": "0053_maximum_subarray",
+    "title": "Maximum Subarray",
+    "difficulty": "Medium",
+    "approaches": [
+      "Kadane's algorithm (BEST)",
+      "Prefix sums + minimum prefix"
+    ],
+    "py": "neetcode150/15_greedy/0053_maximum_subarray.py",
+    "cpp": "neetcode150/15_greedy/0053_maximum_subarray.cpp"
+  },
+  {
+    "key": "15_greedy/0055_jump_game",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "55",
+    "slug": "0055_jump_game",
+    "title": "Jump Game",
+    "difficulty": "Medium",
+    "approaches": [
+      "Greedy furthest-reach (BEST)",
+      "DP frontier O(n\u00b2) (why greedy is better)"
+    ],
+    "py": "neetcode150/15_greedy/0055_jump_game.py",
+    "cpp": "neetcode150/15_greedy/0055_jump_game.cpp"
+  },
+  {
+    "key": "15_greedy/0134_gas_station",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "134",
+    "slug": "0134_gas_station",
+    "title": "Gas Station",
+    "difficulty": "Medium",
+    "approaches": [
+      "Total sum + single-pass candidate (BEST)",
+      "Brute force O(n\u00b2)"
+    ],
+    "py": "neetcode150/15_greedy/0134_gas_station.py",
+    "cpp": "neetcode150/15_greedy/0134_gas_station.cpp"
+  },
+  {
+    "key": "15_greedy/0678_valid_parenthesis_string",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "678",
+    "slug": "0678_valid_parenthesis_string",
+    "title": "Valid Parenthesis String",
+    "difficulty": "Medium",
+    "approaches": [
+      "Two-pass counter sweep (BEST, intuitive)",
+      "Min/max open-count interval (single pass)"
+    ],
+    "py": "neetcode150/15_greedy/0678_valid_parenthesis_string.py",
+    "cpp": "neetcode150/15_greedy/0678_valid_parenthesis_string.cpp"
+  },
+  {
+    "key": "15_greedy/0763_partition_labels",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "763",
+    "slug": "0763_partition_labels",
+    "title": "Partition Labels",
+    "difficulty": "Medium",
+    "approaches": [
+      "Last-index map + sweep (BEST)",
+      "Merge per-character intervals"
+    ],
+    "py": "neetcode150/15_greedy/0763_partition_labels.py",
+    "cpp": "neetcode150/15_greedy/0763_partition_labels.cpp"
+  },
+  {
+    "key": "15_greedy/0846_hand_of_straights",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "846",
+    "slug": "0846_hand_of_straights",
+    "title": "Hand of Straights",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Sorted counter + greedy runs (best)",
+      "\u00b7 Sort + pointer scan"
+    ],
+    "py": "neetcode150/15_greedy/0846_hand_of_straights.py",
+    "cpp": "neetcode150/15_greedy/0846_hand_of_straights.cpp"
+  },
+  {
+    "key": "15_greedy/1899_merge_triplets_to_form_target_triplet",
+    "category_dir": "15_greedy",
+    "category": "Greedy",
+    "number": "1899",
+    "slug": "1899_merge_triplets_to_form_target_triplet",
+    "title": "Merge Triplets to Form Target Triplet",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Filter then merge",
+      "\u00b7 Running best (in-place)"
+    ],
+    "py": "neetcode150/15_greedy/1899_merge_triplets_to_form_target_triplet.py",
+    "cpp": "neetcode150/15_greedy/1899_merge_triplets_to_form_target_triplet.cpp"
+  },
+  {
+    "key": "16_intervals/0056_merge_intervals",
+    "category_dir": "16_intervals",
+    "category": "Intervals",
+    "number": "56",
+    "slug": "0056_merge_intervals",
+    "title": "Merge Intervals",
+    "difficulty": "Medium",
+    "approaches": [
+      "Sort by start + sweep into a result list (BEST)",
+      "Sort by start + in-place compaction"
+    ],
+    "py": "neetcode150/16_intervals/0056_merge_intervals.py",
+    "cpp": "neetcode150/16_intervals/0056_merge_intervals.cpp"
+  },
+  {
+    "key": "16_intervals/0057_insert_interval",
+    "category_dir": "16_intervals",
+    "category": "Intervals",
+    "number": "57",
+    "slug": "0057_insert_interval",
+    "title": "Insert Interval",
+    "difficulty": "Medium",
+    "approaches": [
+      "Three-phase linear sweep (BEST)",
+      "Binary-search the merge window, then splice"
+    ],
+    "py": "neetcode150/16_intervals/0057_insert_interval.py",
+    "cpp": "neetcode150/16_intervals/0057_insert_interval.cpp"
+  },
+  {
+    "key": "16_intervals/0252_meeting_rooms",
+    "category_dir": "16_intervals",
+    "category": "Intervals",
+    "number": "252",
+    "slug": "0252_meeting_rooms",
+    "title": "Meeting Rooms",
+    "difficulty": "Easy",
+    "approaches": [
+      "Sort by start + adjacent overlap check (BEST)",
+      "Chronological event sweep (sweep-line)"
+    ],
+    "py": "neetcode150/16_intervals/0252_meeting_rooms.py",
+    "cpp": "neetcode150/16_intervals/0252_meeting_rooms.cpp"
+  },
+  {
+    "key": "16_intervals/0253_meeting_rooms_ii",
+    "category_dir": "16_intervals",
+    "category": "Intervals",
+    "number": "253",
+    "slug": "0253_meeting_rooms_ii",
+    "title": "Meeting Rooms II",
+    "difficulty": "Medium",
+    "approaches": [
+      "Sort by start + min-heap of end times (BEST)",
+      "Two pointers over sorted starts & ends"
+    ],
+    "py": "neetcode150/16_intervals/0253_meeting_rooms_ii.py",
+    "cpp": "neetcode150/16_intervals/0253_meeting_rooms_ii.cpp"
+  },
+  {
+    "key": "16_intervals/0435_non_overlapping_intervals",
+    "category_dir": "16_intervals",
+    "category": "Intervals",
+    "number": "435",
+    "slug": "0435_non_overlapping_intervals",
+    "title": "Non-overlapping Intervals",
+    "difficulty": "Medium",
+    "approaches": [
+      "Greedy: sort by END, keep earliest-ending (BEST)",
+      "Sort by start + DP"
+    ],
+    "py": "neetcode150/16_intervals/0435_non_overlapping_intervals.py",
+    "cpp": "neetcode150/16_intervals/0435_non_overlapping_intervals.cpp"
+  },
+  {
+    "key": "16_intervals/1851_minimum_interval_to_include_each_query",
+    "category_dir": "16_intervals",
+    "category": "Intervals",
+    "number": "1851",
+    "slug": "1851_minimum_interval_to_include_each_query",
+    "title": "Minimum Interval to Include Each Query",
+    "difficulty": "Hard",
+    "approaches": [
+      "Offline: sort queries + sweep + min-heap (BEST)",
+      "Brute force, length-sorted (contrast)"
+    ],
+    "py": "neetcode150/16_intervals/1851_minimum_interval_to_include_each_query.py",
+    "cpp": "neetcode150/16_intervals/1851_minimum_interval_to_include_each_query.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0043_multiply_strings",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "43",
+    "slug": "0043_multiply_strings",
+    "title": "Multiply Strings",
+    "difficulty": "Medium",
+    "approaches": [
+      "Digit-by-digit product array (BEST)",
+      "Row-by-row long multiplication (textbook form)"
+    ],
+    "py": "neetcode150/17_math_and_geometry/0043_multiply_strings.py",
+    "cpp": "neetcode150/17_math_and_geometry/0043_multiply_strings.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0048_rotate_image",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "48",
+    "slug": "0048_rotate_image",
+    "title": "Rotate Image",
+    "difficulty": "Medium",
+    "approaches": [
+      "Transpose + reverse (BEST)",
+      "In-place 4-way ring swaps (single pass)"
+    ],
+    "py": "neetcode150/17_math_and_geometry/0048_rotate_image.py",
+    "cpp": "neetcode150/17_math_and_geometry/0048_rotate_image.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0050_pow_x_n",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "50",
+    "slug": "0050_pow_x_n",
+    "title": "Pow(x, n)",
+    "difficulty": "Medium",
+    "approaches": [
+      "Iterative exponentiation by squaring (BEST)",
+      "Recursive halving"
+    ],
+    "py": "neetcode150/17_math_and_geometry/0050_pow_x_n.py",
+    "cpp": "neetcode150/17_math_and_geometry/0050_pow_x_n.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0054_spiral_matrix",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "54",
+    "slug": "0054_spiral_matrix",
+    "title": "Spiral Matrix",
+    "difficulty": "Medium",
+    "approaches": [
+      "Boundary shrinking with 4 pointers (BEST)",
+      "Layer-by-layer recursive peeling"
+    ],
+    "py": "neetcode150/17_math_and_geometry/0054_spiral_matrix.py",
+    "cpp": "neetcode150/17_math_and_geometry/0054_spiral_matrix.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0066_plus_one",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "66",
+    "slug": "0066_plus_one",
+    "title": "Plus One",
+    "difficulty": "Easy",
+    "approaches": [
+      "Backwards scan with carry (BEST)",
+      "Integer round-trip (contrast)"
+    ],
+    "py": "neetcode150/17_math_and_geometry/0066_plus_one.py",
+    "cpp": "neetcode150/17_math_and_geometry/0066_plus_one.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0073_set_matrix_zeroes",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "0073",
+    "slug": "0073_set_matrix_zeroes",
+    "title": "Set Matrix Zeroes",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/17_math_and_geometry/0073_set_matrix_zeroes.py",
+    "cpp": "neetcode150/17_math_and_geometry/0073_set_matrix_zeroes.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0201_bitwise_and_of_numbers_range",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "201",
+    "slug": "0201_bitwise_and_of_numbers_range",
+    "title": "Bitwise AND of Numbers Range",
+    "difficulty": "Medium",
+    "approaches": [
+      "\u00b7 Clear the lowest set bit (best)",
+      "\u00b7 Shift both until equal, shift back"
+    ],
+    "py": "neetcode150/17_math_and_geometry/0201_bitwise_and_of_numbers_range.py",
+    "cpp": "neetcode150/17_math_and_geometry/0201_bitwise_and_of_numbers_range.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/0202_happy_number",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "0202",
+    "slug": "0202_happy_number",
+    "title": "Happy Number",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/17_math_and_geometry/0202_happy_number.py",
+    "cpp": "neetcode150/17_math_and_geometry/0202_happy_number.cpp"
+  },
+  {
+    "key": "17_math_and_geometry/2013_detect_squares",
+    "category_dir": "17_math_and_geometry",
+    "category": "Math & Geometry",
+    "number": "2013",
+    "slug": "2013_detect_squares",
+    "title": "Detect Squares",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/17_math_and_geometry/2013_detect_squares.py",
+    "cpp": "neetcode150/17_math_and_geometry/2013_detect_squares.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0007_reverse_integer",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "7",
+    "slug": "0007_reverse_integer",
+    "title": "Reverse Integer",
+    "difficulty": "Medium",
+    "approaches": [
+      "Pop & push with pre-multiply guards (BEST)",
+      "Unbounded accumulation, single final range check"
+    ],
+    "py": "neetcode150/18_bit_manipulation/0007_reverse_integer.py",
+    "cpp": "neetcode150/18_bit_manipulation/0007_reverse_integer.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0136_single_number",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "136",
+    "slug": "0136_single_number",
+    "title": "Single Number",
+    "difficulty": "Easy",
+    "approaches": [
+      "XOR everything (BEST)",
+      "Hash set toggle (O(n) space baseline)"
+    ],
+    "py": "neetcode150/18_bit_manipulation/0136_single_number.py",
+    "cpp": "neetcode150/18_bit_manipulation/0136_single_number.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0190_reverse_bits",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "190",
+    "slug": "0190_reverse_bits",
+    "title": "Reverse Bits",
+    "difficulty": "Easy",
+    "approaches": [
+      "Shift-and-OR assembly, 32 iterations (clear)",
+      "5 masked block swaps (divide & conquer)"
+    ],
+    "py": "neetcode150/18_bit_manipulation/0190_reverse_bits.py",
+    "cpp": "neetcode150/18_bit_manipulation/0190_reverse_bits.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0191_number_of_1_bits",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "191",
+    "slug": "0191_number_of_1_bits",
+    "title": "Number of 1 Bits",
+    "difficulty": "Easy",
+    "approaches": [
+      "Kernighan's algorithm (BEST)",
+      "Scan all 32 bit positions"
+    ],
+    "py": "neetcode150/18_bit_manipulation/0191_number_of_1_bits.py",
+    "cpp": "neetcode150/18_bit_manipulation/0191_number_of_1_bits.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0268_missing_number",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "268",
+    "slug": "0268_missing_number",
+    "title": "Missing Number",
+    "difficulty": "Easy",
+    "approaches": [
+      "XOR of all indices and values (BEST)",
+      "Sum formula"
+    ],
+    "py": "neetcode150/18_bit_manipulation/0268_missing_number.py",
+    "cpp": "neetcode150/18_bit_manipulation/0268_missing_number.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0338_counting_bits",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "0338",
+    "slug": "0338_counting_bits",
+    "title": "Counting Bits",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/18_bit_manipulation/0338_counting_bits.py",
+    "cpp": "neetcode150/18_bit_manipulation/0338_counting_bits.cpp"
+  },
+  {
+    "key": "18_bit_manipulation/0371_sum_of_two_integers",
+    "category_dir": "18_bit_manipulation",
+    "category": "Bit Manipulation",
+    "number": "0371",
+    "slug": "0371_sum_of_two_integers",
+    "title": "Sum Of Two Integers",
+    "difficulty": "?",
+    "approaches": [],
+    "py": "neetcode150/18_bit_manipulation/0371_sum_of_two_integers.py",
+    "cpp": "neetcode150/18_bit_manipulation/0371_sum_of_two_integers.cpp"
+  }
+]

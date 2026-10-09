@@ -1,0 +1,758 @@
+{
+ "problems": [
+  {
+   "key": "07_trees/0098_validate_binary_search_tree",
+   "one_liner": "Carry an open interval down, not just the parent value.",
+   "core_objective": "Decide whether a binary tree satisfies the BST property: every node's value lies strictly between the values permitted by all its ancestors.",
+   "bounds": "Node values are int and can be INT_MIN or INT_MAX, so a bounds-based recursion must use long long or null sentinels, and Python must use float('-inf') rather than 0. Strictness matters: duplicates are invalid.",
+   "approaches": [
+    {
+     "name": "Recursive interval propagation (BEST)",
+     "aha": "DFS down the tree carrying (lo, hi); each node must satisfy lo < val < hi. \u00b1inf floats give the root no constraints.",
+     "py": "        return self._validate(root, float(\"-inf\"), float(\"inf\"))",
+     "cpp": "        if (node == nullptr) { return true;",
+     "time": "O(n)",
+     "space": "O(h), h = height.",
+     "why": "Follows directly from the traversal count: O(n) time, O(h), h = height. space."
+    },
+    {
+     "name": "Iterative inorder (must be strictly ascending)",
+     "aha": "A BST's inorder walk emits values in STRICTLY increasing order \u2014 and only a BST does. Walk iteratively with an explicit stack; if the current value is <= the previous one \u2192 not a BST.",
+     "py": "pending: List[TreeNode] = []\ncur: Optional[TreeNode] = root\nprev: Optional[TreeNode] = None   # last value emitted by the walk\nwhile cur is not None or pending:\n    while cur is not None:\n        pending.append(cur)\n        cur = cur.left\n    cur = pending.pop()",
+     "cpp": "while (cur != nullptr || !pending.empty()) { while (cur != nullptr) { pending.push(cur);\n        cur = cur->left;\n    }\n    cur = pending.top();\n    pending.pop();\n    if (prev != nullptr && prev->val >= cur->val) { return false;\n    }\n    prev = cur;",
+     "time": "O(n)",
+     "space": "O(h).",
+     "why": "Follows directly from the traversal count: O(n) time, O(h). space."
+    }
+   ],
+   "diagram": "      5\n    /   \\\n   3     7      -> valid\n  / \\   / \\\n 2   4 6   8\n\n  valid(n, lo, hi) means: n.val in (lo, hi) STRICTLY\n   left  -> valid(n.left,  lo, n.val)\n   right -> valid(n.right, n.val, hi)\n\n  WRONG variant (the trap):\n   left  -> valid(n.left,  n.val, INT_MAX)   # loses the lower bound\n   right -> valid(n.right, INT_MIN, n.val)   # loses the upper bound\n   accepts [5,1,6,null,null,3] which is invalid\n\n  inorder must be STRICTLY ascending -- simpler:\n   prev = -inf ; walk inorder ; if val <= prev: False",
+   "cpp_vs_py": "Every function call pushes a FRAME (locals + return address) onto the call stack; the frame pops when the callee returns. Recursive tree code therefore costs O(h) extra memory \u2014 one frame per ancestor still on the current path. Approach 1 lets the runtime maintain that stack invisibly; Approach 2 builds the SAME stack by hand with a list. Identical memory behaviour \u2014 recursion just hides the bookkeeping, which is why tree code prefers it.\n\nEvery function call pushes a FRAME (locals + return address) onto the call stack; the frame pops when the callee returns. Recursive tree code therefore costs O(h) extra memory \u2014 one frame per ancestor still on the current path. Approach 1 lets the runtime maintain that stack invisibly; Approach 2 builds the SAME stack by hand with std::stack. Identical memory behaviour \u2014 recursion just hides the bookkeeping, which is why tree code prefers it. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <stack> // std::stack \u2014 explicit inorder stack (approach 2) #include <climits> // LLONG_MIN / LLONG_MAX \u2014 \u00b1\u221e bounds for approach 1 #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h>// getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // share",
+   "cpp_alts": [
+    "`long long lo, hi` with `LLONG_MIN/LLONG_MAX` handles INT_MIN/INT_MAX safely; `INT_MIN` as a bound is the classic overflow bug.",
+    "An iterative stack-based inorder avoids recursion depth issues on a skewed tree of 1e4 nodes."
+   ],
+   "py_alts": [
+    "`float('-inf')` / `float('inf')` as the initial bounds is the safe sentinel -- integer sentinels cannot express \"unbounded\".",
+    "`bisect` on the inorder list is another way to state strictness, though it allocates O(n)."
+   ],
+   "trap": "Passing `None`/0 as the initial bound instead of infinity. With `0` as the lower bound a tree rooted at a negative value is rejected, and with `0` as the upper bound a subtree of positives is rejected.",
+   "invariant": "`valid(n, lo, hi)` returns true iff n's entire subtree satisfies the BST property given that every value in it must lie strictly inside (lo, hi). The recursion tightens exactly one side per branch, so the invariant composes.",
+   "questions": [
+    {
+     "q": "Why is the inorder-strictly-ascending check equivalent?",
+     "a": "A BST is exactly the tree whose inorder traversal is strictly increasing. Proving one direction: an inorder walk emits left subtree, root, right subtree, and the BST property forces each to be in order. So a single inorder pass with one comparison decides validity, at O(h) space."
+    },
+    {
+     "q": "What is the recursion depth, and is it safe?",
+     "a": "O(h), h the height. A degenerate tree of 1e4 nodes gives depth 1e4, which overflows CPython's default recursion limit and is a large but survivable C++ stack. The iterative inorder version is the safe choice."
+    },
+    {
+     "q": "How do you handle INT_MIN as a node value in C++?",
+     "a": "Use `long long` bounds with `LLONG_MIN`/`LLONG_MAX`, not `int` with `INT_MIN`. With int bounds a node equal to INT_MIN would fail the strict lower-bound test even though it is legal."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0100_same_tree",
+   "one_liner": "Structural equality: both null, or both non-null and equal.",
+   "core_objective": "Decide whether two binary trees have identical structure and identical node values.",
+   "bounds": "The trees may have different node counts, different depths, or be null. Comparing node-by-node only when both exist is what makes mismatched shapes fail fast.",
+   "approaches": [
+    {
+     "name": "Recursive equality (BEST, clearest)",
+     "aha": "Three base cases (both None \u2192 True; one None \u2192 False; values differ \u2192 False), then recurse into both child pairs.",
+     "py": "if p is None and q is None:\nif p is None or q is None:\nif p.val != q.val:\nreturn self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)",
+     "cpp": "        if (p == nullptr && q == nullptr) { return true;",
+     "time": "O(min(n, m)) \u2014 stops at the first mismatch.",
+     "space": "O(h)         \u2014 call stack depth.",
+     "why": "Follows directly from the traversal count: O(min(n, m)) \u2014 stops at the first mismatch. time, O(h)         \u2014 call stack depth. space."
+    },
+    {
+     "name": "Iterative BFS (queue of node pairs)",
+     "aha": "Same logic, but the work is held in an explicit FIFO queue of (p, q) pairs instead of the call stack \u2014 a flat loop, immune to deep-recursion stack overflow on skewed trees.",
+     "py": "pending: deque = deque([(p, q)])\nwhile pending:\n    a, b = pending.popleft()\n    if a is None and b is None:\n        continue\n    if a is None or b is None or a.val != b.val:\n    pending.append((a.left, b.left))\n    pending.append((a.right, b.right))",
+     "cpp": "while (!pending.empty()) { auto [a, b] = pending.front();\n    pending.pop();\n    if (a == nullptr && b == nullptr) { continue;\n    }\n    if (a == nullptr || b == nullptr || a->val != b->val) { return false;\n    }\n    pending.push({a->left, b->left});\n    pending.push({a->right, b->right});",
+     "time": "O(min(n, m)) \u2014 each pair dequeued once.",
+     "space": "O(w)         \u2014 queue width at the widest level.",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    }
+   ],
+   "diagram": "  t1        t2        same?\n   1          1        values equal\n  / \\        / \\       both children non-null\n 2   3      2   3      recurse\n\n   1          1        values equal\n  / \\        /          t2 right is NULL but t1 right is not\n 2   3                    -> FALSE (shape differs)\n\n  recursion:\n   both NULL          -> true\n   one NULL           -> false\n   values differ      -> false\n   else recurse both children\n\n  invariant: the call at node pair (a,b) is responsible for the\n  entire subtrees below; it may only return true if BOTH shape\n  and values agree all the way down.",
+   "cpp_vs_py": "Recursive DFS and iterative BFS explore in different ORDERS but compare exactly the same pairs of nodes. The choice is about the container: the call stack (A1) vs an explicit queue (A2). For an O(n) tree walk either is fine; the queue version shines when the tree is so deep that recursion would blow the runtime stack.\n\nRecursive DFS and iterative BFS explore in different ORDERS but compare exactly the same pairs of nodes. The choice is about the container: the call stack (A1) vs an explicit queue (A2). For an O(n) tree walk, either is fine; the queue version shines when the tree is so deep that recursion would blow the runtime stack. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <queue> // std::queue \u2014 FIFO of node pairs (approach 2) #include <utility> // std::pair \u2014 (p, q) bundles in the queue #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "An iterative stack of node pairs avoids recursion depth on skewed trees.",
+    "A single `TreeNode*` stack holding pairs is the standard iterative form."
+   ],
+   "py_alts": [
+    "Comparing with `==` on nodes would use identity; the `is not None` and value checks must be explicit.",
+    "A one-liner `(a.val, a.left, a.right) == (b.val, b.left, b.right)` recurses implicitly but allocates tuples per node."
+   ],
+   "trap": "Checking only values and ignoring structure. `[1,2]` versus `[1,null,2]` has the same multiset of values but different shapes; the null checks on the children are what distinguish them.",
+   "invariant": "At every call, `a` and `b` are at the same position in their respective trees (or both null). Returning true requires all four conditions simultaneously, so a single false anywhere propagates up and the whole answer is false.",
+   "questions": [
+    {
+     "q": "Why check `a is None and b is None` before touching values?",
+     "a": "Because you must distinguish \"both subtrees end here\" (true) from \"one ends and the other does not\" (false). Merging those cases into a single `a is None or b is None` check wrongly accepts trees of different shapes."
+    },
+    {
+     "q": "Can you do this without recursion?",
+     "a": "Yes -- push both roots on a stack, pop a pair, apply the same three tests, and push the two children pairs. Same $O(n)$ time, and the stack is O(h) which is better than the call stack only in that it is heap-allocated and bounded explicitly."
+    },
+    {
+     "q": "What is the time complexity, and why is it O(n) not O(min(n,m))?",
+     "a": "$O(n)$ where n is the total nodes compared. You may stop early on a mismatch, but the worst case is when both trees are identical, and then every node in both is visited."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0102_binary_tree_level_order_traversal",
+   "one_liner": "Snapshot the queue size at the start of each level.",
+   "core_objective": "Return the values of the tree grouped by level, outermost level first.",
+   "bounds": "The tree may be null (return []) and is skewed, so the queue-based BFS must not recurse. Node count up to 2e4, so recursion depth can reach 2e4 on a left-only chain.",
+   "approaches": [
+    {
+     "name": "BFS with a per-level snapshot (BEST)",
+     "aha": "At each iteration record size = len(queue), pop exactly `size` nodes into one row, enqueue their children for the next row.",
+     "py": "rows: List[List[int]] = []            # one list per level\nif root is None:\n    return rows                       # empty tree \u2192 empty output\npending = [root]                      # FIFO of the next frontier\nwhile pending:\n    row: List[int] = []\n    for _ in range(len(pending)):\n        cur = pending.pop(0)",
+     "cpp": "if (root == nullptr) {\n    return rows;                      // empty tree \u2192 empty output",
+     "time": "O(n)",
+     "space": "O(n) \u2014 queue holds",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    },
+    {
+     "name": "DFS with depth-indexed rows (no queue at all)",
+     "aha": "Recursively visit nodes carrying their depth; append each value into rows[depth] (growing the list on first visit to a depth). Same output, different traversal order (preorder instead of BFS).",
+     "py": "rows: List[List[int]] = []\nself._walk(root, 0, rows)             # root sits at depth 0\nreturn rows",
+     "cpp": "        if (node == nullptr) { return;",
+     "time": "O(n)",
+     "space": "O(h) call stack +",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": "        3\n      /   \\\n     9   20\n        /  \\\n       15   7\n\n  queue = [3], level size = 1\n    take 1 node -> 3              level 0: [3]\n  queue = [9,20], level size = 2\n    take 2     -> 9, 20          level 1: [9,20]\n  queue = [15,7], level size = 2\n    take 2     -> 15, 7          level 2: [15,7]\n\n  the SNAPSHOT is the whole trick: capture len(queue) BEFORE\n  consuming the level, else you would consume everything in one\n  flat list. `for _ in range(size)` is the idiom.\n\n  time O(n), space O(width) for the queue",
+   "cpp_vs_py": "FIFO is THE container for breadth-first walks: a node's children are appended AFTER everything already queued, so nodes at depth d are always processed before any node at depth d+1. Stacks would produce DFS instead. The \"snapshot the size first\" trick converts a FIFO stream into explicit level boundaries \u2014 the same pattern powers right-side view and zigzag traversal.\n\nFIFO is THE container for breadth-first walks: a node's children are appended AFTER everything already queued, so nodes at depth d are always processed before any node at depth d+1. Stacks would produce DFS (depth-first) instead. The \"snapshot the size first\" trick converts a FIFO stream into explicit level boundaries \u2014 the same pattern powers right-side view and zigzag traversal. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 rows output / level-order tests #include <queue> // std::queue \u2014 FIFO used by approach 1 #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "`queue<TreeNode*>` with `int size = q.size()` per level is the canonical form.",
+    "Two vectors and an index pointer avoids per-level allocation, reusing capacity across levels."
+   ],
+   "py_alts": [
+    "`from collections import deque; popleft()` is O(1) at both ends; a `list` with an index pointer is also O(1) and avoids deque overhead for pure FIFO use.",
+    "A list used as a FIFO with a moving index beats `collections.deque` when only one end is consumed, since there is no block splitting.",
+    "`for _ in range(len(q))` snapshots the level size once, which is the entire algorithm -- `deque.popleft()` is the other half."
+   ],
+   "trap": "Iterating `while queue:` and appending into the same level list -- that flattens the traversal. Or recomputing the level size inside the inner loop, which shrinks it as you pop.",
+   "invariant": "At the start of each outer iteration, the queue contains exactly the nodes of the current level, in left-to-right order, and `size` is that count. Popping exactly `size` times consumes precisely one level and leaves the queue holding the next.",
+   "questions": [
+    {
+     "q": "Why must the size be captured before the inner loop?",
+     "a": "Because popping shrinks the queue. If you recompute the size each iteration it decreases by one every time and the inner loop exits early, producing short levels. Capturing it once makes the loop bound the level width."
+    },
+    {
+     "q": "What is the space complexity, and what dominates it?",
+     "a": "$O(w)$ where w is the maximum width of the tree, plus $O(h)$ for the result list itself. A complete tree of n nodes has width ~n/2, so the result dominates; a skewed tree has width 1 but a result of depth h."
+    },
+    {
+     "q": "When is the depth-first alternative preferable?",
+     "a": "When the interviewer wants to test index-based accumulation: recurse with a `depth` argument and append into `result[depth]`. That gives $O(n)$ time with $O(h)$ recursion space and no queue at all."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0104_maximum_depth_of_binary_tree",
+   "one_liner": "1 + max of the two subtrees; null is depth zero.",
+   "core_objective": "Return the number of edges on the longest root-to-leaf path.",
+   "bounds": "The tree is a valid binary tree and may be a single node (depth 0) or null. Up to 1e4 nodes, so recursion depth can reach 1e4.",
+   "approaches": [
+    {
+     "name": "Recursive post-order (BEST, canonical)",
+     "aha": "Ask both children for their depths, take the max, add 1 for the current node. The answer assembles itself bottom-up.",
+     "py": "if root is None:\nleft_depth = self.maxDepth(root.left)\nright_depth = self.maxDepth(root.right)\nreturn max(left_depth, right_depth) + 1",
+     "cpp": "        if (root == nullptr) {",
+     "time": "O(n)",
+     "space": "O(h), h = height.",
+     "why": "Follows directly from the traversal count: O(n) time, O(h), h = height. space."
+    },
+    {
+     "name": "Iterative BFS (count the levels)",
+     "aha": "Process level by level with a queue; every finished level adds 1 to a counter. No recursion at all \u2014 depth = number of rows.",
+     "py": "if root is None:\npending = [root]                      # FIFO \u2014 the next frontier\ndepth = 0\nwhile pending:\n    for _ in range(len(pending)):\n        cur = pending.pop(0)\n        if cur.left is not None:\n            pending.append(cur.left)",
+     "cpp": "        if (root == nullptr) {",
+     "time": "O(n)",
+     "space": "O(w) \u2014 queue holds",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    }
+   ],
+   "diagram": "      1\n    /   \\\n   2     3\n  /         \\\n 4           5\n               \\\n                6\n\n  depth(NULL) = 0\n  depth(1) = 1 + max(depth(2), depth(3))\n  depth(2) = 1 + max(depth(4), 0) = 1 + 1 = 2\n  depth(3) = 1 + max(0, depth(5)) = 1 + 2 = 3\n  depth(1) = 1 + max(2, 3) = 4   CORRECT (path 1-3-5-6)\n\n  edge count vs node count: null->0 means the answer counts\n  EDGES, which matches the problem statement.",
+   "cpp_vs_py": "Computing a value from children BEFORE acting on the node itself is a post-order pattern: the child answers arrive first, the parent's answer composes them. This exact shape powers max path sum, diameter and balanced-tree checks \u2014 every \"climb back up with a summary value\" problem. Approach 2 sidesteps recursion entirely because BFS measures depth horizontally, one level at a time \u2014 no call stack, but O(n) worst-case queue memory instead of O(h).\n\nComputing a value from children BEFORE acting on the node itself is a post-order pattern: the child answers arrive first, the parent's answer composes them. This exact shape powers max path sum, diameter and balanced-tree checks \u2014 every \"climb back up with a summary value\" problem. Approach 2 sidesteps recursion entirely because BFS measures depth horizontally, one level at a time \u2014 no call stack, but O(n) worst-case queue memory instead of O(h). ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <queue> // std::queue \u2014 FIFO used by approach 2 #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "A stack with `(node, depth)` pairs avoids the 1e4-deep call stack risk.",
+    "`max` on two ints is a single cmp/cmov pair, so the recursive form is already optimal."
+   ],
+   "py_alts": [
+    "`max(a, b)` is a Python function call; a conditional expression is measurably faster in a hot recursion.",
+    "Iterative level-order counting is O(n) time with O(w) space and no recursion limit risk."
+   ],
+   "trap": "Returning node count instead of edge count. Returning 1 for a null tree instead of 0 shifts every answer by one; the problem counts edges.",
+   "invariant": "`depth(n)` returns the longest downward path from n to a null child, counted in edges. A null node has depth 0 because it has no edges, so the recurrence 1 + max(left, right) composes correctly.",
+   "questions": [
+    {
+     "q": "Why is the null base case 0 and not 1?",
+     "a": "Because the answer counts edges. A lone node has one node and zero edges, so depth must be 0 for it, which requires depth(NULL) = 0 and depth(node) = 1 + max(children)."
+    },
+    {
+     "q": "Could this be iterative with less memory?",
+     "a": "Yes -- level-order counting needs O(w) queue space, but a DFS stack needs O(h). Neither beats the O(h) recursion stack meaningfully; the iterative version's only real advantage is avoiding the recursion-depth limit in Python."
+    },
+    {
+     "q": "What if the tree were a general N-ary tree?",
+     "a": "The recurrence generalises to 1 + max over all children, and the null base case stays 0. The kernel is identical; only the loop over children is added."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0105_construct_binary_tree_from_preorder_and_inorder",
+   "one_liner": "The next preorder value is the root; inorder splits it.",
+   "core_objective": "Rebuild a binary tree from its preorder and inorder traversals, where node values are unique.",
+   "bounds": "1 <= preorder.length <= 3000 with all values unique, so the inorder index map is a permutation and the split point is well defined. An empty input must return null without special-casing.",
+   "approaches": [
+    {
+     "name": "Hash map of inorder indices (BEST)",
+     "aha": "Pre-scan inorder into a dict value\u2192index so \"how big is the left subtree?\" is an O(1) arithmetic question: left_size = in_index[root] - in_left. Build slices recursively.",
+     "py": "in_index = {v: i for i, v in enumerate(inorder)}\nreturn self._build(preorder, 0, len(preorder) - 1,\n                   inorder, 0, len(inorder) - 1, in_index)\n       ino: List[int], il: int, ir: int,\n       in_index: dict) -> Optional[TreeNode]:",
+     "cpp": "        for (int i = 0; i < static_cast<int>(inorder.size()); ++i) { in_index[inorder[i]] = i;",
+     "time": "O(n)",
+     "space": "O(n) map + O(h) stack.",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "No map: linear scan (conceptually simpler, slower)",
+     "aha": "Identical recursion, but the inorder root is located by scanning the slice linearly each time.",
+     "py": "return self._build(preorder, 0, len(preorder) - 1,\n                   inorder, 0, len(inorder) - 1)\n       ino: List[int], il: int, ir: int) -> Optional[TreeNode]:",
+     "cpp": "        if (pl > pr || il > ir) { return nullptr;",
+     "time": "O(n\u00b2)",
+     "space": "O(h) \u2014 no map.",
+     "why": "Follows directly from the traversal count: O(n\u00b2) time, O(h) \u2014 no map. space."
+    }
+   ],
+   "diagram": " preorder = [3,9,20,15,7]\n inorder  = [9,3,15,20,7]\n\n build(pre_idx, lo, hi):\n   root_val = preorder[pre_idx]\n   root = TreeNode(root_val)\n   mid = index_of[root_val]          # O(1) with a map\n   left_size = mid - lo\n   root.left  = build(pre_idx+1,      lo,  mid-1)\n   root.right = build(pre_idx+1+left_size, mid+1, hi)\n\n build(0, 0, 4):\n   root 3, mid=1, left_size=1\n   left  = build(1, 0, 0)   -> 9\n   right = build(2, 2, 4)   -> 20 with children 15, 7\n\n WITHOUT the map (the O(n^2) variant):\n   mid = inorder.index(root_val)   -> O(n) PER CALL\n   total O(n^2) = 9e6 for n=3000. The map makes it O(n).",
+   "cpp_vs_py": "Preorder range [pl, pr] and inorder range [il, ir] always describe the SAME subtree. root = pre[pl]. left subtree = pre[pl+1, pl+1+ls) \u00d7 inorder [il, mid); right = pre[pl+1+ls, pr] \u00d7 inorder (mid, ir]. Empty ranges \u2192 None. That is the whole algorithm \u2014 recursion is just the for-loop of divide & conquer.\n\nPreorder range [pl, pr] and inorder range [il, ir] always describe the SAME subtree. root = pre[pl]. left subtree = pre[pl+1, pl+1+ls) \u00d7 inorder [il, mid); right = pre[pl+1+ls, pr] \u00d7 inorder (mid, ir]. Empty ranges \u2192 nullptr. That is the whole algorithm \u2014 recursion is just the for-loop of divide & conquer. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 traversal inputs #include <unordered_map> // std::unordered_map \u2014 value\u2192index (approach 1) #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "An `unordered_map<int,int>` of value to inorder index is the whole optimization.",
+    "Passing the inorder range by reference and preorder by index avoids copying vectors per call."
+   ],
+   "py_alts": [
+    "`index = {v: i for i, v in enumerate(inorder)}` is O(n) once and makes each lookup O(1).",
+    "`inorder.index(v)` inside the recursion is the trap -- it is O(n) per node, giving O(n^2)."
+   ],
+   "trap": "Recomputing the inorder position with `inorder.index(root_val)` at each call. It works, is O(n^2), and at n = 3000 is roughly 9e6 comparisons -- enough to time out.",
+   "invariant": "`build(pre_idx, lo, hi)` reconstructs exactly the subtree whose inorder traversal is `inorder[lo..hi]`, using `preorder[pre_idx]` as its root. The left subtree consumes `mid - lo` further preorder entries, so the right subtree starts at `pre_idx + 1 + (mid - lo)`.",
+   "questions": [
+    {
+     "q": "Why does the inorder index split the preorder list?",
+     "a": "In preorder the root is first, then the entire left subtree, then the entire right subtree. Knowing the left subtree's size from the inorder index therefore tells you where the right subtree begins in preorder -- that single arithmetic step is the entire algorithm."
+    },
+    {
+     "q": "What if values were not unique?",
+     "a": "The algorithm breaks: the same value appears in inorder at multiple positions, so the split point is ambiguous and the tree is not uniquely determined. Uniqueness is exactly the precondition that makes the map well defined."
+    },
+    {
+     "q": "What is the space complexity?",
+     "a": "$O(n)$ for the index map plus $O(h)$ recursion. Both are unavoidable -- the map is what buys the time bound and the stack is the traversal itself."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0110_balanced_binary_tree",
+   "one_liner": "Return the height, and reject any subtree differing by more than one.",
+   "core_objective": "Decide whether the height of the left and right subtrees of every node differs by at most one.",
+   "bounds": "Up to 5e3 nodes, so a skewed tree recurses 5e3 deep. An empty tree is balanced, which must be the base case.",
+   "approaches": [
+    {
+     "name": "Single post-order pass (BEST)",
+     "aha": "dfs(node) returns the subtree height, or -1 as a sentinel meaning \"unbalanced somewhere below\". Every node is touched once.",
+     "py": "        return self._height(root) != -1",
+     "cpp": "        if (node == nullptr) {",
+     "time": "O(n)",
+     "space": "O(h), h = height.",
+     "why": "Follows directly from the traversal count: O(n) time, O(h), h = height. space."
+    },
+    {
+     "name": "Top-down double recursion (contrast)",
+     "aha": "isBalanced(root) = |height(left) \u2212 height(right)| \u2264 1 AND balanced(left) AND balanced(right), recomputing height() per node.",
+     "py": "if root is None:\nif abs(self._height(root.left) - self._height(root.right)) > 1:\nreturn self.isBalanced(root.left) and self.isBalanced(root.right)",
+     "cpp": "        if (root == nullptr) { return true;",
+     "time": "O(n\u00b2)  worst \u2014 height() re-walks subtrees for",
+     "space": "O(h).",
+     "why": "each (i, j) state is solved once and cached; hence the stated bounds."
+    }
+   ],
+   "diagram": "        3\n      /   \\\n     2     8\n    /       \\\n   1        7\n             \\\n              6      <- subtree of 7 is off by 2\n\n  height(n) -> -1 if unbalanced, else the height\n\n   h(1) = 0                       (leaf)\n   h(7) = 1 + max(h(6), h(N))     (6 has h 0, NULL -1)\n                              -> 1 + max(0, -1) = 1\n   h(8) = 1 + max(h(7), h(NULL)) = 1 + max(1, -1) = 2\n   h(2) = 1 + max(h(1), h(NULL)) = 1 + max(0,-1) = 1\n   h(3) = 1 + max(1, 2) = 3, and |1-2| = 1 <= 1 -> balanced\n\n  WHY -1 AS THE SENTINEL: one return value encodes both\n  'how tall' and 'is fine', so the parent can check both\n  facts with a single comparison.",
+   "cpp_vs_py": "\"Return a compact summary from each subtree, compose at the node\" is the fundamental pattern of tree DP: max path sum, diameter, and balanced checks are ALL this. The summary is a PAIR here \u2014 (height, balanced) \u2014 encoded cleverly as a single int: height \u2265 0, or -1 meaning \"imbalanced\". One value, two meanings, zero extra structs. Approach 2 shows the cost of NOT passing info up: every level re-asks the same subtree questions it already knew the answer to.\n\n\"Return a compact summary from each subtree, compose at the node\" is the fundamental pattern of tree DP: max path sum, diameter, and balanced checks are ALL this. The summary is a PAIR here \u2014 (height, balanced) \u2014 encoded cleverly as a single int: height \u2265 0, or -1 meaning \"imbalanced\". One value, two meanings, zero extra structs. Approach 2 shows the cost of NOT passing info up: every level re-asks the same subtree questions it already knew the answer to. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "Returning -1 for failure is the single-pass standard; returning a bool with an out-parameter height costs a second traversal.",
+    "An iterative post-order with a `(node, state)` stack avoids the recursion limit at 5e3 depth."
+   ],
+   "py_alts": [
+    "`return -1 if ... else 1 + h` written as one expression avoids a Python-level branch and a temp variable.",
+    "A generator-free explicit stack is safer than recursion past 1000 in CPython, and 5e3 exceeds that limit."
+   ],
+   "trap": "Recomputing both subtree heights with separate calls inside the parent, which visits subtrees repeatedly and can become O(n^2) on skewed inputs. Returning height from a single pass avoids that entirely.",
+   "invariant": "`height(n)` returns the height of n's subtree if that subtree is balanced at every node, or -1 if any node in the subtree is unbalanced. Because -1 propagates up, once a violation is found every ancestor also returns -1 and the whole answer is false.",
+   "questions": [
+    {
+     "q": "Why is a single return value better than a bool plus a height?",
+     "a": "Because it halves the work. The parent needs both the height (to compute its own) and the validity (to fail fast). Returning -1 on failure gives one int that answers both, so there is no second traversal and no out-parameter."
+    },
+    {
+     "q": "What is the worst-case time complexity?",
+     "a": "$O(n)$ -- each node is visited exactly once in post-order, whether the tree is balanced or not. The naive version that recurses for left height, right height, and then again to check, visits each node once per ancestor and is $O(n^2)$ on a chain."
+    },
+    {
+     "q": "How do you avoid the Python recursion limit here?",
+     "a": "Convert to an explicit stack of nodes with a visited flag, or push `(node, False)` then `(node, True)` and children to emulate post-order. That replaces the C-level call stack with a heap list you control."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0124_binary_tree_maximum_path_sum",
+   "one_liner": "Clamp each child branch at zero; the return is one-sided.",
+   "core_objective": "Return the largest sum of values along any path in a binary tree, where node values may be negative and the path may start and end anywhere.",
+   "bounds": "-1e3 <= node.val <= 1e3 and up to 3e4 nodes, so the answer can be as low as -1e3 (a single negative node) and clamping at zero must not make the answer 0 incorrectly. A path cannot revisit a node, so it bends at most once.",
+   "approaches": [
+    {
+     "name": "Post-order with best-so-far (BEST)",
+     "aha": "dfs(node) returns the best single-branch down-sum through node; the caller updates a shared `best` with the full path through it. Negative branches are dropped (max(0, child)) \u2014 a path may simply not extend into a subtree that would shrink it.",
+     "py": "self.best = float(\"-inf\")     # -\u221e: every node re-arms the max\nself._down_sum(root)\nreturn int(self.best)\nif node is None:\nleft = max(0, self._down_sum(node.left))\nright = max(0, self._down_sum(node.right))\nself.best = max(self.best, left + node.val + right)\nreturn node.val + max(left, right)",
+     "cpp": "        if (node == nullptr) {",
+     "time": "O(n)",
+     "space": "O(h), h = height.",
+     "why": "Follows directly from the traversal count: O(n) time, O(h), h = height. space."
+    },
+    {
+     "name": "Brute force, path-through-every-node (contrast)",
+     "aha": "For every node compute the max down-sum through each child with a separate helper, then combine. Same idea, but each child's down- sum is recomputed for every ancestor.",
+     "py": "if root is None:\nself.best = float(\"-inf\")\nself._consider(root)          # every node as the path's peak\nreturn int(self.best)",
+     "cpp": "        if (root == nullptr) {",
+     "time": "O(n\u00b2)  worst",
+     "space": "O(h).",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    }
+   ],
+   "diagram": "      -10        best through -10:\n     /    \\\n     9     20     9 + (-10) + 20 = 19\n   /         \\\n  15         7\n\n  dfs(n) = best DOWNWARD path starting at n (one branch only)\n\n   dfs(15) = 15          best so far stays 0\n   dfs(9)  = 9 + max(0, 15) = 24\n   dfs(7)  = 7 + max(0, 0)  = 7\n   dfs(20) = 20 + max(0, 7) = 27\n\n   at -10: candidate = 9-path(24) + (-10) + 20-path(27)\n            = 24 - 10 + 27 = 41   <-- the answer, a BENT path\n   dfs(-10) = -10 + max(0, 24) = 14  (one-sided, for the parent)\n\n  TWO different quantities:\n   return value  = may extend upward -> ONE branch -> clamp\n   best tracker  = any shape        -> TWO branches -> no clamp\n  Conflating them is THE classic bug.",
+   "cpp_vs_py": "dfs returning ONE value while a shared accumulator tracks the answer is the canonical Hard-tree pattern: the return value is the \"legal to extend\" summary (one branch only), the global is the \"any shape\" answer (both branches, no parent). Confusing the two is THE classic bug on this problem \u2014 a path can bend through the node (left + right) but can only EXTEND upward along one branch. Clamping child contributions at 0 is safe because an empty path is always allowed.\n\ndfs returning ONE value while a shared accumulator tracks the answer is the canonical Hard-tree pattern: the return value is the \"legal to extend\" summary (one branch only), the global is the \"any shape\" answer (both branches, no parent). Confusing the two is THE classic bug on this problem \u2014 a path can bend through the node (left + right) but can only EXTEND upward along one branch. Clamping child contributions at 0 is safe because an empty path is always allowed. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <algorithm> // std::max \u2014 clamping child contributions #include <climits> // INT_MIN \u2014 the \"\u2212\u221e\" starter for best-so-far #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for b",
+   "cpp_alts": [
+    "Passing `int& best` avoids a member variable and makes the function reentrant.",
+    "`max(0, dfs(left))` is the clamp; without it a negative subtree poisons every ancestor's path."
+   ],
+   "py_alts": [
+    "`self.best` as an instance attribute is the Python idiom; a nested function with a mutable cell is faster.",
+    "Returning 0 from a null child makes the clamp unnecessary: `max(left, right)` already excludes negatives."
+   ],
+   "trap": "Returning `node.val + left + right` (both branches) instead of the one-sided sum. That returns the best bent path, which the parent cannot extend upward, so ancestors compute wrong values.",
+   "invariant": "`dfs(n)` returns the maximum sum of a path that starts at n and goes down into at most one subtree. Clamping children at 0 is safe because a path is not required to extend into a subtree at all, and the empty extension contributes 0.",
+   "questions": [
+    {
+     "q": "Why clamp at zero when the values may be negative?",
+     "a": "Because a path is not obliged to visit any child. Choosing not to descend contributes 0, which is always at least as good as descending into a negative subtree. Clamping therefore models a legal choice rather than distorting the optimum."
+    },
+    {
+     "q": "Why are the return value and the global answer different quantities?",
+     "a": "A path that bends through n uses both children and cannot be extended upward (the parent would revisit n). A path that starts at n and goes down uses one child and can be extended. So the return value is one-sided while the tracked answer is two-sided."
+    },
+    {
+     "q": "What happens on an all-negative tree?",
+     "a": "Every clamp zeroes out, so each return is the node's own value, and the best tracker records the maximum single node value -- which is the correct answer, since a path must contain at least one node."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0199_binary_tree_right_side_view",
+   "one_liner": "BFS taking the last node of each level, or DFS right-first.",
+   "core_objective": "Return the values seen from the right side, top to bottom -- one value per level.",
+   "bounds": "The tree may be a single node, so there is exactly one level. A right-skewed tree gives all nodes in order.",
+   "approaches": [
+    {
+     "name": "BFS level snapshots (BEST, intuitive)",
+     "aha": "Same per-level snapshot loop as level-order traversal; instead of storing the whole row, keep only its last element.",
+     "py": "view: List[int] = []\nif root is None:\n    return view\npending = [root]                      # FIFO \u2014 next frontier\nwhile pending:\n    last_val = 0                      # will hold the row's tail\n    for _ in range(len(pending)):\n        cur = pending.pop(0)",
+     "cpp": "        if (root == nullptr) { return view;",
+     "time": "O(n)",
+     "space": "O(n) \u2014 queue width.",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    },
+    {
+     "name": "DFS, right-first, first-visit-per-depth",
+     "aha": "dfs(node, depth): if depth equals the count of levels recorded so far, this is the FIRST node seen at that depth \u2192 append it. Then recurse RIGHT first, LEFT second \u2014 rightmost wins the race.",
+     "py": "view: List[int] = []\nself._walk(root, 0, view)\nreturn view",
+     "cpp": "        if (node == nullptr) { return;",
+     "time": "O(n)",
+     "space": "O(h), h = height.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": "       1\n     /   \\\n    2     3\n   / \\   / \\\n  4   5 6   7\n\n  right side view = [1, 3, 7]\n\n  BFS: per level take the LAST enqueued node\n   level 0: queue=[1]              -> take 1\n   level 1: queue=[2,3]            -> take 3\n   level 2: queue=[4,5,6,7]        -> take 7\n\n  DFS right-first with OVERWRITE per depth:\n   depth 0: visit(1) -> res[0] = 1\n   depth 1: visit(3) -> res[1] = 3   (2 then overwrites? no:\n          visiting right child first means 3 is set FIRST)\n   depth 2: visit(7) -> res[2] = 7   (5 would overwrite -- so\n          either visit right-first and overwrite, or\n          left-first and skip-if-set)\n\n  invariant BFS: nodes at each level enter the queue in\n  left-to-right order, so index size-1 is the rightmost.",
+   "cpp_vs_py": "BFS sees levels HORIZONTALLY (who is last in the row) \u2014 O(w) queue memory. DFS sees levels VERTICALLY (who is first to arrive at a depth) \u2014 O(h) stack memory. On a wide-but-shallow tree BFS costs more memory; on a narrow-but-deep tree DFS does. Both are O(n) time; the choice is which axis you want to pay for.\n\nBFS sees levels HORIZONTALLY (who is last in the row) \u2014 O(w) queue memory. DFS sees levels VERTICALLY (who is first to arrive at a depth) \u2014 O(h) stack memory. On a wide-but-shallow tree BFS costs more memory; on a narrow-but-deep tree DFS does. Both are O(n) time; the choice is which axis you want to pay for. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 output + level-order tests #include <queue> // std::queue \u2014 FIFO used by approach 1 #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "`queue` + per-level size is the standard; taking `q.back()` before popping the level is the one-liner.",
+    "A DFS with an explicit stack must push LEFT first so RIGHT is popped first."
+   ],
+   "py_alts": [
+    "A deque plus `for _ in range(len(q))` and reading the last popped value is the idiomatic version.",
+    "Storing `(node, depth)` and overwriting `res[depth]` is a clean DFS alternative."
+   ],
+   "trap": "In the DFS variant, overwriting `res[depth]` while visiting LEFT first -- then the leftmost node wins. The correct pairing is left-first traversal WITH overwrite, or right-first traversal WITH first-write-only.",
+   "invariant": "In BFS, before each level's loop the queue holds exactly that level in left-to-right order, so the last element popped is the rightmost node of the level. One per level therefore gives the right view.",
+   "questions": [
+    {
+     "q": "Which node is the right view of a given level?",
+     "a": "The rightmost, which is the last node enqueued at that depth because BFS enqueues children left to right. Reading the queue's back before draining the level gives it in O(1)."
+    },
+    {
+     "q": "How do the two DFS variants differ, and which is right?",
+     "a": "Traversing right-first and overwriting works, because the first node written at each depth IS the rightmost and later left-side visits at the same depth overwrite it with a worse value. Traversing left-first requires first-write-only. Mixing them up is the bug."
+    },
+    {
+     "q": "Why is BFS conceptually safer than DFS here?",
+     "a": "Because BFS's level structure is explicit -- the queue length tells you the level size, so \"one per level\" is enforced structurally rather than by tracking a depth argument through recursion."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0226_invert_binary_tree",
+   "one_liner": "Swap the children, recursively; three lines of essence.",
+   "core_objective": "Invert a binary tree by swapping every node's left and right subtrees.",
+   "bounds": "Up to 1e4 nodes, so a skewed tree recurses 1e4 deep and blows CPython's default limit. Modifying in place is expected and avoids a second tree.",
+   "approaches": [
+    {
+     "name": "Recursive swap (BEST, 3 lines of essence)",
+     "aha": "swap(node.left, node.right); invert(left); invert(right).",
+     "py": "if root is None:\nroot.left, root.right = root.right, root.left\nself.invertTree(root.left)\nself.invertTree(root.right)\nreturn root",
+     "cpp": "        if (root == nullptr) { return nullptr;",
+     "time": "O(n)",
+     "space": "O(h), h = height.",
+     "why": "Follows directly from the traversal count: O(n) time, O(h), h = height. space."
+    },
+    {
+     "name": "Iterative BFS/DFS with an explicit queue",
+     "aha": "Same swaps, but a queue (or stack) holds the nodes still awaiting their swap \u2014 no recursion, safe on pathologically deep trees where the runtime stack would overflow.",
+     "py": "if root is None:\npending = [root]\nwhile pending:\n    cur = pending.pop(0)\n    cur.left, cur.right = cur.right, cur.left\n    if cur.left is not None:\n        pending.append(cur.left)\n    if cur.right is not None:",
+     "cpp": "        if (root == nullptr) { return nullptr;",
+     "time": "O(n)",
+     "space": "O(w), queue width.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": "    4              4\n   / \\            / \\\n  2   7    ->    7   2\n  / \\  / \\       / \\ / \\\n 1  3 6  9      9  6 3  1\n\n  invert(n):\n    if not n: return\n    n.left, n.right = n.right, n.left\n    invert(n.left)\n    invert(n.right)\n\n  invariant: on entry, n's subtree is un-inverted; on return it\n  is fully inverted. The swap must come BEFORE recursing,\n  otherwise the recursion visits the wrong subtrees.\n\n  3 lines of essence, O(n) time, O(h) space.\n  Recursion depth = h; a 1e4 chain exceeds Python's limit.",
+   "cpp_vs_py": "The tree is a set of heap nodes linked by pointers. \"Inverting\" changes NO node values and allocates NOTHING \u2014 it rewrites two pointers per node in place. That is why the operation is O(n) time and O(1) extra space per node; the recursion/queue memory is the only overhead. Watch the addresses stay fixed; only the arrows flip.\n\nThe tree is a set of heap nodes linked by pointers. \"Inverting\" changes NO node values and allocates NOTHING \u2014 it rewrites two pointers per node in place. That is why the operation is O(n) time and O(1) extra space per node; the recursion/queue memory is the only overhead. Watch the animation: the addresses stay fixed, the arrows flip. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <queue> // std::queue \u2014 FIFO work list (approach 2) #include <utility> // std::swap \u2014 flipping child pointers #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "`swap(node->left, node->right)` from `<algorithm>` is a single inline exchange.",
+    "An explicit stack of nodes avoids 1e4-deep recursion and is barely more code."
+   ],
+   "py_alts": [
+    "Tuple assignment `node.left, node.right = node.right, node.left` is one bytecode pair and reads correctly.",
+    "An explicit stack `[root]` with `node.left, node.right = node.right, node.left` then pushing both children is O(1) extra space beyond the stack."
+   ],
+   "trap": "Recursing before swapping. Then `invert(node.left)` operates on the node's original left subtree, and after the swap the right subtree is never visited -- silently leaving half the tree uninverted.",
+   "invariant": "`invert(n)` returns with n's subtree fully inverted and all other parts of the tree untouched. The pre-order placement of the swap is what preserves this: the swap happens on entry, so both recursive calls see subtrees that have already been repositioned.",
+   "questions": [
+    {
+     "q": "Why must the swap precede the recursion?",
+     "a": "Because the recursive calls should operate on the node's children as they will be visited in the inverted tree. Swapping first and then recursing on `node.left` and `node.right` visits both original subtrees exactly once."
+    },
+    {
+     "q": "Can this be done without recursion?",
+     "a": "Yes -- push the root, then repeatedly pop a node, swap its children, and push both. That is $O(n)$ time and $O(h)$ stack, with no recursion limit concern. Worth mentioning given the 1e4-node bound."
+    },
+    {
+     "q": "What is the minimum information a node needs?",
+     "a": "Just its two child pointers. The values are irrelevant, which is a useful observation: the problem is purely structural, so any node with two mutable child slots can be inverted."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0230_kth_smallest_element_in_bst",
+   "one_liner": "Iterative inorder, stopping at the k-th visit.",
+   "core_objective": "Return the k-th smallest value in a binary search tree with distinct values, counting from 1.",
+   "bounds": "1 <= k <= n and n <= 1e4, so k is always valid and the early exit always triggers. A skewed tree recurses 1e4 deep, which is why the iterative version is preferred.",
+   "approaches": [
+    {
+     "name": "Iterative inorder with early stop (BEST)",
+     "aha": "Explicit stack descends the left spine, pops the smallest unseen value, counts it, then steps right. Stop at count == k.",
+     "py": "pending: List[TreeNode] = []   # explicit call-stack stand-in\ncur: Optional[TreeNode] = root\nvisited = 0                    # values already emitted in order\nwhile cur is not None or pending:\n    while cur is not None:\n        pending.append(cur)\n        cur = cur.left\n    cur = pending.pop()",
+     "cpp": "while (cur != nullptr || !pending.empty()) { while (cur != nullptr) { pending.push(cur);\n        cur = cur->left;\n    }\n    cur = pending.top();\n    pending.pop();\n    if (++visited == k) { return cur->val;\n    }\n    cur = cur->right;            // continue with the right subtree",
+     "time": "O(h + k) \u2014 spine descent + k pops.",
+     "space": "O(h)     \u2014 explicit stack.",
+     "why": "Follows directly from the traversal count: O(h + k) \u2014 spine descent + k pops. time, O(h)     \u2014 explicit stack. space."
+    },
+    {
+     "name": "Recursive inorder with early stop",
+     "aha": "Identical ordering, implicit call stack; the recursion returns a boolean \"already found?\" to unwind early.",
+     "py": "self.visited = 0               # reset per call (member state)\nreturn self._walk(root, k)",
+     "cpp": "if (node == nullptr) {\n    return -1;                   // empty subtree holds nothing",
+     "time": "O(h + k) \u2014 same walk, same stop condition.",
+     "space": "O(h)     \u2014 call stack.",
+     "why": "Follows directly from the traversal count: O(h + k) \u2014 same walk, same stop condition. time, O(h)     \u2014 call stack. space."
+    }
+   ],
+   "diagram": "      5\n    /   \\\n   3     6\n  / \\   / \\\n 2   4 7   8\n\n  inorder: 2 3 4 5 6 7 8\n  k=3 -> the 3rd value = 4\n\n  stack, cur = [], root\n  push 5 ; cur = 3\n  push 3 ; cur = 2\n  push 2 ; cur = None  -> pop 2  visit 1\n  cur = None          -> pop 3  visit 2\n  cur = 4              -> (4 unvisited, not None)\n     ^ need pop-after-LEFT-visited, not pop-on-null-first\n  push 4 ; cur = None  -> pop 4  visit 3  <-- RETURN 4\n\n  invariant: nodes on the stack are the unvisited ancestors in\n  descending order, so the top is always the smallest available.",
+   "cpp_vs_py": "A BST stores every node's left subtree BELOW it and right subtree ABOVE it. Inorder emits left \u2192 node \u2192 right, so a value arrives only after everything smaller (left subtree) and before everything larger (right subtree) \u2014 induction over the whole tree gives a fully sorted sequence. Any \"k-th\" question about a BST is really an inorder question; the explicit-stack version is the classic interview answer because it makes the early stop visible.\n\nA BST stores every node's left subtree BELOW it and right subtree ABOVE it. Inorder emits left \u2192 node \u2192 right, so a value arrives only after everything smaller (left subtree) and before everything larger (right subtree) \u2014 induction over the whole tree gives a fully sorted sequence. Any \"k-th\" question about a BST is really an inorder question; the explicit-stack version is the classic interview answer because it makes the early stop visible. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <stack> // std::stack \u2014 explicit inorder stack #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "A `stack<TreeNode*>` with `while (cur || !st.empty())` is the canonical iterative form.",
+    "Using the size of the left subtree to compute the rank is a different O(h) strategy: `k -= leftSize + 1` on each step."
+   ],
+   "py_alts": [
+    "The two-phase loop `while cur or stack` with `stack.append/pop` is the standard Python form.",
+    "`while stack and k > 0: node = stack.pop(); k -= 1` is the clean early-exit shape."
+   ],
+   "trap": "Decrementing k when pushing rather than when popping. The visit happens on pop, after the left subtree is exhausted, so that is the only place the rank advances.",
+   "invariant": "The stack holds, from top to bottom, the ancestors whose left subtrees have been fully visited but whose own values have not yet been emitted. Popping therefore always yields the next smallest value in sorted order.",
+   "questions": [
+    {
+     "q": "Why does inorder give sorted order here?",
+     "a": "The BST invariant places every value in the left subtree below the node and every value in the right subtree above it, so a left-node-right traversal emits values in strictly increasing order."
+    },
+    {
+     "q": "What is the complexity, and why can it be better than O(n)?",
+     "a": "$O(h + k)$ for the iterative version -- you descend at most h levels and pop at most k nodes, then stop. Worst case that is $O(n)$, but for small k on a balanced tree it is much closer to $O(\\log n + k)$."
+    },
+    {
+     "q": "When would a size-based rank computation beat inorder?",
+     "a": "If you augmented each node with subtree size, you could descend directly to the k-th element by comparing k against the left subtree's size -- $O(h)$ regardless of k, and no stack. That needs extra state the problem does not provide."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0235_lowest_common_ancestor_of_bst",
+   "one_liner": "Descend using BST ordering until p and q split.",
+   "core_objective": "Return the lowest node in a binary search tree that is an ancestor of (or equal to) both given nodes.",
+   "bounds": "p and q are distinct nodes in the tree, so a solution always exists. Values are unique, which is what makes the ordering comparisons unambiguous.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "while root:\n    if p.val < root.val and q.val < root.val: root = root.left\n    elif p.val > root.val and q.val > root.val: root = root.right\n    else: return root",
+     "cpp": "while (cur != nullptr) { if (p->val < cur->val && q->val < cur->val) { cur = cur->left;\n    }\n    else if (p->val > cur->val && q->val > cur->val) { cur = cur->right;\n    }\n    else { return cur;\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "if not root: return None\nif p.val < root.val and q.val < root.val: return self.lowestCommonAncestor(root.left, p, q)\nif p.val > root.val and q.val > root.val: return self.lowestCommonAncestor(root.right, p, q)\nreturn root",
+     "cpp": "        if (root == nullptr) { return nullptr;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "        6\n      /   \\\n     2     8\n    / \\   / \\\n   0   4 7   9\n      / \\\n     3   5\n\n  p = 2, q = 8  -> LCA = 6\n  p = 2, q = 4  -> LCA = 2\n  p = 3, q = 5  -> LCA = 4\n\n  descend(root=6):\n    both < 6 ? (0,0) yes -> go LEFT\n    both > 6 ? yes          -> go RIGHT\n    otherwise root is the split point -> ANSWER\n\n  p=2 q=4: at 6, 2<6 but 4<6 -> LEFT to 2.\n           2 is p itself -> return 2 (ancestor of itself)\n\n  invariant: at every node, p and q are both <= node or\n  both >= node, unless the node is the answer.",
+   "cpp_vs_py": "For a general binary tree, LCA needs a parent-pointer/ancestor-set or a post-order search (O(n)). Here the ORDERING prunes one side of the tree at every step \u2014 the search space halves per level, giving O(h) instead of O(n). The splitting test (p < cur < q or q < cur < p) is the entire algorithm in one condition; the LCA is the node where that test first succeeds on the descent. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "A `TreeNode*` descent is $O(h)$ time and $O(1)$ space -- strictly better than the general-tree ancestor-path method.",
+    "`std::numeric_limits` is irrelevant here since no sentinel values are needed."
+   ],
+   "py_alts": [
+    "The while loop mutates `root` in place, which is fine since the caller does not need it.",
+    "For a general binary tree the same problem needs the parent-map approach; the BST ordering is what removes that requirement."
+   ],
+   "trap": "Returning when `node == p or node == q` without first checking whether the other node is in that subtree. The correct order is: check the ordering split first, and only match a node when the two targets lie on opposite sides (or one equals it).",
+   "invariant": "At the current node, both p and q are at most the node's value or both at least it, and neither is below the node on one side while the other is on the other. The first node where they split -- or where one equals the node -- is their lowest common ancestor.",
+   "questions": [
+    {
+     "q": "Why does the split point have to be the LCA?",
+     "a": "If p and q are both below the current node's value they are both in the left subtree, so no ancestor at or above this node can be their LCA -- it must be deeper. Symmetrically when both are above. So the search descends until the targets separate, and the node where they separate is the answer."
+    },
+    {
+     "q": "How does the general binary tree version differ?",
+     "a": "Without ordering you cannot tell which subtree to descend, so you must record ancestor sets (or a parent map) for p, then walk up from q until you hit one of p's ancestors. That is $O(h)$ time but $O(h)$ space instead of $O(1)$."
+    },
+    {
+     "q": "What if p is an ancestor of q?",
+     "a": "The descent walks down toward p, and when it reaches p the equality branch fires and p is returned. Treating a node as an ancestor of itself is the standard convention and is what makes that case work without special handling."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0297_serialize_and_deserialize_binary_tree",
+   "one_liner": "Preorder with null markers encodes every tree unambiguously.",
+   "core_objective": "Encode a binary tree to a single string and recover the exact original tree from it.",
+   "bounds": "Up to 1e4 nodes, so the encoded string can be 2n+1 tokens. The encoding must be unambiguous -- any tree must decode to itself and only itself.",
+   "approaches": [
+    {
+     "name": "Solution 1",
+     "aha": "Solution 1 -- see the kernel below.",
+     "py": "def serialize(root):\n    out = []\n    def walk(n):\n        if n is None: out.append('#'); return\n        out.append(str(n.val)); walk(n.left); walk(n.right)\n    walk(root)\n    return ','.join(out)\n\ndef deserialize(s):\n    toks = iter(s.split(','))\n    def build():\n        t = next(toks)\n        if t == '#': return None\n        n = TreeNode(int(t))\n        n.left, n.right = build(), build()\n        return n\n    return build()",
+     "cpp": "if (node == nullptr) { if (!out.empty()) { out += \",\"; }\n    out += \"null\";\n    return;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "Solution 2",
+     "aha": "Solution 2 -- see the kernel below.",
+     "py": "def serialize(root):\n    return repr(root)   # __repr__ writes the preorder +\n                        # null-marker token stream\n\ndef deserialize(s):\n    return eval(s)       # only for a controlled input",
+     "cpp": "if (root == nullptr) {\n    return \"\";                   // empty tree \u2192 empty payload",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "  tree:      9\n            / \\\n           3  20\n          /  \\ / \\\n         2   1 15  7\n\n  preorder with NULL markers:\n   9 3 2 # 1 # # 20 15 # # 7 #\n   ^  ^ ^      ^ ^  ^     ^     ^\n   |  | |      | |  |     |     +-- null for 7's right\n   |  | |      | |  +-- null for 20's left\n   |  | |      | +-- null for 1's right\n   |  | +-- null for 1's left\n   |  +-- null for 3's right\n   +-- root\n\n  invariant: exactly 2n+1 tokens for n nodes, since every node\n  contributes one value and every null child contributes a marker.\n  The marker count equals n+1, which is a self-check.\n\n  decode: consume a token; '#' -> null; else build node and\n          recurse twice (left then right). No index bookkeeping.",
+   "cpp_vs_py": "n-node binary trees come in Catalan-many shapes but a traversal without markers has only 2n\u22121 slots to describe 2n pointers \u2014 the null entries ARE the missing pointers. Preorder+nulls is exactly the classic \"1 2 X X 3 X X\" format; level-order+nulls is exactly the \"[3,9,20,null,null,15,7]\" format LeetCode's own test harness uses. Both round-trip perfectly \u2014 the marker discipline is the entire trick. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 token storage / level-order #include <string> // std::string \u2014 the serialized payload #include <sstream> // std::istringstream \u2014 token splitting #include <queue> // std::queue \u2014 BFS (approach 2) + deserialize #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "`stringstream` with `string` tokens avoids manual delimiter parsing and is fast enough at 1e4 nodes.",
+    "Appending the delimiter as a character (`','`) plus a separate null marker is cheaper than a string per token."
+   ],
+   "py_alts": [
+    "`','.join(tokens)` in one pass avoids repeated string concatenation, which would be $O(n^2)$ in CPython.",
+    "`tokens.split(',')` in C beats any manual character loop."
+   ],
+   "trap": "Omitting the null markers. Preorder values alone are ambiguous -- [1,2] and [1,null,2] both encode to `1,2`. Every null child must contribute a marker or decoding is not injective.",
+   "invariant": "Decoding consumes tokens left to right; each node token is followed by exactly two subtrees (left then right). Because every subtree is itself a valid encoding, the recursive consumption always lines up and the string is consumed exactly.",
+   "questions": [
+    {
+     "q": "Why are null markers necessary for injectivity?",
+     "a": "Without them, a preorder value sequence cannot distinguish a node with a left child from one without. [1,2] encodes to `1,2` whether 2 is a left or a right child, and also whether 1 has an empty right subtree. Marking nulls fixes both ambiguities."
+    },
+    {
+     "q": "How many tokens does a tree of n nodes produce?",
+     "a": "Exactly 2n+1: n values plus n+1 null markers (every node has two child slots, but the root has no parent, so there are 2n slots and n-1 are filled, leaving n+1 null). That identity is a useful integrity check on any implementation."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ to serialize and $O(n)$ to deserialize, with the token list itself being $O(n)$ space. The recursion adds $O(h)$, and a skewed tree has h = n, so the stack is the dominant term for pathological inputs."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0543_diameter_of_binary_tree",
+   "one_liner": "Post-order returning (height, diameter) and carrying the best.",
+   "core_objective": "Return the length in edges of the longest path between any two nodes, which need not pass through the root.",
+   "bounds": "Up to 1e4 nodes, so the diameter can reach 1e4 - 1 and must be computed in edges. A single-node tree has diameter 0.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "self.res = 0\n    if not node: return 0\n    l, r = dfs(node.left), dfs(node.right)\n    self.res = max(self.res, l + r); return 1 + max(l, r)\ndfs(root); return self.res",
+     "cpp": "        if (node == nullptr) {",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "        1\n      /   \\\n     2     3\n    / \\   / \\\n   4   5 6   7\n\n  longest paths:\n   4-2-5       = 2 edges\n   4-2-1-3-6   = 4 edges  <-- THROUGH THE ROOT\n   6-3-7       = 2 edges\n   ANSWER 4 (not found by a naive root-only computation)\n\n  post-order: dfs(n) -> (height, best)\n   h4 = (0,0)  h5 = (0,0)\n   h2: left=(0,0) right=(0,0)\n        through = 0 + 1 + 0 = 1\n        height  = 1 + max(0,0) = 1\n        return (1, max(0, 1, 0)) = (1, 1)\n   h6 = (0,0)  h7 = (0,0)\n   h3: through = 0+1+0 = 1 ; height = 1\n        return (1, 1)\n   h1: left=(1,1) right=(1,1)\n        through = 1 + 1 + 1 = 3   (edges through root)\n        height  = 1 + max(1,1) = 2\n        best = max(1, 1, 3) = 3\n        return (2, 3)  ANSWER 3 (edges)\n\n  invariant: dfs(n).height is the height of n's subtree;\n  dfs(n).best is the diameter WITHIN n's subtree.",
+   "cpp_vs_py": "This is the same post-order DP as max path sum and balanced tree: the node's own candidate combines BOTH children (leftH + rightH), but the value passed UP is a single-branch summary (height). Encoded as an int return + an out-param/global, no struct needed: best = max(best, lh + rh) \u2190 \"bent\" path, stays local return max(lh, rh) + 1 \u2190 \"straight\" chain, goes up Watch it in the animation: every node reports its height while the running best silently updates. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <algorithm> // std::max \u2014 folding the best candidate #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "Returning a `pair<int,int>` (height, best) is the canonical shape and needs no member state.",
+    "`std::max` with an initializer list of three values is a single call but may not inline as well as chained maxes."
+   ],
+   "py_alts": [
+    "Returning a tuple per node allocates one tuple per node; returning just the height and using a closure-captured `best` avoids that.",
+    "The closure approach is both faster and easier to read in Python."
+   ],
+   "trap": "Returning the height as the answer, or forgetting that the two deepest branches contribute `leftH + 1 + rightH` edges -- the two `+1`s for the edges from the node to its children are the off-by-one that flips the whole answer.",
+   "invariant": "`dfs(n)` returns the height of n's subtree and the diameter of n's subtree. The diameter is the max of the two children's diameters and the path through n, and the height is 1 plus the taller child. Both facts are computable from the children's return values because the recursion is post-order.",
+   "questions": [
+    {
+     "q": "Why must the diameter consider paths not through the root?",
+     "a": "The longest path may lie entirely inside one subtree. The post-order `best` value carries each child's internal diameter upward precisely so the parent can compare it against the through-node path and its own other child."
+    },
+    {
+     "q": "Is the diameter in nodes or edges?",
+     "a": "Edges. That is why the through-node candidate is `leftH + 1 + rightH` -- two edges from n to its children -- and why a leaf returns height 0 and best 0."
+    },
+    {
+     "q": "Why is post-order the natural traversal here?",
+     "a": "Because both facts about a node depend only on facts about its children. Post-order guarantees the children's return values are available when the node composes them, which is exactly the dependency this recurrence has."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/0572_subtree_of_another_tree",
+   "one_liner": "Serialize both trees and search for the pattern with KMP.",
+   "core_objective": "Decide whether one binary tree is a descendant of another, matching structure and values exactly.",
+   "bounds": "0 <= subRoot.val, root.val <= 1000 and up to 1000 nodes each, so an O(n*m) recursive comparison is technically acceptable at 1e6 operations. Nodes need not be unique.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "if not root: return False\nif self._same(root, subRoot): return True\nreturn self.isSubtree(root.left, subRoot) or self.isSubtree(root.right, subRoot)\nif not p and not q: return True\nif not p or not q or p.val != q.val: return False\nreturn self._same(p.left, q.left) and self._same(p.right, q.right)",
+     "cpp": "        if (root == nullptr) { return false;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "  root:    3\n          / \\\n         4   5\n          \\\n           1\n\n  subRoot: 4\n           \\\n            1\n\n  descend(root=3): val 3 != 4 -> try root.left (4)\n     val 4 == 4 ; subRoot.right is None, so must match\n        (null-safe check!) -> root[4].right = 1 matches 1, and\n        1's children are both null -> MATCH\n\n  serialise with nulls (the safe encoding):\n   root:    \"3 4 1 # # 5 # #\"\n   subRoot: \"4 1 # #\"\n   -> the subRoot pattern occurs in the root string\n\n  why nulls matter: without them, subRoot \"1\" would falsely match\n  the leaf 1 of a larger subtree.",
+   "cpp_vs_py": "Serializing WITHOUT null markers is ambiguous ([1,2] could be several shapes) \u2014 a naive find would give false positives. The marker discipline from 0297 makes the encoding injective, which is precisely what turns a tree problem into a string problem. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <string> // std::string \u2014 serialized canonical forms #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "`stringstream` plus `std::search` is a clean implementation; KMP avoids the quadratic worst case of naive search.",
+    "Comparing the recursive shapes directly is O(n*m) worst case but uses no extra space and is often fast in practice."
+   ],
+   "py_alts": [
+    "`' '.join` on a serialized list plus Python's `in` operator is the shortest correct answer, and `in` on strings uses a fast two-way search.",
+    "`' '.join(list)` in `haystack.split(' ')` style substring search sidesteps delimiter-boundary false matches."
+   ],
+   "trap": "Forgetting to compare the NULL children. If you only compare values and recurse while both are non-null, `[1]` matches a leaf that is actually the left child of a two-node subtree, giving a false positive.",
+   "invariant": "`isSubtree(a, b)` is true iff a's value equals b's value AND (b is a leaf, OR a's corresponding child subtree matches b's). Writing the base cases explicitly -- both null is true, exactly one null is false -- is what makes it correct.",
+   "questions": [
+    {
+     "q": "Why include nulls in the serialization?",
+     "a": "Because a subtree match must agree on structure, and value sequences alone cannot distinguish a leaf from a node with one non-null child. Emitting a marker for every empty slot makes the pattern unambiguous, so a plain substring search becomes exactly a subtree search."
+    },
+    {
+     "q": "What is the time complexity of the serialization approach?",
+     "a": "$O(n + m)$ to serialize, plus a substring search. Python's `in` uses a linear-time algorithm on strings, so the whole thing is $O(n + m)$ in practice; a naive manual scan would be $O(n \\cdot m)$."
+    },
+    {
+     "q": "Why can a naive recursive search be $O(n \\cdot m)$?",
+     "a": "There are up to n candidate root positions in the big tree, and each attempt may compare up to m nodes before failing. With identical shapes the first attempt succeeds quickly, but adversarial inputs with matching prefixes force the full product."
+    }
+   ]
+  },
+  {
+   "key": "07_trees/1448_count_good_nodes_in_binary_tree",
+   "one_liner": "Propagate the path minimum; a node is good at equality.",
+   "core_objective": "Count nodes whose value is greater than or equal to every ancestor along the path from the root to that node.",
+   "bounds": "0 <= node.val <= 1e4 and up to 1e4 nodes. The root is always good by definition, and equality with the minimum counts as good.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "    if not node: return 0\n    res = 1 if node.val >= max_val else 0\n    max_val = max(max_val, node.val)\n    return res + dfs(node.left, max_val) + dfs(node.right, max_val)\nreturn dfs(root, root.val)",
+     "cpp": "        if (node == nullptr) {",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": "        7      path min 7 -> GOOD\n      /   \\\n     7     7    path min 7 -> both GOOD (equal counts)\n    /       \\\n   2         6  path min 7 -> 2 < 7 NO, 6 < 7 NO\n\n  count = 3 (root + two 7s)\n\n  dfs(node, pathMin):\n    if not node: return 0\n    pathMin = min(pathMin, node.val)\n    good = 1 if node.val >= pathMin else 0\n    return good + dfs(left, pathMin) + dfs(right, pathMin)\n\n  invariant: pathMin is the minimum value among the node and\n  ALL its ancestors. So `node.val >= pathMin` is exactly the\n  definition of a good node.\n\n  NOTE: comparing only against the PARENT is the bug -- node 7\n  under parent 7 passes, but a node 5 under parent 6 under a\n  grandparent 3 would pass the parent test yet fail against 3? no:\n  5 >= 6 fails. Correct example: 5 under 6 under 2 -> parent test\n  passes (5 < 6? no, 5 < 6 so fails). Use 9 under 8 under 3:\n  parent test 9>=8 passes, grandparent 3 gives min 3, 9>=3 passes.\n  The failing case is 5 under 6 under 1: parent 6, grandparent 1;\n  a node 2 under 6 -> 2 >= 6 fails anyway. The real bug case is\n  a node whose value beats its parent but loses to a HIGHER\n  ancestor that is smaller -- impossible. Hence tracking the\n  running MINIMUM (not the parent) is the correct formulation,\n  and parent-only comparison is merely incomplete reasoning.",
+   "cpp_vs_py": "Some tree questions need context from the ROOT (this max), others need summaries from the LEAVES (diameter). This problem is a \"top-down luggage\" problem: the extra argument is what makes each subtree question well-posed, and it travels DOWN only. Contrast with 0543/0124 where the info travels UP \u2014 recognizing which direction the state flows is half of solving tree problems. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 printing benchmark results #include <vector> // std::vector \u2014 level-order test inputs #include <stack> // std::stack \u2014 explicit DFS stack (approach 2) #include <utility> // std::pair \u2014 (node, maxSoFar) frames #include <chrono> // std::chrono \u2014 steady_clock timing for benchmark #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement for benchmark #include \"tree_node.h\" // shared TreeNode + buildTree/printTree/destroyTree",
+   "cpp_alts": [
+    "`int pathMin` passed by value is the whole state; no member variable needed.",
+    "Passing `INT_MAX` as the initial minimum is correct because all values are non-negative here; `INT_MIN` is the general choice."
+   ],
+   "py_alts": [
+    "A closure with a mutable counter is faster than returning counts and summing.",
+    "`float('inf')` as the initial minimum is the safe general sentinel."
+   ],
+   "trap": "Testing against the immediate parent only. The definition is against ALL ancestors, and while a node that beats its parent may still lose to a smaller ancestor further up, the correct and cheap formulation is to carry the running minimum.",
+   "invariant": "At entry to `dfs(node, m)`, `m` is the minimum value among all strict ancestors of node. After `m = min(m, node.val)`, `node.val >= m` is exactly the good-node predicate, and children receive that updated minimum.",
+   "questions": [
+    {
+     "q": "Why carry a minimum rather than the parent value?",
+     "a": "Because the predicate quantifies over all ancestors. Carrying the running minimum reduces that quantification to one comparison: `val >= runningMin`. Keeping just the parent would require walking ancestors per node, turning $O(n)$ into $O(n h)$."
+    },
+    {
+     "q": "Is the root always good?",
+     "a": "Yes -- by convention a node with no ancestors vacuously satisfies \"greater than every ancestor\". Initialising the minimum to infinity makes the root's test `val >= min(val, inf)` trivially true, so no special case is needed."
+    },
+    {
+     "q": "What is the space complexity, and can it be reduced?",
+     "a": "$O(h)$ for the recursion stack. It can be reduced to $O(1)$ with an explicit Morris-style threaded traversal that temporarily rewires pointers to carry the path minimum without a stack, at the cost of mutating the tree."
+    }
+   ]
+  }
+ ]
+}

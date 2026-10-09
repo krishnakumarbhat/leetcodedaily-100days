@@ -1,0 +1,579 @@
+{
+ "problems": [
+  {
+   "key": "06_linked_list/0002_add_two_numbers",
+   "one_liner": "Digit-by-digit addition from the tail, carrying forward.",
+   "core_objective": "Add two numbers given as reversed digit lists and return the sum as a reversed list.",
+   "bounds": "Each list has at least one digit, up to about 100 digits, so the result may exceed any fixed integer type -- this is the problem where C++ must avoid converting to int. Carries can chain past the leading digit, requiring a final append.",
+   "approaches": [
+    {
+     "name": "Iterative with dummy head + carry (BEST)",
+     "aha": "Walk both lists while either lives OR carry is non-zero; append digit, keep carry.",
+     "py": "dummy = ListNode()                # sentinel: no first-append case\ntail = dummy\ncarry = 0\nwhile l1 is not None or l2 is not None or carry != 0:\n    total = carry\n    if l1 is not None:\n        total += l1.val\n        l1 = l1.next",
+     "cpp": "while (l1 != nullptr || l2 != nullptr || carry != 0) { int sum = carry;\n    if (l1 != nullptr) { sum += l1->val; l1 = l1->next; }\n    if (l2 != nullptr) { sum += l2->val; l2 = l2->next; }\n    carry = sum / 10;         // overflow moves to the next column\n    tail->next = new ListNode(sum % 10);  // one result digit\n    tail = tail->next;",
+     "time": "O(max(n, m))",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(max(n, m)) time, O(1) space."
+    },
+    {
+     "name": "Recursive",
+     "aha": "Same column arithmetic on the call stack. Base case: both lists empty and carry == 0 \u2192 None.",
+     "py": "return self._add(l1, l2, 0)\nif a is None and b is None and carry == 0:\ntotal = carry                      # null nodes contribute 0\nif a is not None:\n    total += a.val\nif b is not None:\n    total += b.val\nnode = ListNode(total % 10)",
+     "cpp": "        if (a == nullptr && b == nullptr && carry == 0) { return nullptr;",
+     "time": "O(max(n, m))",
+     "space": "O(max(n, m))",
+     "why": "Follows directly from the traversal count: O(max(n, m)) time, O(max(n, m)) space."
+    }
+   ],
+   "diagram": " l1 = [2,4,3] (342)  l2 = [5,6,4] (465)  -> [7,0,8] (807)\n\n   l1: 2 -> 4 -> 3 -> NULL\n   l2: 5 -> 6 -> 4 -> NULL\n\n   step  a=2 b=5 carry=0 -> sum 7  emit 7  carry 0\n   step  a=4 b=6 carry=0 -> sum 10 emit 0  carry 1\n   step  a=3 b=4 carry=1 -> sum 8  emit 8  carry 0\n   step  a=NULL b=NULL c=0 -> emit nothing\n   (a NULL, b=7, c=1 -> emit 8, then tail b)\n\n   invariant: carry in {0,1}; sum <= 9+9+1 = 19 < 20",
+   "cpp_vs_py": "Human arithmetic is done right-to-left (least significant first), which is EXACTLY the layout of these lists \u2014 the carry never forces you to walk back, and the result is produced in final order without reversing. If the lists were stored most-significant first, you would need a stack or a reverse step. This problem is the canonical \"linked list = digit stream\" pattern used in arbitrary-precision arithmetic: Python ints, Java BigInteger and C++ boost::multiprecision all store digits in chunks and add them with exactly this carry loop, on arrays instead of nodes. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList",
+   "cpp_alts": [
+    "Reusing the input nodes saves an allocation per digit; a fresh vector is simpler and avoids aliasing bugs.",
+    "`long long` is wrong here -- 100 digits overflows it. Keep `int` per digit and accumulate the carry manually."
+   ],
+   "py_alts": [
+    "`0` as the terminal sentinel avoids the None-check in the loop condition entirely.",
+    "`divmod(a + b + carry, 10)` returns (digit, carry) in one call."
+   ],
+   "trap": "Stopping when either pointer is null instead of when both are null. With l1 = [5] and l2 = [5,4] the correct answer is [9,4], and stopping at the first null loses the 4.",
+   "invariant": "After k iterations, `carry` is exactly the carry out of the lowest k digit positions, so each emitted digit is the correct digit of the true sum.",
+   "questions": [
+    {
+     "q": "Why are the digits reversed in the input?",
+     "a": "Because then the least significant digit is at the head, which lets a single forward traversal perform the carry propagation in the correct order with no reversing."
+    },
+    {
+     "q": "When is the final `while (carry)` loop needed?",
+     "a": "When one input is exhausted while a nonzero carry remains -- e.g. [9] plus [1] gives digit 0 and carry 1, so the result is [0,1]. Omitting that tail is the classic bug."
+    },
+    {
+     "q": "What is the space complexity, and can it be O(1)?",
+     "a": "O(1) auxiliary if you reuse the input nodes, O(max(m,n)) if you build a new list. The in-place version is the more interesting answer because it also avoids the allocator."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0019_remove_nth_node_from_end_of_list",
+   "one_liner": "Two pointers at distance n make the gap land on the target.",
+   "core_objective": "Remove the n-th node from the end of a linked list, counting the last node as n = 1, in one pass.",
+   "bounds": "n >= 1 and n <= the list length, so the target always exists. n = 1 means removing the tail. A one-node list with n = 1 must become empty, which is the boundary that forces the dummy-head trick.",
+   "approaches": [
+    {
+     "name": "One pass: dummy + fixed-gap two pointers (BEST)",
+     "aha": "right walks n steps ahead; both slide until right hits None; left.next is the victim; left.next = left.next.next deletes.",
+     "py": "dummy = ListNode(0, head)         # absorbs the delete-head case\nleft: Optional[ListNode] = dummy\nright: Optional[ListNode] = dummy\nfor _ in range(n):\n    right = right.next if right else None\nwhile right is not None and right.next is not None:\n    left = left.next if left else None\n    right = right.next",
+     "cpp": "        for (int i = 0; i < n; ++i) { right = right->next;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Two passes: count, then delete",
+     "aha": "Pass 1 counts L nodes; victim is node (L \u2212 n + 1) from start; walk to its predecessor and skip it.",
+     "py": "length = 0\ncur = head\nwhile cur is not None:\n    length += 1\n    cur = cur.next\ndummy = ListNode(0, head)\ncur = dummy\nfor _ in range(length - n):",
+     "cpp": "        for (ListNode* cur = head; cur != nullptr; cur = cur->next) { ++length;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    }
+   ],
+   "diagram": " list = [1,2,3,4,5], n = 2  -> [1,2,3,5]\n\n  dummy -> 1 -> 2 -> 3 -> 4 -> 5 -> NULL\n          ^f           ^s        (gap = 2)\n\n  advance s by n -> s at 4; advance f to 2 (one before target)\n  advance both: f=3, s=5\n  unlink: f.next = f.next.next   (removes 4)\n\n  gap arithmetic: after the first loop the distance fast-slow\n  is exactly n nodes. After n+1 more single steps, slow is on\n  the n-th from the end and fast is one past it.\n\n  n = 1: dummy protects the case where slow would be head",
+   "cpp_vs_py": "A singly linked list can only delete a node if you can SEE its predecessor \u2014 that is why we stop at left->next, never at the victim itself. The one tricky case is deleting the head (no predecessor exists): the dummy node makes the head a normal node with a normal predecessor. This \"dummy absorbs the edge case\" idea is the same trick that powers 0021 (merge) and 0025 (reverse k-group). Memory hygiene note: in a real runtime you also free the skipped node (we do, then rebuild from test data). Two-pointer gap windows appear in real systems: network ring buffers keep a read pointer exactly K bytes behind a write pointer, i.e. \"the n-from-the-end element\". ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList",
+   "cpp_alts": [
+    "`ListNode dummy(0); dummy.next = head;` avoids the head-is-null and head-is-target special cases.",
+    "An iterative two-pass (count length, then walk) is simpler to reason about but touches every node twice."
+   ],
+   "py_alts": [
+    "A sentinel object with a `.next` attribute is the standard trick; it removes both boundary branches.",
+    "`fast.next is not None` in the guard means the guarantee `n <= length` is doing real work."
+   ],
+   "trap": "Using two separate loops (one to compute length, one to find the target) without a dummy head, then failing when the head itself must be removed -- `head = head.next` must be paired with returning the new head rather than modifying through a local pointer.",
+   "invariant": "Throughout, `fast` is exactly n nodes ahead of `slow`. After the two advance phases, `slow` is the predecessor of the n-th-from-last node and `fast` is the n-th-from-last node.",
+   "questions": [
+    {
+     "q": "Why a dummy head?",
+     "a": "Because the node to remove can be the head itself. With a dummy in front, the target always has a predecessor, so the unlink is always `prev.next = prev.next.next` with no special case."
+    },
+    {
+     "q": "What exactly does the distance-n trick buy?",
+     "a": "One pass instead of two. Because the problem guarantees n <= length, you never need to measure the length first -- you simply lag the fast pointer by n nodes."
+    },
+    {
+     "q": "How would you solve it without the guarantee n <= length?",
+     "a": "You cannot: the slow pointer would run off the end. The standard follow-up asks for a return value indicating whether the node existed, which requires a length pass first."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0021_merge_two_sorted_lists",
+   "one_liner": "Dummy head plus a tail pointer makes the splice trivial.",
+   "core_objective": "Merge two ascending sorted lists into one ascending sorted list, reusing existing nodes.",
+   "bounds": "0 <= list1.length, list2.length <= 50, and either list may be null, so the empty cases must return the other list rather than crash. Both lists are already sorted, which is what allows the O(1)-per-step decision.",
+   "approaches": [
+    {
+     "name": "Iterative with a dummy head (BEST)",
+     "aha": "dummy = sentinel before the result head \u2192 no \"first append?\" branch. While both lists live, attach the smaller head; then splice the leftover chain with one pointer assignment.",
+     "py": "dummy = ListNode()                # sentinel: no first-append branch\ntail = dummy                      # tail of the result chain\nwhile l1 is not None and l2 is not None:\n    if l1.val <= l2.val:\n        tail.next = l1            # l1's head wins this round\n        l1 = l1.next\n    else: tail.next = l2            # l2's head wins\n        l2 = l2.next",
+     "cpp": "while (l1 != nullptr && l2 != nullptr) { if (l1->val <= l2->val) {\n        tail->next = l1;   // l1's head wins this round\n        l1 = l1->next;     // advance only l1\n    } else { tail->next = l2;   // l2's head wins\n        l2 = l2->next;\n    }\n    tail = tail->next;     // result chain grows by one",
+     "time": "O(n + m)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n + m) time, O(1) space."
+    },
+    {
+     "name": "Recursive",
+     "aha": "Empty list \u2192 the other list IS the answer. Otherwise the smaller head leads and its tail merges with the other list recursively.",
+     "py": "if l1 is None:\n    return l2                     # empty \u2192 the other list IS the result\nif l2 is None:\n    return l1\nif l1.val <= l2.val:\n    l1.next = self.mergeTwoLists(l1.next, l2)   # l1 leads\n    return l1\nl2.next = self.mergeTwoLists(l1, l2.next)       # l2 leads",
+     "cpp": "if (l1->val <= l2->val) { l1->next = mergeTwoLists(l1->next, l2);\n    return l1;",
+     "time": "O(n + m)",
+     "space": "O(n + m) stack",
+     "why": "Follows directly from the traversal count: O(n + m) time, O(n + m) stack space."
+    }
+   ],
+   "diagram": " l1 = [1,3,5]  l2 = [2,4,6]\n\n  dummy -> tail = dummy\n  a=1 b=2 : 1 <= 2 -> tail.next = a ; tail = 1 ; a = 3\n  a=3 b=2 : 3 >  2 -> tail.next = b ; tail = 2 ; b = 4\n  a=3 b=4 : 3 <= 4 -> tail.next = a ; tail = 3 ; a = 5\n  a=5 b=4 : 5 >  4 -> tail.next = b ; tail = 4 ; b = 6\n  a=5 b=6 : 5 <= 6 -> tail.next = a ; tail = 5 ; a = NULL\n  a=NULL    : tail.next = b (6)   -> done\n  tail.next = NULL  (must set!)\n\n  invariant: tail is always the LAST node of the merged prefix,\n  so tail.next = x is a single pointer store, not a traversal.",
+   "cpp_vs_py": "Building a result chain with `tail = tail->next` demands an initial tail. Without a dummy you must write `if (head==nullptr) head = node; else tail->next = node;` on EVERY append \u2014 a branch paid O(n) times. The dummy removes the branch: dummy = new Node; tail = dummy; append always via tail->next list_node.h's buildList, every insert-at-front solution, and problem 0025 (reverse k-group) all rely on this trick. The dummy is scaffolding: discard it at the end (delete) and return dummy->next. Real-world: kernel linked lists (struct list_head) embed sentinel heads exactly like this. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList, printList",
+   "cpp_alts": [
+    "`ListNode* tail = &dummy;` with a stack-allocated dummy avoids a heap allocation for the sentinel.",
+    "The recursive version is 4 lines and is arguably clearer, at O(m+n) stack depth."
+   ],
+   "py_alts": [
+    "A sentinel `ListNode(0)` object removes the `if not list1` branches.",
+    "Chasing `tail = tail.next` after each append is the O(1) trick that separates a good answer from the O(n^2) one."
+   ],
+   "trap": "Appending by walking to the end on every insertion, which is O(n^2). Maintain a tail pointer instead -- that single change is the whole difference between the two complexities.",
+   "invariant": "After each iteration, the nodes up to `tail` form the sorted merge of the prefixes already consumed, and `tail` is the last of them. Appending the smaller head preserves sortedness.",
+   "questions": [
+    {
+     "q": "Why the `<=` versus `<` choice at the head comparison?",
+     "a": "Either is correct for correctness, but `<=` and `<` differ in which list's nodes are preferred when heads are equal. Since all nodes must be kept, both are fine; only stability across a later dedupe pass would care."
+    },
+    {
+     "q": "How does the dummy head simplify the termination?",
+     "a": "You splice the entire non-empty remainder with a single `tail.next = a ? a : b`, then set `tail.next = NULL`. Without a sentinel you'd need to special-case an initially empty list."
+    },
+    {
+     "q": "What if the lists are not sorted?",
+     "a": "The O(1) decision breaks -- you cannot know which head is smaller without scanning ahead. Merging then costs O(m+n) only because sortedness makes the comparison a single node read."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0023_merge_k_sorted_lists",
+   "one_liner": "Either divide and conquer, or a k-way heap of the heads.",
+   "core_objective": "Merge k ascending sorted lists into one ascending sorted list, reusing nodes where possible.",
+   "bounds": "1 <= k <= 1e4 with a combined total of 1e4 nodes, so heap operations number 1e4 and log k is about 14. An empty input array must return null.",
+   "approaches": [
+    {
+     "name": "Min-heap of k heads (BEST)",
+     "aha": "Push all k heads (value, list index). Pop the smallest, append, push its successor back. Heap never exceeds k entries.",
+     "py": "heap: list[tuple[int, int, ListNode]] = []\nfor i, head in enumerate(lists):\n    if head is not None:\n        heapq.heappush(heap, (head.val, i, head))\ndummy = ListNode()                # result chain sentinel\ntail = dummy\nwhile heap:\n    _, i, node = heapq.heappop(heap)   # smallest head wins",
+     "cpp": "for (int i = 0; i < static_cast<int>(lists.size()); ++i) { if (lists[i] != nullptr) { heap.push({lists[i]->val, i});\n    }",
+     "time": "O(n\u00b7log k)",
+     "space": "O(k)",
+     "why": "one push (and at most one pop) per element; hence the stated bounds."
+    },
+    {
+     "name": "Sequential two-list merges",
+     "aha": "result = lists[0]; fold each later list in with the 0021 merge. A node from list i is re-merged i times.",
+     "py": "result: Optional[ListNode] = None\nfor head in lists:\n    result = self._merge_two(result, head)   # fold one in\nreturn result",
+     "cpp": "while (a != nullptr && b != nullptr) { if (a->val <= b->val) { tail->next = a;\n        a = a->next;\n    } else { tail->next = b;\n        b = b->next;\n    }\n    tail = tail->next;",
+     "time": "O(n\u00b7k)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n\u00b7k) time, O(1) space."
+    }
+   ],
+   "diagram": " lists = [[1,4,5],[1,3,4],[2,6]] -> [1,1,2,3,4,4,5,6]\n\n HEAP approach: heap of (value, listIndex, node)\n   init: 1(L0) 1(L1) 2(L2)\n   pop 1(L0) -> emit; push L0.next = 4\n   pop 1(L1) -> emit; push L1.next = 3\n   pop 2(L2) -> emit; push L2.next = 6\n   pop 3(L1) -> emit; push L1.next = 4\n   pop 4(L0) -> emit; L0 exhausted\n   pop 4(L1) -> emit; push 1... L1 exhausted\n   pop 5(L0) -> emit; L0 exhausted\n   pop 6(L2) -> emit\n   total: 8 pops, each O(log k)\n\n DIVIDE AND CONQUER:\n   merge(list[0..k/2]) with merge(list[k/2..k])\n   T(k) = 2T(k/2) + O(N)  ->  O(N log k)",
+   "cpp_vs_py": "Sequential merging pays a hidden tax: a node from list k\u22121 is touched k\u22121 times (re-merged once per earlier list). The heap touches every node exactly once. The heap here is a PRIORITY QUEUE keyed by node value \u2014 the standard tool whenever the \"best next candidate\" must be found among many streams: k-way merge is the internal engine of external sorts, database merge joins, and log shard aggregation. In C++, std::priority_queue (heap) with a custom comparator; entries are (value, listId) so equal values don't compare pointers. ===================================================================== /\n\n#include <vector> // std::vector \u2014 the array of lists #include <queue> // std::priority_queue \u2014 min-heap for heads #include <functional> // std::greater \u2014 ordering for the heap #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList",
+   "cpp_alts": [
+    "`priority_queue<int, vector<int>, cmp>` with an index array beats storing node pointers for cache locality.",
+    "Divide and conquer with an explicit vector of heads is often simpler to implement correctly than a comparator object."
+   ],
+   "py_alts": [
+    "`heapq` is min-only; push `(value, listIndex, node)` tuples and pop all three together.",
+    "`heapq.merge(*lists)` is a lazy iterator that does exactly this and is a strong interview answer."
+   ],
+   "trap": "Rebuilding the result list from scratch inside the loop instead of relinking heads, which loses the O(1)-per-node property and allocates a node per element.",
+   "invariant": "The heap always contains exactly the smallest unconsumed node of each non-exhausted list. Its minimum is therefore the smallest unconsumed node overall, which is the next output element.",
+   "questions": [
+    {
+     "q": "Which is asymptotically better, the heap or divide and conquer?",
+     "a": "Both are $O(N \\log k)$. The heap makes one pass with a priority queue; divide and conquer makes log k passes of pairwise merges. The heap uses $O(k)$ space, D&C uses $O(\\log k)$ stack."
+    },
+    {
+     "q": "Why store (value, listIndex, node) rather than just values?",
+     "a": "Because you need to know which list's next node to advance after a pop. Encoding all three in the tuple means the heap comparison uses value first and the tuple supplies the bookkeeping."
+    },
+    {
+     "q": "What does k = 1 degenerate to?",
+     "a": "The loop pops the single head, pushes nothing (the list is exhausted), and the heap empties -- returning that one list unchanged, which is correct."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0025_reverse_nodes_in_k_group",
+   "one_liner": "Reverse each group of k; the final short group is left alone.",
+   "core_objective": "Reverse the order of nodes in groups of k, leaving the last group untouched if it has fewer than k nodes.",
+   "bounds": "1 <= k <= n <= 5000. The final group being short is not an edge case but the normal case, and getting it wrong is the single most common failure.",
+   "approaches": [
+    {
+     "name": "Iterative, dummy + anchored segment flips (BEST)",
+     "aha": "Peek k nodes ahead (fewer \u2192 stop, tail untouched); flip exactly k nodes after cursor; sew tail\u2192next-group and cursor\u2192new-head; cursor jumps to the block's old head (now its tail).",
+     "py": "dummy = ListNode(0, head)         # uniform sewing for group #1\ncursor: Optional[ListNode] = dummy   # node BEFORE current group\nwhile True:\n    probe = cursor\n    for _ in range(k):\n        probe = probe.next if probe else None\n        if probe is None:\n            return dummy.next    # leftover tail stays as-is",
+     "cpp": "while (true) { ListNode* probe = cursor;\n    for (int i = 0; i < k; ++i) { probe = probe->next;\n        if (probe == nullptr) { ListNode* result = dummy->next;\n            delete dummy;\n            return result;\n        }\n    }\n    ListNode* oldHead = cursor->next;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Recursive per group",
+     "aha": "Reverse first k nodes; recurse on the remainder; sew this group's tail to the next group's reversed head.",
+     "py": "probe = head\nfor _ in range(k):\n    if probe is None:\n        return head              # fewer than k \u2192 keep as-is\n    probe = probe.next\nprev: Optional[ListNode] = None\ncur = head\nfor _ in range(k):",
+     "cpp": "for (int i = 0; i < k; ++i) { if (probe == nullptr) {\n        return head;   // fewer than k \u2192 this tail stays as-is\n    }\n    probe = probe->next;",
+     "time": "O(n)",
+     "space": "O(n/k) stack",
+     "why": "Follows directly from the traversal count: O(n) time, O(n/k) stack space."
+    }
+   ],
+   "diagram": " list [1,2,3,4,5], k = 2  -> [2,1,4,3,5]\n\n  group [1,2] -> [2,1]     FULL, reversed\n  group [3,4] -> [4,3]     FULL, reversed\n  group [5]    -> [5]      SHORT, kept\n\n  iteration guard:\n    for i in range(0, n - k + 1, k):   <-- stops early\n      so a short tail never enters the loop\n\n  reverse-in-place [a,b,c] -> [c,b,a]\n    prev = NULL, cur = groupFirst\n    while cur: nxt = cur.next; cur.next = prev\n              prev = cur; cur = nxt\n\n  the bug: using range(0, n, k) includes the short tail and\n  reverses it, giving [2,1,4,3] -> and for k=2,n=5 -> [2,1,4,3,5]\n  is right but [5] alone reversed is still [5]... the real failure\n  is when the short tail has 2 nodes and k = 3.",
+   "cpp_vs_py": "Iterative k-group reversal is the \"between markers\" version of the flip: instead of flipping until null, flip exactly k nodes. The three anchors are: cursor \u2014 node before the segment (never moves while reversing inside); oldHead = cursor->next (first node of the segment, becomes the segment's TAIL); prev/cur \u2014 the standard 0206 sliders doing the flips. After k flips, cur points at the next segment's first node, and oldHead's ->next must be set to it (sewing the chain back). This \"reverse exactly K between anchors\" pattern is the same one used by doubly-linked-page list manipulation and by block-wise transforms in databases. Get the anchor invariants right here and 0206/0143/0025 become one skill. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList",
+   "cpp_alts": [
+    "Precompute the node vector once, then reverse slices in place -- O(n) space but far simpler to get right.",
+    "`reverse(begin + i, min(begin + i + k, end))` per group needs the vector form."
+   ],
+   "py_alts": [
+    "Slice-and-assign on a node array (`arr[i:i+k] = arr[i:i+k][::-1]`) is the shortest correct answer.",
+    "Three pointers on the array form: `arr[i:j] = reversed(arr[i:j])`."
+   ],
+   "trap": "Reversing the final incomplete group. The loop bound must be `n - k + 1`, or equivalently the group end must be clamped to `min(i + k, n)` and skipped if shorter than k.",
+   "invariant": "Before group i starts, the first i nodes are already correctly reversed and wired; the group being processed is exactly nodes [i, i+k) when that range is full.",
+   "questions": [
+    {
+     "q": "How do you detect a short final group without counting?",
+     "a": "Either bound the loop by `n - k + 1`, or check whether the group's predecessor list still has k nodes. The loop bound is cleaner and makes the condition impossible to violate."
+    },
+    {
+     "q": "Why is a dummy head needed here but not in a plain reverse?",
+     "a": "Because you must reconnect the reversed groups to their predecessors. The dummy gives every group a stable predecessor to write into, and it also makes returning an empty list trivial."
+    },
+    {
+     "q": "What does the array-based approach cost?",
+     "a": "O(n) extra space for the node array, in exchange for turning pointer surgery into index arithmetic. That trade is usually worth taking in an interview and worth naming explicitly."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0138_copy_list_with_random_pointer",
+   "one_liner": "Interleave new nodes so random pointers resolve in one pass.",
+   "core_objective": "Deep-copy a linked list where each node also has a random pointer to any node or null, with no node in the copy pointing into the original.",
+   "bounds": "The list is non-empty and each node has `next` and `random`. The aliasing is the whole difficulty: a naive DFS with a visited map handles it, but costs O(n) extra space and recursion depth.",
+   "approaches": [
+    {
+     "name": "Interleaving / weave \u2014 O(1) space (BEST)",
+     "aha": "Pass 1: insert a clone after every node (old\u2192new\u2192old\u2192new\u2026). Pass 2: clone.random = old.random.next (the clone beside it). Pass 3: unweave: restore old.next, chain the clones.",
+     "py": "if head is None:\ncur = head\nwhile cur is not None:\n    cur.next = Node(cur.val, cur.next)   # clone born beside it\n    cur = cur.next.next                  # jump to next old node\ncur = head\nwhile cur is not None:\n    if cur.next is not None:",
+     "cpp": "        if (head == nullptr) { return nullptr;",
+     "time": "O(n)",
+     "space": "O(1) extra",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) extra space."
+    },
+    {
+     "name": "Hash map old \u2192 new",
+     "aha": "Pass 1: create all clones, record old\u2192new. Pass 2: wire next and random through the map.",
+     "py": "if head is None:\nold_to_new: dict[Node, Node] = {}\ncur = head\nwhile cur is not None:\n    old_to_new[cur] = Node(cur.val)\n    cur = cur.next\ncur = head\nwhile cur is not None:",
+     "cpp": "        if (head == nullptr) { return nullptr;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " original: A -> B -> C -> NULL\n           A.random = C,  B.random = A\n\n PASS 1 weave:  A' -> B' -> C'\n           A -> A' -> B -> B' -> C -> C'\n           (copies inserted right after originals)\n\n PASS 2 random: for each original X with copy X' = X.next:\n           X'.random = X.random.next   (if X.random != NULL)\n           one line, no map!\n\n PASS 3 unweave: restore A -> B -> C and\n           A' -> B' -> C' separately\n\n  invariant after pass 2: every X'.random points at a COPY,\n  never an original -- because X.random.next is X.random's copy.",
+   "cpp_vs_py": "After pass 1 the list reads old1,new1,old2,new2,\u2026 so the clone of any node is exactly ONE step behind it: cloneOf(x) = x->next. In pass 2 the clone of old->random is therefore old->random->next. All rewiring is done with pure pointer math \u2014 no lookup table, hence O(1) space. This \"store the mapping in the data structure itself\" trick is the same spirit as morphing algorithms that temporarily decorate nodes (e.g. marking visited state with colors). The C++ version reuses our shared struct ListNode which carries the `random` member (list_node.h) \u2014 the section's header pays off here: every problem shares ONE node type. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data #include <unordered_map> // std::unordered_map \u2014 approach 2's mapping #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode (WITH `random` member)",
+   "cpp_alts": [
+    "A `map<ListNode*, ListNode*>` memo makes the DFS version trivially correct at the cost of hash lookups per edge.",
+    "Three passes over the interleaved list are $O(n)$ with no auxiliary map -- the best space answer."
+   ],
+   "py_alts": [
+    "`copy.deepcopy` on a self-referential object graph works here and is a valid answer to state, though it hides the algorithm.",
+    "`defaultdict` cannot map None-valued keys usefully; an explicit `if node.random` guard is required."
+   ],
+   "trap": "Setting `copy.random = original.random` (no `.next`). That aliases the copy back into the original graph, which the problem explicitly forbids and the test detects.",
+   "invariant": "After the weave, `original.next.next` is the copy of the node two steps ahead, so `X.random.next` is by construction the copy of `X.random`. That single structural fact is what makes pass 2 correct without any lookup.",
+   "questions": [
+    {
+     "q": "Why does the weave beat the memo-map approach?",
+     "a": "The map costs O(n) hash operations and O(n) nodes of auxiliary memory plus recursion depth. The weave costs three linear passes and no auxiliary structure, at the price of mutating the original temporarily -- which is restored in pass 3."
+    },
+    {
+     "q": "What breaks if the random pointer self-references (A.random = A)?",
+     "a": "Nothing in the weave approach, because `X'.random = X.random.next` and `A.next` is `A'`, so `A'.random = A'` correctly. In a naive DFS without a memo it is exactly the cycle that would cause infinite recursion."
+    },
+    {
+     "q": "Why must pass 3 unweave rather than rebuild?",
+     "a": "Because the originals' `next` pointers were overwritten. Unweaving restores each original's successor in one pass, and the copies' successors become valid once the originals are fixed. Doing it in any other order leaves dangling pointers."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0141_linked_list_cycle",
+   "one_liner": "Floyd: one fast pointer eventually overtakes the slow one.",
+   "core_objective": "Given the head of a linked list, determine whether it contains a cycle and, if so, return the node where the cycle begins.",
+   "bounds": "The list may be self-cyclic and may have a tail of any length, so the entry node is not necessarily the head. Only `pos == 0` exists as a special input; a null input is not typical here but should not crash.",
+   "approaches": [
+    {
+     "name": "Floyd's tortoise and hare (BEST)",
+     "aha": "slow += 1 hop, fast += 2 hops per round. Same node \u2192 cycle. fast hits null \u2192 acyclic.",
+     "py": "slow = head                       # tortoise: 1 hop per round\nfast = head                       # hare: 2 hops per round\nwhile fast is not None and fast.next is not None:\n    slow = slow.next              # 1 hop\n    fast = fast.next.next         # 2 hops\n    if slow is fast:              # lapped inside a loop \u2192 cycle\nreturn False                      # ran off the end \u2192 acyclic",
+     "cpp": "while (fast != nullptr && fast->next != nullptr) { slow = slow->next;        // tortoise: 1 hop\n    fast = fast->next->next;  // hare:     2 hops\n    if (slow == fast) { return true;\n    }",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Hash set of visited nodes",
+     "aha": "Insert every node pointer into a set; first repeat \u2192 cycle.",
+     "py": "seen: set[ListNode] = set()       # Python set = open addressing\ncur = head\nwhile cur is not None:\n    if cur in seen:               # O(1) probe \u2192 second visit\n        return True               # some node points back \u2192 cycle\n    seen.add(cur)\n    cur = cur.next\nreturn False                      # reached None \u2192 acyclic",
+     "cpp": "for (ListNode* cur = head; cur != nullptr; cur = cur->next) { if (seen.find(cur) != seen.end()) { return true;\n    }\n    seen.insert(cur);",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " index 0 -> 1 -> 2 -> 3 -> 4\n                    ^              |\n                    +--------------+\n\n  mu = distance head->entry = 3\n  lambda = cycle length = 2 (3->4->3)\n\n  phase 1: fast = 2*slow\n   slow at 0, fast at 0\n   slow 1, fast 2\n   slow 2, fast 4\n   slow 3, fast 2   (4->3->4->3, so fast wraps to 3->4? trace)\n   they coincide INSIDE the cycle\n\n  phase 2: reset one pointer to head, advance both by 1\n   slow 4, fast head 0\n   slow 3(entry), fast 1   -> next step both step 1\n   slow 3, fast 2\n   slow 4, fast 3\n   slow 3, fast 4\n   -> coincide at index 3 = ENTRY\n\n  proof: 2*mu = mu + k*lambda  =>  they meet at the entry.",
+   "cpp_vs_py": "Suppose the tail has length a and the cycle has length L. When slow enters the cycle (at distance a), fast is already somewhere inside it \u2014 at most L\u22121 steps ahead. Each round closes the gap by exactly 1 (fast gains 1 step per time unit), so they meet within L steps. Meeting inside a cycle PROVES a cycle exists; if there were none, fast would hit null in a straight run. Entry-point bonus (problem 0287 uses this): after the first meeting, move one pointer back to head and advance BOTH by 1 \u2014 they meet at the cycle entrance. Distance math: slow walked a+m, fast walked 2(a+m) = a + kL + m (k laps) \u21d2 a \u2261 0 mod (L \u2212 \u2026) \u21d2 head-to-entry distance equals meeting-to-entry distance mod L. Real world: checkpoints / version graphs / linked allocators all detect loops with this O(1)-space trick when a visited-set is too expensive. Git's fsck uses cycle detection on object graphs. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data #include <unordered_set> // std::unordered_set \u2014 approach 2's visited set #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList",
+   "cpp_alts": [
+    "`ListNode* slow, *fast` with `do/while` avoids the initial null check.",
+    "Brent's algorithm detects a cycle with O(1) space and fewer pointer dereferences, though it does not find the entry."
+   ],
+   "py_alts": [
+    "The `while fast and fast.next` guard expresses the precondition directly.",
+    "`is` compares identity, which is the correct comparison for node objects."
+   ],
+   "trap": "Running phase 2 with fast still at the meeting point instead of resetting it to head. The classic correct form resets ONE of the two pointers and advances both by one step.",
+   "invariant": "After t iterations of phase 1, fast has travelled 2t edges and slow t. If a cycle of length lambda exists, the first t with 2t = t (mod lambda) places them at the same node, i.e. t = k*lambda for some k, which puts fast exactly lambda ahead of slow inside the cycle.",
+   "questions": [
+    {
+     "q": "Why does resetting one pointer to head work in phase 2?",
+     "a": "After t steps where t is a multiple of lambda, fast is t = k*lambda ahead of slow. Resetting fast to head and advancing both by one, they meet after mu steps because slow has travelled t + mu and fast has travelled mu, and the cycle entry is mu edges from head and (t + mu - mu) mod lambda = 0 from slow."
+    },
+    {
+     "q": "What is the time complexity?",
+     "a": "$O(n)$ overall. Phase 1 takes at most mu + lambda iterations and phase 2 takes mu, both linear in the list length. Space is $O(1)$ -- three pointers."
+    },
+    {
+     "q": "Can you find the entry without phase 2?",
+     "a": "Not with only Floyd's pointers. Phase 1 proves existence but the meeting point is generally not the entry; the extra pass is what converts \"a cycle exists\" into \"the cycle starts here\"."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0143_reorder_list",
+   "one_liner": "Split at the middle, reverse the back half, then interleave.",
+   "core_objective": "Reorder a list so it alternates nodes from the first half and nodes from the second half, with the first half supplying the leading nodes.",
+   "bounds": "n >= 1, so n = 1 returns the single node and n = 2 swaps. Odd lengths mean the first half has one extra node, which must be consumed first or the output order is wrong.",
+   "approaches": [
+    {
+     "name": "Split + reverse + weave (BEST)",
+     "aha": "(a) fast/slow finds the middle; (b) prev/cur flip reverses the second half; (c) weave with cached successors.",
+     "py": "if head is None or head.next is None:\n    return                        # 0 or 1 node: nothing to do\nslow = head\nfast = head.next\nwhile fast is not None and fast.next is not None:\n    slow = slow.next\n    fast = fast.next.next\nprev: Optional[ListNode] = None",
+     "cpp": "        if (head == nullptr || head->next == nullptr) { return;   // 0 or 1 node: nothing to reorder",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Vector weave",
+     "aha": "Collect all node pointers into an array, weave l from 0, r from n\u22121 inward.",
+     "py": "if head is None or head.next is None:\n    return\nnodes: list[ListNode] = []        # contiguous pointer array\ncur = head\nwhile cur is not None:\n    nodes.append(cur)\n    cur = cur.next\nl, r = 0, len(nodes) - 1",
+     "cpp": "        if (head == nullptr || head->next == nullptr) { return;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "Follows directly from the traversal count: O(n) time, O(n) space."
+    }
+   ],
+   "diagram": " list [1,2,3,4,5]  -> [1,5,2,4,3]\n\n  step 1  find middle (slow/fast): slow at 3   second = 4\n  step 2  cut:  1->2->3->NULL ,  4->5->NULL\n  step 3  reverse second half: 5->4\n  step 4  interleave, FIRST half leads:\n         take 1 (first), take 5 (second), take 2, take 4, take 3\n         result [1,5,2,4,3]\n\n  list [1,2,3,4]  -> [1,4,2,3]   (first half 1,2 leads)\n\n  invariant: first always non-NULL (it has >= second's length),\n  so `first = first.next` is safe without a guard.",
+   "cpp_vs_py": "slow starts at head, fast at head->next (variant) or head. Each round: slow += 1, fast += 2. Because fast moves twice as fast, when fast reaches the end, slow has covered HALF the distance \u2014 the middle (for even length: the first of the two middles, which is the correct split point here). Same speed-ratio trick as Floyd's cycle detection (0141) \u2014 one math idea, two problems. The weave loop reads cur1->next BEFORE overwriting it: `ListNode* next1 = cur1->next;` \u2014 the cache-first discipline from 0206 applied again. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data + approach 2 #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: ListNode, buildList",
+   "cpp_alts": [
+    "An array of nodes turns this into index arithmetic and makes the interleave trivial at O(n) space.",
+    "Cutting with a dummy head after slow removes the special case where slow is the head."
+   ],
+   "py_alts": [
+    "`list.reverse()` on the extracted second half is a C-level call, much faster than manual pointer reversal.",
+    "Taking from `first` before `second` is the load-bearing line; the reverse order gives [1,3,5,2,4]."
+   ],
+   "trap": "Interleaving from the wrong end. Taking a node from the second half before one from the first produces the wrong order, and the error only shows on odd lengths.",
+   "invariant": "`first` and `second` each point to the head of a reversed-or-not list of roughly equal length with first >= second. Taking from first first preserves the alternation and guarantees first stays non-null.",
+   "questions": [
+    {
+     "q": "Why must the first half lead?",
+     "a": "Because n can be odd, in which case the first half has one more node. If you took from the second half first, the last output node would come from the first half and the pattern would be inverted."
+    },
+    {
+     "q": "Can you do it without reversing the second half?",
+     "a": "Yes, by collecting into a stack or an array and emitting alternately -- but that costs O(n) extra space, whereas the reversal is in-place and costs O(1) space."
+    },
+    {
+     "q": "What is the space complexity of the pointer version?",
+     "a": "$O(1)$. The middle is found with two pointers, the second half is reversed in place, and the interleave only rewires pointers. No allocation at all."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0146_lru_cache",
+   "one_liner": "Hash map for O(1) lookup, doubly linked list for O(1) reordering.",
+   "core_objective": "Design a cache with a fixed capacity where get and put are O(1) and the least recently used entry is evicted when full.",
+   "bounds": "At most 1e5 operations, capacity >= 1, so capacity 1 must still work (evicting the only entry). get on a missing key returns -1 and must not disturb recency. Keys and values are at least length 1.",
+   "approaches": [
+    {
+     "name": "Hash map key \u2192 node + doubly linked list (BEST)",
+     "aha": "DLL keeps recency order: head = LRU (victim), tail = MRU. get: hit \u2192 move node to tail. put: exists \u2192 update + move to tail; new \u2192 append at tail; if full \u2192 unlink head + erase map.",
+     "py": "cap, order, val = capacity, OrderedDict(), {}\n\ndef get(k):\n    if k not in val: return -1\n    order.move_to_end(k)\n    return val[k]\n\ndef put(k, v):\n    if k in val: order.move_to_end(k)\n    val[k], order[k] = v, None\n    if len(order) > cap: order.popitem(last=False)",
+     "cpp": "if (tail_ == nullptr) { head_ = tail_ = node;   // first node ever\n} else { node->prev = tail_;\n    tail_->next = node;\n    tail_ = node;",
+     "time": "O(1) average per op   Space : O(C)",
+     "space": "?",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "Naive: key \u2192 (value, lastUsedTick)",
+     "aha": "Every op stamps a global tick. Eviction scans ALL entries for the smallest tick \u2014 O(C) per eviction.",
+     "py": "store, tick = {}, 0\n\ndef get(k):\n    if k not in store: return -1\n    tick += 1\n    store[k] = (store[k][0], tick)\n    return store[k][0]\n\ndef put(k, v):\n    global tick\n    tick += 1\n    store[k] = (v, tick)",
+     "cpp": "if (it != store_.end()) { it->second = {value, ++tick_};\n    return;",
+     "time": "O(1) get, O(C) put-when-full   Space : O(C)",
+     "space": "?",
+     "why": "Follows directly from the traversal count: O(1) get, O(C) put-when-full   Space : O(C) time, ? space."
+    }
+   ],
+   "diagram": " cap = 2:  put(1,1) put(2,2) get(1) put(3,3)\n\n  hash:  {1:<1>, 2:<2>, 3:<3>}\n  list:  head <-> 3 <-> 1 <-> 2 <-> tail\n         (LRU)                 (MRU)\n\n  get(1): move 1 to MRU end -> list 3 <-> 2 <-> 1\n  put(3): map size == cap(2) -> evict tail (2)\n          map: {1,3}\n\n  sentinel design:\n    head <-> (LruEntry) <-> ... <-> (LruEntry) <-> tail\n    sentinel.prev / sentinel.next are never null, so\n    remove(node) needs no null checks.\n\n  invariant: |map| == |list| - 2 and map keys == non-sentinel keys",
+   "cpp_vs_py": "Python dict keys use open addressing with LINEAR PROBING: h(k, i) = (hash(k) + i) mod m , i = 0, 1, 2, \u2026 C++ std::unordered_map uses separate chaining. Both give the O(1) average random access the DLL cannot provide alone. The DLL is the OPPOSITE structure: O(1) insert/delete at known positions but O(n) search \u2014 together they cover each other's weakness: map finds the node, list reorders it. This exact pair (hash table + doubly linked list) is how real caches work: Redis' allkeys-lru, memcached's LRU, and the Linux kernel's page cache (radix tree + LRU list). Eviction = \"drop the head\", promotion = \"move to tail\" \u2014 every browser tab, every CDN. ===================================================================== /\n\n#include <unordered_map> // std::unordered_map \u2014 O(1) key lookup #include <vector> // std::vector \u2014 op sequences for tests #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header (ListNode unused here; the // lesson: headers centralize shared types)",
+   "cpp_alts": [
+    "`std::list` + `std::unordered_map<key, list_iterator>` is the textbook C++ answer and is fully O(1).",
+    "`gp_hash_table` beats `unordered_map` here on cache locality because every op touches both structures anyway.",
+    "An intrusive doubly linked list embedded in the node removes the separate list allocation and one indirection."
+   ],
+   "py_alts": [
+    "`collections.OrderedDict` gives `move_to_end` and `popitem(last=False)` in C -- a complete LRU in 6 lines.",
+    "`__setitem__` on an OrderedDict moves the key to the end automatically, which is exactly `put`.",
+    "A plain `dict` in Python 3.7+ preserves insertion order, so `move_to_end` has no equivalent and you need OrderedDict."
+   ],
+   "trap": "Calling `move_to_end(key)` in `get` before checking the key exists -- that raises `KeyError`. The existence test must come first.",
+   "invariant": "The map and the list hold exactly the same set of non-sentinel nodes, and the list is ordered from least to most recently used. Every access moves the node to the tail, which is what preserves both parts of the invariant.",
+   "questions": [
+    {
+     "q": "Why a doubly linked list rather than singly?",
+     "a": "Because `get` must move an arbitrary node to the MRU end, and removing from a singly linked list requires the predecessor. A doubly list gives O(1) removal via two pointers, with the head/tail sentinels eliminating every null check."
+    },
+    {
+     "q": "Why does OrderedDict make the Python version trivial?",
+     "a": "It is a dict that remembers insertion order and exposes `move_to_end(key)` plus `popitem(last=False)`. That is exactly the two primitives an LRU needs, both implemented in C, so the whole cache is a few Python lines."
+    },
+    {
+     "q": "What are the complexities of get and put?",
+     "a": "Both $O(1)$: one hash lookup, one list splice, and for put one possible eviction (map delete plus list pop). Space is $O(capacity)$, bounded by the capacity because put evicts before inserting."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0206_reverse_linked_list",
+   "one_liner": "Three pointers: prev, current, next -- and never lose next.",
+   "core_objective": "Reverse a singly linked list in place and return the new head.",
+   "bounds": "The list may be null or single-node, both of which must be handled without special-casing beyond the loop condition. The operation must be in place -- O(1) space.",
+   "approaches": [
+    {
+     "name": "Iterative, 3 sliding pointers (BEST)",
+     "aha": "prev=None, cur=head. Loop: nxt=cur.next (cache), cur.next=prev (flip), prev=cur, cur=nxt (slide). cur==None \u2192 prev is the new head. Every arrow flipped exactly once.",
+     "py": "prev: Optional[ListNode] = None   # already-reversed part; new list's end\ncur = head                        # node we are about to flip\nwhile cur is not None:\n    nxt = cur.next                # THE CACHE: save successor first\n    cur.next = prev               # THE FLIP: point at previous node\n    prev = cur                    # THE SLIDE: advance both pointers\n    cur = nxt\nreturn prev                       # cur fell off \u2192 prev is the new head",
+     "cpp": "while (cur != nullptr) { ListNode* nxt = cur->next;\n    cur->next = prev;\n    prev = cur;\n    cur = nxt;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Recursive",
+     "aha": "Reverse the tail first (recursion returns the new head), then wire head.next.next = head and head.next = None. The call stack does the \"remember the successor\" job.",
+     "py": "if head is None or head.next is None:\n    return head                   # empty or 1 node \u2192 already reversed\nnew_head = self.reverseList(head.next)  # reverse the TAIL first\nhead.next.next = head             # old successor points back at head\nhead.next = None                  # head becomes the new tail\nreturn new_head                   # new head bubbles up unchanged",
+     "cpp": "        if (head == nullptr || head->next == nullptr) { return head;",
+     "time": "O(n)",
+     "space": "O(n) (stack)",
+     "why": "Follows directly from the traversal count: O(n) time, O(n) (stack) space."
+    }
+   ],
+   "diagram": " 1 -> 2 -> 3 -> NULL\n\n prev=NULL cur=1\n   nxt = 2; cur.next = NULL; prev=1; cur=2   -> 1->NULL, cur 2->3\n   nxt = 3; cur.next = 1;   prev=2; cur=3   -> 2->1,   cur 3->NULL\n   nxt = NULL; cur.next = 2; prev=3; cur=NULL -> 3->2->1\n return prev = 3\n\n THE ORDER MATTERS: save nxt BEFORE overwriting cur.next,\n otherwise the rest of the list is unreachable.\n\n iterative: O(n) time, O(1) space\n recursive: O(n) time, O(n) stack -- risky for 1e5 nodes",
+   "cpp_vs_py": "This problem teaches the THREE pointer-chasing patterns that the whole section builds on: (1) THE CACHE: any time you overwrite a pointer you are pointing at (cur->next), copy it out first \u2014 otherwise the data behind it becomes unreachable (a leak in real programs). (2) THE DUMMY NODE: an extra sentinel head makes edge cases (empty list, single node, inserting at position 0) disappear \u2014 main() in list_node.h uses the same trick. (3) THE SLIDE: advancing prev/cur/nxt together keeps all needed context reachable with O(1) memory. Real-world: linked lists survive as LRU caches (0146), hash-map buckets (separate chaining), and intrusive memory allocators \u2014 every one of them rewrites next pointers exactly like this. ===================================================================== /\n\n#include <vector> // std::vector \u2014 test data containers #include <chrono> // std::chrono \u2014 high-resolution timing #include <iostream> // std::cout \u2014 printing benchmark results #include <sys/resource.h> // getrusage \u2014 peak-RAM measurement #include \"list_node.h\" // OUR header: ListNode + buildList + printList // (quotes = look in THIS folder first)",
+   "cpp_alts": [
+    "Iterative with three raw pointers is the only version with O(1) space and no stack overflow risk.",
+    "`std::reverse` does not apply -- it works on contiguous ranges, not linked structures."
+   ],
+   "py_alts": [
+    "`prev, cur = None, head` then `cur.next, prev, cur = prev, cur, cur.next` -- the simultaneous assignment makes the ordering bug impossible.",
+    "Python's simultaneous assignment `prev, cur = cur, cur.next` after saving `nxt` makes the ordering bug structurally impossible.",
+    "`itertools` has no linked-list reverse; a while loop is the only option, and `cur.next` is a single attribute load per step."
+   ],
+   "trap": "Writing `prev = cur` before `cur = cur.next`, or forgetting to save `next` first. Either loses the remainder of the list and silently truncates the result.",
+   "invariant": "After k iterations, `prev` is the head of a reversed list containing exactly the first k original nodes, and `cur` points to the (k+1)-th original node. So nothing is lost or duplicated.",
+   "questions": [
+    {
+     "q": "Why must `nxt` be saved before `cur.next` is overwritten?",
+     "a": "Because `cur.next` is the only link to the unprocessed remainder. Once you overwrite it, that tail is unreachable from anywhere -- not from cur, not from prev -- so the saved reference is what keeps the traversal alive."
+    },
+    {
+     "q": "When is recursion a bad choice here?",
+     "a": "For long lists. CPython's default recursion limit is 1000, so a 1e5-node list raises `RecursionError`. C++ would need a 1e5-frame stack, which is 8 MB or more. The iterative version has neither problem."
+    },
+    {
+     "q": "What does the function return, and why is it `prev`?",
+     "a": "`prev`, because after the loop `cur` is NULL and `prev` holds the last node processed -- which is the original tail, now the head of the reversed list. Returning `cur` would give null."
+    }
+   ]
+  },
+  {
+   "key": "06_linked_list/0287_find_the_duplicate_number",
+   "one_liner": "Floyd again: the entry of the functional cycle is the duplicate.",
+   "core_objective": "An array of n+1 integers in [1, n] contains exactly one value repeated; return it without modifying the array and using O(1) space.",
+   "bounds": "1 <= n <= 1e5, values in [1, n] with n = 1 a degenerate case. Modifying the array is forbidden, so the in-place-marking trick (setting nums[i] to -1) is illegal.",
+   "approaches": [
+    {
+     "name": "Floyd's tortoise and hare on the array (BEST)",
+     "aha": "slow = nums[slow], fast = nums[nums[fast]] until they meet; then slow and a fresh pointer from 0 advance equally and meet at the cycle entry = the answer.",
+     "py": "slow = 0\nfast = 0\nwhile True:\n    slow = nums[slow]           # 1 hop: i \u2192 nums[i]\n    fast = nums[nums[fast]]     # 2 hops\n    if slow == fast:\n        break\nslow2 = 0",
+     "cpp": "do { slow = nums[slow];          // 1 hop: i \u2192 nums[i]\n    fast = nums[nums[fast]];    // 2 hops",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Hash set of seen values",
+     "aha": "First value seen twice is the answer.",
+     "py": "seen: set[int] = set()           # Python set = open addressing\nfor v in nums:\n    if v in seen:                # second sighting \u2192 duplicate\n        return v\n    seen.add(v)\nreturn -1                        # unreachable per statement",
+     "cpp": "for (int v : nums) { if (seen.find(v) != seen.end()) { return v;   // second sighting \u2192 the duplicate\n    }\n    seen.insert(v);",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,3,4,2,2]  -> 2\n treat i as an arrow: i -> nums[i]\n\n  0 -> 1 -> 3 -> 2 -> 4 -> 2 -> 4 -> 2 ...\n              ^         |\n              +---------+  cycle length 2\n\n  mu (tail length)  = 3   (0,1,3 to reach 2)\n  phase 1 meeting: 2*mu = 6, lambda = 2, 6 mod 2 == 0 -> meets\n  phase 2: reset to 0, both step 1 until equal -> 2  CORRECT\n\n  proof: entry node == the duplicated value because the tail\n  ends at the repeated value and the cycle starts there.",
+   "cpp_vs_py": "The index walk i \u2192 nums[i] is a FUNCTION on {0..n}, so its picture is disjoint chains feeding into cycles (a functional graph). Because values live in [1, n] and there are n+1 of them, at least one value is the \"head\" of two chains \u2014 which forces a cycle, and the cycle's ENTRY is the duplicated value. Entry distance: after the first meeting, moving one pointer back to index 0 and advancing BOTH one step at a time makes them meet at the cycle entry \u2014 because the tail length a satisfies a \u2261 (distance from meeting point to entry) (mod cycle length). The same argument proves the 0141 entry-point trick; the hash map h(k, i) = (hash(k)+i) mod m analogy: here the \"hash\" is the array itself \u2014 the array IS the hash table, and the cycle-entry lookup finds the duplicate without one extra byte. ===================================================================== /\n\n#include <vector> // std::vector \u2014 the array #include <unordered_set> // std::unordered_set \u2014 approach 2 #include <chrono> // std::chrono \u2014 timing #include <iostream> // std::cout \u2014 output #include <sys/resource.h> // getrusage \u2014 peak RAM #include \"list_node.h\" // our header: the array models a linked // list (index i \u2192 \"node\" nums[i]), so the // whole section shares one mental model",
+   "cpp_alts": [
+    "The in-place marking solution is $O(n)$ and faster but mutates the input, which is forbidden here.",
+    "Sum formula gives the duplicate directly: sum(nums) - n(n+1)/2 -- one line, but overflow-prone for large n."
+   ],
+   "py_alts": [
+    "`Counter` is $O(n)$ space and illegal by the constraint.",
+    "The Floyd version has no allocation at all, which is exactly what the problem asks you to demonstrate."
+   ],
+   "trap": "Using the bitwise XOR trick (`x ^ x = 0`) -- it works only when every OTHER value appears an even number of times, and here every value in [1,n] appears once except the duplicate.",
+   "invariant": "Viewing the array as a function `f(i) = nums[i]` from [0,n] into [1,n], the duplicate guarantees a cycle. Floyd detects it and returns its entry, which is the duplicated value.",
+   "questions": [
+    {
+     "q": "Why does the cycle entry equal the duplicated number?",
+     "a": "The chain starting at 0 visits distinct nodes until it repeats. The repeat happens at the value that has two preimages, which is precisely the duplicated number. So the tail ends at the duplicate and the cycle begins there."
+    },
+    {
+     "q": "Why is the sum trick not usable despite being O(1) space?",
+     "a": "It is usable in spirit -- sum(nums) - n(n+1)/2 gives the duplicate -- but with n up to 1e5 the sum reaches about 5e9, which overflows a 32-bit C++ int. The sum must be 64-bit, and the float version in Python loses exactness at that magnitude."
+    },
+    {
+     "q": "What is the space complexity of the Floyd solution?",
+     "a": "$O(1)$ -- three integers. No array of counts, no set. That is the entire point of using Floyd here rather than the more obvious counting approach."
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,392 @@
+{
+ "01_arrays_and_hashing/0036_valid_sudoku": {
+  "0": {
+   "py": "rows, cols, boxes = [0]*9, [0]*9, [0]*9\nfor r in range(9):\n    for c in range(9):\n        ch = board[r][c]\n        if ch == '.': continue\n        d, bit = int(ch), 1 << (int(ch) - 1)\n        b = (r // 3) * 3 + c // 3\n        if (rows[r] | cols[c] | boxes[b]) & bit: return False\n        rows[r] |= bit; cols[c] |= bit; boxes[b] |= bit",
+   "cpp": "uint16_t rows[9] = {}, cols[9] = {}, box[9] = {};\nfor (int r = 0; r < 9; ++r)\n  for (int c = 0; c < 9; ++c) {\n    char ch = board[r][c];\n    if (ch == '.') continue;\n    uint16_t bit = 1 << (ch - '1');\n    int b = (r / 3) * 3 + c / 3;\n    if ((rows[r] | cols[c] | box[b]) & bit) return false;\n    rows[r] |= bit; cols[c] |= bit; box[b] |= bit;\n  }"
+  },
+  "1": {
+   "py": "seen = set()\nfor r in range(9):\n    for c in range(9):\n        ch = board[r][c]\n        if ch == '.': continue\n        if (r, ch) in seen or (c, ch) in seen \\\n                or ((r // 3) * 3 + c // 3, ch) in seen:\n            return False\n        seen |= {(r, ch), (c, ch), ((r // 3) * 3 + c // 3, ch)}\nreturn True",
+   "cpp": "unordered_set<int> seen;\nfor (int r = 0; r < 9; ++r)\n  for (int c = 0; c < 9; ++c) {\n    char ch = board[r][c];\n    if (ch == '.') continue;\n    int d = ch - '0', b = (r / 3) * 3 + c / 3;\n    if (seen.count(r * 10 + d) || seen.count(100 + c * 10 + d)\n        || seen.count(200 + b * 10 + d)) return false;\n    seen.insert(r * 10 + d); seen.insert(100 + c * 10 + d);\n    seen.insert(200 + b * 10 + d);\n  }"
+  }
+ },
+ "01_arrays_and_hashing/0049_group_anagrams": {
+  "0": {
+   "py": "groups: dict[tuple, list] = {}\nfor w in words:\n    cnt = [0] * 26\n    for ch in w:\n        cnt[ord(ch) - 97] += 1\n    groups.setdefault(tuple(cnt), []).append(w)\nreturn list(groups.values())",
+   "cpp": "unordered_map<string, vector<string>> g;\nfor (auto& w : words) {\n    array<char,26> cnt{};\n    for (char ch : w) ++cnt[ch - 'a'];\n    g[string(cnt.data(), 26)].push_back(w);\n}\nvector<vector<string>> out;\nfor (auto& kv : g) out.push_back(kv.second);"
+  },
+  "1": {
+   "py": "groups: dict[str, list] = {}\nfor w in words:\n    key = ''.join(sorted(w))\n    groups.setdefault(key, []).append(w)\nreturn list(groups.values())",
+   "cpp": "map<string, vector<string>> g;\nfor (auto& w : words) {\n    string key = w;\n    sort(key.begin(), key.end());\n    g[key].push_back(w);\n}\nvector<vector<string>> out;\nfor (auto& kv : g) out.push_back(kv.second);"
+  }
+ },
+ "01_arrays_and_hashing/0128_longest_consecutive_sequence": {
+  "0": {
+   "py": "nums = set(nums)\nbest = 0\nfor x in nums:                 # only run-minima pass the gate\n    if x - 1 in nums: continue\n    y = x\n    while y + 1 in nums: y += 1\n    best = max(best, y - x + 1)\nreturn best",
+   "cpp": "unordered_set<int> s(nums.begin(), nums.end());\nint best = 0;\nfor (int x : s) {\n    if (s.count(x - 1)) continue;   // not a run start\n    int y = x;\n    while (s.count(y + 1)) ++y;\n    best = max(best, y - x + 1);\n}"
+  },
+  "1": {
+   "py": "nums = sorted(set(nums))\nbest = run = 1\nfor i in range(1, len(nums)):\n    run = run + 1 if nums[i] == nums[i-1] + 1 else 1\n    best = max(best, run)\nreturn best if nums else 0",
+   "cpp": "sort(nums.begin(), nums.end());\nint best = 0, run = 0;\nfor (int i = 0; i < n; ++i) {\n    if (i > 0 && nums[i] == nums[i-1] + 1) ++run;\n    else run = 1;\n    best = max(best, run);\n}"
+  }
+ },
+ "01_arrays_and_hashing/0217_contains_duplicate": {
+  "0": {
+   "py": "seen = set()\nfor x in nums:\n    if x in seen: return True\n    seen.add(x)\nreturn False",
+   "cpp": "unordered_set<int> seen;\nseen.reserve(nums.size());\nfor (int x : nums) {\n    if (!seen.insert(x).second) return true;\n}\nreturn false;"
+  },
+  "1": {
+   "py": "nums.sort()\nfor i in range(1, len(nums)):\n    if nums[i] == nums[i-1]: return True\nreturn False",
+   "cpp": "sort(nums.begin(), nums.end());\nfor (int i = 1; i < n; ++i)\n    if (nums[i] == nums[i-1]) return true;\nreturn false;"
+  }
+ },
+ "01_arrays_and_hashing/0238_product_of_array_except_self": {
+  "0": {
+   "py": "out = [1] * n\npre = 1\nfor i in range(n):        # pass 1: prefix products\n    out[i] = pre\n    pre *= nums[i]\nsuf = 1\nfor i in range(n-1, -1, -1):   # pass 2: fold in suffix\n    out[i] *= suf\n    suf *= nums[i]",
+   "cpp": "vector<long long> out(n, 1);\nlong long pre = 1;\nfor (int i = 0; i < n; ++i) { out[i] = pre; pre *= nums[i]; }\nlong long suf = 1;\nfor (int i = n - 1; i >= 0; --i) { out[i] *= suf; suf *= nums[i]; }"
+  },
+  "1": {
+   "py": "out = [1] * n\npre = 1\nfor i in range(n):\n    out[i] = pre\n    pre *= nums[i]\nfor i in range(n-2, -1, -1):\n    out[i] *= out[i+1] * nums[i+1]",
+   "cpp": "vector<long long> out(n, 1);\nlong long pre = 1;\nfor (int i = 0; i < n; ++i) { out[i] = pre; pre *= nums[i]; }\n// out[i] already holds nums[0..i-1]; multiply the running tail\nfor (int i = n - 2; i >= 0; --i)\n    out[i] *= out[i + 1] * nums[i + 1];"
+  }
+ },
+ "01_arrays_and_hashing/0242_valid_anagram": {
+  "0": {
+   "py": "if len(s) != len(t): return False\nneed = [0] * 26\nfor ch in s: need[ord(ch) - 97] += 1\nfor ch in t:\n    i = ord(ch) - 97\n    if need[i] == 0: return False\n    need[i] -= 1\nreturn all(v == 0 for v in need)",
+   "cpp": "if (s.size() != t.size()) return false;\narray<int,26> need{};\nfor (char ch : s) ++need[ch - 'a'];\nfor (char ch : t) {\n    if (--need[ch - 'a'] < 0) return false;\n}\nreturn all_of(need.begin(), need.end(),\n              [](int v) { return v == 0; });"
+  },
+  "1": {
+   "py": "return sorted(s) == sorted(t)",
+   "cpp": "string a = s, b = t;\nsort(a.begin(), a.end());\nsort(b.begin(), b.end());\nreturn a == b;"
+  }
+ },
+ "01_arrays_and_hashing/0271_encode_and_decode_strings": {
+  "0": {
+   "py": "def encode(strs):\n    return ''.join(f'{len(w)}#{w}' for w in strs)\n\ndef decode(s):\n    out, i = [], 0\n    while i < len(s):\n        j = s.index('#', i)\n        n = int(s[i:j])\n        out.append(s[j+1:j+1+n])\n        i = j + 1 + n\n    return out",
+   "cpp": "string encode(vector<string>& strs) {\n    string out;\n    for (auto& w : strs) { out += to_string(w.size());\n                          out += '#'; out += w; }\n    return out;\n}\nvector<string> decode(string& s) {\n    vector<string> out; int i = 0;\n    while (i < s.size()) {\n        size_t j = s.find('#', i);\n        int n = stoi(s.substr(i, j - i));\n        out.push_back(s.substr(j + 1, n));\n        i = j + 1 + n;\n    }\n    return out;\n}"
+  },
+  "1": {
+   "py": "def encode(strs):\n    return '#'.join(w.replace('/', '//').replace('#', '/#')\n                    for w in strs)\n\ndef decode(s):\n    out, cur, esc = [], '', False\n    for ch in s:\n        if esc: cur += ch; esc = False\n        elif ch == '/': esc = True\n        elif ch == '#': out.append(cur); cur = ''\n        else: cur += ch\n    return out",
+   "cpp": "string encode(vector<string>& strs) {\n    string out;\n    for (auto& w : strs)\n      for (char ch : w) {\n        if (ch == '/') out += \"//\";\n        else if (ch == '#') out += \"/#\";\n        else out += ch;\n      }\n      out += '#';\n    return out;\n}"
+  }
+ },
+ "01_arrays_and_hashing/0347_top_k_frequent_elements": {
+  "0": {
+   "py": "count = Counter(nums)\nbuckets = [[] for _ in range(len(nums) + 1)]\nfor value, freq in count.items():\n    buckets[freq].append(value)\nout = []\nfor freq in range(len(nums), 0, -1):\n    for v in buckets[freq]:\n        out.append(v)\n        if len(out) == k: return out",
+   "cpp": "unordered_map<int,int> count;\nfor (int x : nums) ++count[x];\nvector<vector<int>> bucket(n + 1);\nfor (auto& kv : count) bucket[kv.second].push_back(kv.first);\nvector<int> out;\nfor (int f = n; f >= 1 && out.size() < k; --f)\n    for (int v : bucket[f]) out.push_back(v);"
+  },
+  "1": {
+   "py": "return heapq.nlargest(k, Counter(nums).items(),\n                       key=lambda kv: kv[1])",
+   "cpp": "vector<pair<int,int>> f;      // (freq, value)\nfor (auto& kv : count) f.push_back({kv.second, kv.first});\nnth_element(f.begin(), f.begin() + k, f.end(),\n            [](auto& a, auto& b) { return a.first > b.first; });\nvector<int> out;\nfor (int i = 0; i < k; ++i) out.push_back(f[i].second);"
+  }
+ },
+ "02_two_pointers/0011_container_with_most_water": {
+  "0": {
+   "py": "best = 0\nl, r = 0, n - 1\nwhile l < r:\n    best = max(best, (r - l) * min(h[l], h[r]))\n    if h[l] < h[r]: l += 1\n    else: r -= 1",
+   "cpp": "int best = 0, l = 0, r = n - 1;\nwhile (l < r) {\n    best = max(best, (r - l) * min(h[l], h[r]));\n    h[l] < h[r] ? ++l : --r;\n}"
+  },
+  "1": {
+   "py": "for i in range(n):\n    for j in range(i + 1, n):\n        best = max(best, (j - i) * min(h[i], h[j]))\nreturn best",
+   "cpp": "int best = 0;\nfor (int i = 0; i < n; ++i)\n  for (int j = i + 1; j < n; ++j)\n    best = max(best, (j - i) * min(h[i], h[j]));"
+  }
+ },
+ "02_two_pointers/0015_3sum": {
+  "0": {
+   "py": "nums.sort()\nout = []\nfor i in range(n - 2):\n    if nums[i] > 0: break\n    if i and nums[i] == nums[i-1]: continue\n    l, r = i + 1, n - 1\n    while l < r:\n        s = nums[i] + nums[l] + nums[r]\n        if s < 0: l += 1\n        elif s > 0: r -= 1\n        else:\n            out.append([nums[i], nums[l], nums[r]])\n            while l < r and nums[l] == nums[l+1]: l += 1\n            while l < r and nums[r] == nums[r-1]: r -= 1\n            l += 1; r -= 1",
+   "cpp": "sort(nums.begin(), nums.end());\nvector<vector<int>> out;\nfor (int i = 0; i + 2 < n; ++i) {\n    if (nums[i] > 0) break;\n    if (i && nums[i] == nums[i-1]) continue;\n    int l = i + 1, r = n - 1;\n    while (l < r) {\n        int s = nums[i] + nums[l] + nums[r];\n        if (s < 0) ++l; else if (s > 0) --r;\n        else { out.push_back({nums[i], nums[l], nums[r]});\n               while (l < r && nums[l] == nums[l+1]) ++l;\n               while (l < r && nums[r] == nums[r-1]) --r;\n               ++l; --r; }\n    }\n}"
+  },
+  "1": {
+   "py": "out, seen = [], set()\nfor i in range(n):\n    for j in range(i + 1, n):\n        need = -nums[i] - nums[j]\n        if need in seen:\n            out.append(sorted([nums[i], nums[j], need]))\n        seen.add(nums[j])\nreturn {tuple(t) for t in out}",
+   "cpp": "set<vector<int>> uniq;\nfor (int i = 0; i < n; ++i) {\n    unordered_set<int> seen;\n    for (int j = i + 1; j < n; ++j) {\n        int need = -nums[i] - nums[j];\n        if (seen.count(need)) {\n            vector<int> t{nums[i], nums[j], need};\n            sort(t.begin(), t.end()); uniq.insert(t);\n        }\n        seen.insert(nums[j]);\n    }\n}"
+  }
+ },
+ "02_two_pointers/0042_trapping_rain_water": {
+  "0": {
+   "py": "l, r = 0, n - 1\nlo = hi = 0\nwater = 0\nwhile l < r:\n    lo, hi = max(lo, h[l]), max(hi, h[r])\n    if lo < hi:\n        water += lo - h[l]; l += 1\n    else:\n        water += hi - h[r]; r -= 1",
+   "cpp": "int l = 0, r = n - 1, lo = 0, hi = 0, water = 0;\nwhile (l < r) {\n    lo = max(lo, h[l]); hi = max(hi, h[r]);\n    if (lo < hi) { water += lo - h[l]; ++l; }\n    else          { water += hi - h[r]; --r; }\n}"
+  },
+  "1": {
+   "py": "left = [0] * n; right = [0] * n\nlo = 0\nfor i in range(n):\n    left[i] = lo = max(lo, h[i])\nhi = 0\nfor i in range(n - 1, -1, -1):\n    right[i] = hi = max(hi, h[i])\nreturn sum(left[i] - h[i] if left[i] < right[i] else right[i] - h[i]\n           for i in range(n))",
+   "cpp": "vector<int> L(n), R(n); int lo = 0, hi = 0;\nfor (int i = 0; i < n; ++i) L[i] = lo = max(lo, h[i]);\nfor (int i = n-1; i >= 0; --i) R[i] = hi = max(hi, h[i]);\nint w = 0;\nfor (int i = 0; i < n; ++i) w += min(L[i], R[i]) - h[i];"
+  }
+ },
+ "02_two_pointers/0125_valid_palindrome": {
+  "0": {
+   "py": "l, r = 0, len(s) - 1\nwhile l < r:\n    while l < r and not s[l].isalnum(): l += 1\n    while l < r and not s[r].isalnum(): r -= 1\n    if s[l].lower() != s[r].lower(): return False\n    l += 1; r -= 1\nreturn True",
+   "cpp": "int l = 0, r = s.size() - 1;\nwhile (l < r) {\n    while (l < r && !isalnum(s[l])) ++l;\n    while (l < r && !isalnum(s[r])) --r;\n    if (tolower(s[l]) != tolower(s[r])) return false;\n    ++l; --r;\n}\nreturn true;"
+  },
+  "1": {
+   "py": "t = ''.join(c.lower() for c in s if c.isalnum())\nreturn t == t[::-1]",
+   "cpp": "string t;\nfor (char ch : s) if (isalnum(ch)) t += tolower(ch);\nstring u(t.rbegin(), t.rend());\nreturn t == u;"
+  }
+ },
+ "02_two_pointers/0167_two_sum_ii": {
+  "0": {
+   "py": "l, r = 0, n - 1\nwhile l < r:\n    s = nums[l] + nums[r]\n    if s == target: return [l + 1, r + 1]   # 1-based!\n    s < target and l or l.__class__\n    if s < target: l += 1\n    else: r -= 1",
+   "cpp": "int l = 0, r = n - 1;\nwhile (l < r) {\n    int s = nums[l] + nums[r];\n    if (s == target) return {l + 1, r + 1};   // 1-based\n    s < target ? ++l : --r;\n}"
+  },
+  "1": {
+   "py": "for i, x in enumerate(nums):\n    need = target - x\n    if need in seen: return [seen[need] + 1, i + 1]\n    seen[x] = i",
+   "cpp": "unordered_map<int,int> seen;\nfor (int i = 0; i < n; ++i) {\n    int need = target - nums[i];\n    auto it = seen.find(need);\n    if (it != seen.end()) return {it->second + 1, i + 1};\n    seen[nums[i]] = i;\n}"
+  }
+ },
+ "03_sliding_window/0003_longest_substring_without_repeating_characters": {
+  "0": {
+   "py": "last, l, best = {}, 0, 0\nfor r, ch in enumerate(s):\n    if ch in last:\n        l = max(l, last[ch] + 1)   # never move l back\n    last[ch] = r\n    best = max(best, r - l + 1)\nreturn best",
+   "cpp": "int last[256]; fill(last, last + 256, -1);\nint l = 0, best = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    l = max(l, last[s[r]] + 1);\n    last[s[r]] = r;\n    best = max(best, r - l + 1);\n}"
+  },
+  "1": {
+   "py": "best, l = 0, 0\nwin = set()\nfor r, ch in enumerate(s):\n    while ch in win:\n        win.remove(s[l]); l += 1\n    win.add(ch)\n    best = max(best, r - l + 1)\nreturn best",
+   "cpp": "unordered_set<char> win;\nint l = 0, best = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    while (win.count(s[r])) { win.erase(s[l]); ++l; }\n    win.insert(s[r]);\n    best = max(best, r - l + 1);\n}"
+  }
+ },
+ "03_sliding_window/0076_minimum_window_substring": {
+  "0": {
+   "py": "need, window = Counter(t), Counter()\nfor ch in s: window[ch] += 1\nneed_size, formed, l, best = len(need), 0, 0, (1e9, 0, 0)\nfor r, ch in enumerate(s):\n    window[ch] += 1\n    if ch in need and window[ch] == need[ch]: formed += 1\n    while formed == need_size:\n        if r - l + 1 < best[0]: best = (r-l+1, l, r)\n        out = s[l]\n        window[out] -= 1\n        if out in need and window[out] < need[out]: formed -= 1\n        l += 1",
+   "cpp": "unordered_map<char,int> need, win;\nfor (char ch : t) ++need[ch];\nfor (char ch : s) ++win[ch];\nint formed = 0, l = 0, best = INT_MAX, bl = 0, br = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    if (win[s[r]]++ == need[s[r]]) ++formed;\n    while (formed == need.size()) {\n        if (r - l + 1 < best) { best = r-l+1; bl = l; br = r; }\n        if (--win[s[l]] < need[s[l]]) --formed;\n        ++l;\n    }\n}"
+  },
+  "1": {
+   "py": "need = Counter(t)\nfor start in range(len(s) - len(t) + 1):\n    win, formed = Counter(), 0\n    for r in range(start, start + len(t)):\n        win[s[r]] += 1\n        if win[s[r]] == need[s[r]]: formed += 1\n    if formed == len(need): return s[start:start+len(t)]\nreturn ''",
+   "cpp": "unordered_map<char,int> need;\nfor (char ch : t) ++need[ch];\nfor (int i = 0; i + t.size() <= s.size(); ++i) {\n    unordered_map<char,int> win;\n    int formed = 0;\n    for (int j = i; j < i + t.size(); ++j) {\n        if (++win[s[j]] == need[s[j]]) ++formed;\n    }\n    if (formed == (int)need.size()) return s.substr(i, t.size());\n}\nreturn \"\";"
+  }
+ },
+ "03_sliding_window/0121_best_time_to_buy_and_sell_stock": {
+  "0": {
+   "py": "lo, best = prices[0], 0\nfor p in prices:\n    lo = min(lo, p)\n    best = max(best, p - lo)\nreturn best",
+   "cpp": "int lo = prices[0], best = 0;\nfor (int p : prices) {\n    lo = min(lo, p);\n    best = max(best, p - lo);\n}"
+  },
+  "1": {
+   "py": "best = 0\nfor i in range(n):\n    for j in range(i + 1, n):\n        best = max(best, prices[j] - prices[i])\nreturn best",
+   "cpp": "int best = 0;\nfor (int i = 0; i < n; ++i)\n  for (int j = i + 1; j < n; ++j)\n    best = max(best, prices[j] - prices[i]);"
+  }
+ },
+ "03_sliding_window/0239_sliding_window_maximum": {
+  "0": {
+   "py": "dq = collections.deque()\nout = []\nfor i, v in enumerate(nums):\n    while dq and nums[dq[-1]] <= v: dq.pop()   # dominated\n    dq.append(i)\n    if dq[0] <= i - k: dq.popleft()          # expired\n    if i >= k - 1: out.append(nums[dq[0]])\nreturn out",
+   "cpp": "deque<int> dq;\nvector<int> out;\nfor (int i = 0; i < n; ++i) {\n    while (!dq.empty() && nums[dq.back()] <= nums[i]) dq.pop_back();\n    dq.push_back(i);\n    if (dq.front() <= i - k) dq.pop_front();\n    if (i >= k - 1) out.push_back(nums[dq.front()]);\n}"
+  },
+  "1": {
+   "py": "hp, out = [], []\nfor i, v in enumerate(nums):\n    heapq.heappush(hp, (-v, i))\n    if hp[0][1] <= i - k: heapq.heappushpop(hp, (-v, i))\n    if i >= k - 1: out.append(-hp[0][0])\nreturn out",
+   "cpp": "priority_queue<pair<int,int>> hp;   // (value, idx)\nvector<int> out;\nfor (int i = 0; i < n; ++i) {\n    hp.push({nums[i], i});\n    if (hp.top().second <= i - k) hp.pop();\n    if (i >= k - 1) out.push_back(hp.top().first);\n}"
+  }
+ },
+ "03_sliding_window/0424_longest_repeating_character_replacement": {
+  "0": {
+   "py": "need = [0] * 26\nl = best = mx = 0\nfor r, ch in enumerate(s):\n    i = ord(ch) - 65\n    need[i] += 1\n    mx = max(mx, need[i])\n    while r - l + 1 - mx > k:\n        need[ord(s[l]) - 65] -= 1; l += 1\n    best = max(best, r - l + 1)\nreturn best",
+   "cpp": "int need[26] = {}, l = 0, best = 0, mx = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    int i = s[r] - 'A';\n    ++need[i]; mx = max(mx, need[i]);\n    while (r - l + 1 - mx > k) { --need[s[l] - 'A']; ++l; }\n    best = max(best, r - l + 1);\n}"
+  },
+  "1": {
+   "py": "best = 0\nfor i in range(len(s)):\n    for j in range(i, len(s)):\n        cnt = Counter(s[i:j+1])\n        if j - i + 1 - max(cnt.values()) > k: break\n        best = max(best, j - i + 1)\nreturn best",
+   "cpp": "int best = 0;\nfor (int i = 0; i < s.size(); ++i) {\n    int cnt[26] = {};\n    for (int j = i; j < s.size(); ++j) {\n        int mx = max(++cnt[s[j]-'A'], mx);\n        if (j - i + 1 - mx > k) break;\n        best = max(best, j - i + 1);\n    }\n}"
+  }
+ },
+ "03_sliding_window/0567_permutation_in_string": {
+  "0": {
+   "py": "need, win = [0]*26, [0]*26\nfor ch in s1: need[ord(ch) - 97] += 1\nfor ch in s2[:len(s1)]: win[ord(ch) - 97] += 1\nhits = sum(1 for i in range(26) if win[i] == need[i])\nfor r in range(len(s1), len(s2)):\n    a, b = ord(s2[r]) - 97, ord(s2[r-len(s1)]) - 97\n    hits += (win[a] == need[a]) - (win[b] == need[b])\n    win[a] += 1; win[b] -= 1\n    if hits == 26: return True\nreturn hits == 26",
+   "cpp": "int need[26] = {}, win[26] = {};\nfor (char ch : s1) ++need[ch - 'a'];\nfor (int i = 0; i < s1.size(); ++i) ++win[s2[i] - 'a'];\nint hits = 0;\nfor (int i = 0; i < 26; ++i) hits += (win[i] == need[i]);\nfor (int r = s1.size(); r < s2.size(); ++r) {\n    int a = s2[r] - 'a', b = s2[r - s1.size()] - 'a';\n    hits += (win[a] == need[a]) - (win[b] == need[b]);\n    ++win[a]; --win[b];\n    if (hits == 26) return true;\n}\nreturn hits == 26;"
+  }
+ },
+ "04_stack/0155_min_stack": {
+  "0": {
+   "cpp": "stack<int> main_s, mins;\nvoid push(int v) {\n    main_s.push(v);\n    mins.push(mins.empty() || v < mins.top() ? v\n                                        : mins.top());\n}\nvoid pop() { main_s.pop(); mins.pop(); }\nint top() { return main_s.top(); }\nint getMin() { return mins.top(); }"
+  },
+  "1": {
+   "cpp": "vector<pair<int,int>> st;   // (value, runningMin)\nvoid push(int v) {\n    int mn = st.empty() ? v : min(v, st.back().second);\n    st.emplace_back(v, mn);\n}\nvoid pop() { st.pop_back(); }\nint top() { return st.back().first; }\nint getMin() { return st.back().second; }"
+  }
+ },
+ "04_stack/0853_car_fleet": {
+  "0": {
+   "cpp": "sort(cars.begin(), cars.end());\nvector<double> t;\nfor (auto& c : cars)\n    t.push_back(1.0 * (target - c.first) / c.second);\nint fleets = 0;\ndouble slowest = 0;\nfor (int i = (int)t.size() - 1; i >= 0; --i) {\n    if (t[i] > slowest) { ++fleets; slowest = t[i]; }\n}\nreturn fleets;"
+  },
+  "1": {
+   "cpp": "sort(cars.begin(), cars.end());\nvector<double> t;\nfor (auto& c : cars)\n    t.push_back(1.0 * (target - c.first) / c.second);\ndouble slow = 0;\nfor (int i = (int)t.size() - 1; i >= 0; --i)\n    if (t[i] > slow) slow = t[i];\n// count suffix maxima\nint fleets = 0; slow = -1;\nfor (int i = (int)t.size() - 1; i >= 0; --i)\n    if (t[i] > slow) { ++fleets; slow = t[i]; }"
+  }
+ },
+ "05_binary_search/0004_median_of_two_sorted_arrays": {
+  "0": {
+   "cpp": "vector<int> merged;\nmerged.reserve(m + n);\nsize_t i = 0, j = 0;\nwhile (i < m && j < n)\n    merged.push_back(A[i] <= B[j] ? A[i++] : B[j++]);\nwhile (i < m) merged.push_back(A[i++]);\nwhile (j < n) merged.push_back(B[j++]);\nint half = (m + n) / 2;\nif ((m + n) % 2) return merged[half];\nreturn (merged[half - 1] + merged[half]) / 2;"
+  },
+  "1": {
+   "cpp": "if (m > n) return median(A, B, n, m, k);\nint half = (m + n + 1) / 2;\nint lo = max(0, half - n), hi = min(m, half);\nwhile (lo <= hi) {\n    int j = (lo + hi) / 2;\n    int i = half - j;\n    int lA = i > 0 ? A[i-1] : INT_MIN;\n    int rA = i < m ? A[i] : INT_MAX;\n    int lB = j > 0 ? B[j-1] : INT_MIN;\n    int rB = j < n ? B[j] : INT_MAX;\n    if (lA <= rB && lB <= rA)\n        return (m + n) % 2 ? max(lA, lB)\n                            : (max(lA, lB) + (long)min(rA, rB)) / 2;\n    if (lA > rB) hi = j - 1; else lo = j + 1;\n}\nreturn 0;"
+  }
+ },
+ "05_binary_search/0981_time_based_key_value_store": {
+  "0": {
+   "py": "store = defaultdict(list)\n\ndef set(k, v, ts):\n    store[k].append((ts, v))\n\ndef get(k, ts):\n    lst = store.get(k)\n    if not lst: return ''\n    i = bisect.bisect_right(lst, (ts, chr(0x10FFFF)))\n    return lst[i - 1][1] if i else ''"
+  },
+  "1": {
+   "py": "store = defaultdict(list)\n\ndef set(k, v, ts):\n    store[k].append((ts, v))\n\ndef get(k, ts):\n    ans = ''\n    for t, v in store.get(k, []):\n        if t <= ts: ans = v\n    return ans"
+  }
+ },
+ "06_linked_list/0146_lru_cache": {
+  "0": {
+   "py": "cap, order, val = capacity, OrderedDict(), {}\n\ndef get(k):\n    if k not in val: return -1\n    order.move_to_end(k)\n    return val[k]\n\ndef put(k, v):\n    if k in val: order.move_to_end(k)\n    val[k], order[k] = v, None\n    if len(order) > cap: order.popitem(last=False)"
+  },
+  "1": {
+   "py": "store, tick = {}, 0\n\ndef get(k):\n    if k not in store: return -1\n    tick += 1\n    store[k] = (store[k][0], tick)\n    return store[k][0]\n\ndef put(k, v):\n    global tick\n    tick += 1\n    store[k] = (v, tick)"
+  }
+ },
+ "07_trees/0297_serialize_and_deserialize_binary_tree": {
+  "0": {
+   "py": "def serialize(root):\n    out = []\n    def walk(n):\n        if n is None: out.append('#'); return\n        out.append(str(n.val)); walk(n.left); walk(n.right)\n    walk(root)\n    return ','.join(out)\n\ndef deserialize(s):\n    toks = iter(s.split(','))\n    def build():\n        t = next(toks)\n        if t == '#': return None\n        n = TreeNode(int(t))\n        n.left, n.right = build(), build()\n        return n\n    return build()"
+  },
+  "1": {
+   "py": "def serialize(root):\n    return repr(root)   # __repr__ writes the preorder +\n                        # null-marker token stream\n\ndef deserialize(s):\n    return eval(s)       # only for a controlled input"
+  }
+ },
+ "09_heap_priority_queue/0215_kth_largest_element_in_an_array": {
+  "1": {
+   "cpp": "int lo = 0, hi = n - 1, target = n - k;\nwhile (lo < hi) {\n    int p = partition(nums, lo, hi);\n    if (p == target) break;\n    p < target ? lo = p + 1 : hi = p - 1;\n}\nreturn nums[target];"
+  }
+ },
+ "09_heap_priority_queue/0295_find_median_from_data_stream": {
+  "1": {
+   "cpp": "vector<double> s;   // kept sorted\nvoid addNum(int v) {\n    s.insert(lower_bound(s.begin(), s.end(), v), v);\n}\ndouble findMedian() {\n    int n = s.size();\n    return n % 2 ? s[n / 2]\n                 : (s[n/2 - 1] + s[n/2]) / 2.0;\n}"
+  }
+ },
+ "09_heap_priority_queue/0355_design_twitter": {
+  "1": {
+   "cpp": "unordered_map<int, vector<int>> posts;\nunordered_map<int, unordered_set<int>> follow;\nint clock = 0;\n\nvector<int> getRecent(int u, int k = 10) {\n    vector<int> ids = posts[u];\n    for (int f : follow[u])\n        for (int id : posts[f]) ids.push_back(id);\n    sort(ids.begin(), ids.end());\n    if (ids.size() <= k) return ids;\n    return vector<int>(ids.end() - k, ids.end());\n}"
+  }
+ },
+ "10_backtracking/0051_n_queens": {
+  "1": {
+   "cpp": "bool check(vector<int>& q) {          // O(n!) with no pruning\n    int n = q.size();\n    for (int i = 0; i < n; ++i)\n        for (int j = 0; j < n; ++j)\n            if (q[i] == j || abs(q[i] - j) == i - j)\n                return false;\n    return true;\n}\n// then enumerate every permutation of columns"
+  }
+ },
+ "10_backtracking/0079_word_search": {
+  "1": {
+   "cpp": "bool dfs(vector<vector<char>>& g, int r, int c,\n              const string& w, int k,\n              vector<vector<char>>& used) {\n    if (r < 0 || r >= g.size() || c < 0 || c >= g[0].size()\n        || used[r][c] || g[r][c] != w[k]) return false;\n    if (k == w.size() - 1) return true;\n    used[r][c] = 1;\n    bool ok = dfs(g, r+1, c, w, k+1, used)\n           || dfs(g, r-1, c, w, k+1, used)\n           || dfs(g, r, c+1, w, k+1, used)\n           || dfs(g, r, c-1, w, k+1, used);\n    used[r][c] = 0;\n    return ok;\n}"
+  }
+ },
+ "11_graphs/0127_word_ladder": {
+  "0": {
+   "cpp": "unordered_set<string> pool(wordList.begin(), wordList.end());\nqueue<string> q; q.push(beginWord);\nint steps = 0;\nwhile (!q.empty()) {\n    int n = q.size();\n    while (n--) {\n        string cur = q.front(); q.pop();\n        if (cur == endWord) return steps;\n        for (int i = 0; i < cur.size(); ++i) {\n            char old = cur[i];\n            for (char c = 'a'; c <= 'z'; ++c) {\n                cur[i] = c;\n                if (pool.erase(cur)) q.push(cur);\n            }\n            cur[i] = old;\n        }\n    }\n    ++steps;\n}\nreturn 0;"
+  },
+  "1": {
+   "cpp": "unordered_set<string> f, b, pool(wordList.begin(), wordList.end());\nf.insert(beginWord); b.insert(endWord);\nint steps = 0;\nwhile (!f.empty() && !b.empty()) {\n    if (f.size() > b.size()) f.swap(b);\n    unordered_set<string> next;\n    for (const string& cur : f) {\n        string t = cur;\n        for (int i = 0; i < t.size(); ++i) {\n            char old = t[i];\n            for (char c = 'a'; c <= 'z'; ++c) {\n                t[i] = c;\n                if (b.count(t)) return steps + 1;\n                if (pool.erase(t)) next.insert(t);\n            }\n            t[i] = old;\n        }\n    }\n    f = move(next); ++steps;\n}\nreturn 0;"
+  }
+ },
+ "11_graphs/0323_number_of_connected_components": {
+  "0": {
+   "cpp": "vector<int> parent(n), sz(n, 1);\niota(parent.begin(), parent.end(), 0);\nint count = n;\nfor (auto& e : edges) {\n    int ru = find(parent, e[0]), rv = find(parent, e[1]);\n    if (ru == rv) continue;      // already joined: no cycle\n    if (sz[ru] < sz[rv]) swap(ru, rv);\n    parent[rv] = ru; sz[ru] += sz[rv]; --count;\n}\nreturn count;"
+  },
+  "1": {
+   "cpp": "vector<vector<int>> adj(n);\nfor (auto& e : edges) { adj[e[0]].push_back(e[1]);\n                         adj[e[1]].push_back(e[0]); }\nvector<char> seen(n, 0);\nint count = 0;\nfor (int i = 0; i < n; ++i) {\n    if (seen[i]) continue;\n    ++count;\n    stack<int> st; st.push(i); seen[i] = 1;\n    while (!st.empty()) {\n        int u = st.top(); st.pop();\n        for (int v : adj[u]) if (!seen[v]) {\n            seen[v] = 1; st.push(v);\n        }\n    }\n}\nreturn count;"
+  }
+ },
+ "11_graphs/0417_pacific_atlantic_water_flow": {
+  "0": {
+   "cpp": "void flood(vector<vector<int>>& h, vector<char>& seen,\n                int r, int c, vector<vector<char>>& out) {\n    int m = h.size(), n = h[0].size();\n    stack<pair<int,int>> st; st.push({r, c}); seen[r][c] = 1;\n    while (!st.empty()) {\n        auto [x, y] = st.top(); st.pop();\n        out[x][y] = 1;\n        for (int d = 0; d < 4; ++d) {\n            int nx = x + DR[d], ny = y + DC[d];\n            if (nx < 0 || ny < 0 || nx >= m || ny >= n) continue;\n            if (seen[nx][ny] || h[nx][ny] < h[x][y]) continue;\n            seen[nx][ny] = 1; st.push({nx, ny});\n        }\n    }\n}"
+  },
+  "1": {
+   "cpp": "vector<vector<char>> reach(m, vector<char>(n, 0));\n// seed the top row and the left column (Pacific), then\n// seed the bottom row and right column (Atlantic) into a\n// SECOND reach grid; intersect the two grids afterwards"
+  }
+ },
+ "11_graphs/0684_redundant_connection": {
+  "0": {
+   "cpp": "vector<int> parent(n + 1), sz(n + 1, 1);\niota(parent.begin(), parent.end(), 0);\nfor (auto& e : edges) {\n    int ru = find(parent, e[0]), rv = find(parent, e[1]);\n    if (ru == rv) return e;      // first cycle-closing edge\n    parent[rv] = ru;\n}\nreturn {};"
+  },
+  "1": {
+   "cpp": "vector<vector<int>> adj(n + 1);\nfor (auto& e : edges) {\n    adj[e[0]].push_back(e[1]);\n    adj[e[1]].push_back(e[0]);\n}\nvector<char> seen(n + 1, 0);\nseen[1] = 1;\nqueue<int> q; q.push(1);\nwhile (!q.empty()) {\n    int u = q.front(); q.pop();\n    for (int v : adj[u]) {\n        if (seen[v]) return {u, v};   // edge back to a visited node\n        seen[v] = 1; q.push(v);\n    }\n}\nreturn {};"
+  }
+ },
+ "11_graphs/0695_max_area_of_island": {
+  "0": {
+   "cpp": "int area(vector<vector<int>>& g, int r, int c) {\n    int m = g.size(), n = g[0].size();\n    if (r < 0 || c < 0 || r >= m || c >= n || g[r][c] != 1)\n        return 0;\n    g[r][c] = 0;                     // mark on entry\n    return 1 + area(g, r+1, c) + area(g, r-1, c)\n             + area(g, r, c+1) + area(g, r, c-1);\n}"
+  },
+  "1": {
+   "cpp": "stack<int> st;\nfor each land cell (r,c) with g[r][c] == 1:\n    st.push(r * n + c); g[r][c] = 0; area = 0;\n    while (!st.empty()) {\n        int p = st.top(); st.pop(); ++area;\n        int y = p % n, x = p / n;\n        for (int d = 0; d < 4; ++d) {\n            int nx = x + DR[d], ny = y + DC[d];\n            if (nx < 0 || ny < 0 || nx >= m || ny >= n) continue;\n            if (g[nx][ny] != 1) continue;\n            g[nx][ny] = 0; st.push(nx * n + ny);\n        }\n    }\n    best = max(best, area);"
+  }
+ },
+ "11_graphs/0994_rotting_oranges": {
+  "0": {
+   "cpp": "int m = grid.size(), n = grid[0].size();\nqueue<pair<int,int>> q; int fresh = 0;\nfor (int r = 0; r < m; ++r) for (int c = 0; c < n; ++c)\n    if (grid[r][c] == 2) q.push({r, c});\n    else if (grid[r][c] == 1) ++fresh;\nint minutes = 0;\nwhile (!q.empty() && fresh > 0) {\n    int size = q.size();                  // one minute per level\n    while (size--) {\n        auto [r, c] = q.front(); q.pop();\n        for (int d = 0; d < 4; ++d) {\n            int nr = r + DR[d], nc = c + DC[d];\n            if (nr < 0 || nc < 0 || nr >= m || nc >= n) continue;\n            if (grid[nr][nc] != 1) continue;\n            grid[nr][nc] = 2; --fresh; q.push({nr, nc});\n        }\n    }\n    ++minutes;\n}\nreturn fresh ? -1 : minutes;"
+  },
+  "1": {
+   "cpp": "queue<pair<int,int>> q; int fresh = 0, minutes = 0;\nfor each cell: 2 -> q.push, 1 -> ++fresh;\n// repeatedly do a full BFS wave, counting waves until no\n// new cell rots in that wave (or fresh == 0)"
+  }
+ },
+ "12_advanced_graphs/0787_cheapest_flights_within_k_stops": {
+  "0": {
+   "cpp": "const int INF = 1e9;\nvector<int> dist(n, INF); dist[src] = 0;\nfor (int layer = 0; layer <= k; ++layer) {\n    vector<int> prev = dist;          // SNAPSHOT the layer\n    for (auto& e : flights) {\n        if (prev[e[0]] + e[1] < dist[e[2]])\n            dist[e[2]] = prev[e[0]] + e[1];\n    }\n}\nreturn dist[dst] == INF ? -1 : dist[dst];"
+  },
+  "1": {
+   "cpp": "const int INF = 1e9;\nvector<vector<int>> d(n, vector<int>(k + 2, INF));\nd[src][0] = 0;\nfor (int i = 0; i <= k; ++i)\n    for (auto& e : flights)\n        for (int j = 0; j <= i; ++j)\n            d[e[2]][i+1] = min(d[e[2]][i+1], d[e[0]][j] + e[1]);\nreturn *min_element(d[dst].begin(), d[dst].end()) == INF\n       ? -1 : *min_element(d[dst].begin(), d[dst].end());"
+  }
+ },
+ "13_1d_dp/0416_partition_equal_subset_sum": {
+  "0": {
+   "cpp": "int S = accumulate(nums.begin(), nums.end(), 0);\nif (S & 1) return false;\nint T = S / 2;\nvector<char> dp(T + 1, 0); dp[0] = 1;\nfor (int x : nums)\n    for (int s = T; s >= x; --s)      // DESCENDING: 0/1 use\n        dp[s] |= dp[s - x];\nreturn dp[T];"
+  },
+  "1": {
+   "cpp": "vector<char> dp(T + 1, 0); dp[0] = 1;\nfor each x in nums:\n    for (int s = T; s >= x; --s) dp[s] |= dp[s - x];\n// bit-packing variant:\n// long long bits = 1;\n// for (int x : nums) bits |= bits << x;\n// return (bits >> T) & 1;"
+  }
+ },
+ "13_1d_dp/0647_palindromic_substrings": {
+  "0": {
+   "cpp": "int count = n;\nfor (int i = 0; i < n; ++i) {\n    for (int l = i, r = i + 1; l >= 0 && r < n &&\n                             s[l] == s[r]; --l, ++r)\n        ++count;\n    for (int l = i, r = i; l >= 0 && r < n &&\n                          s[l] == s[r]; --l, ++r)\n        if (l != r) ++count;\n}\nreturn count;"
+  },
+  "1": {
+   "cpp": "int count = 0;\nfor (int i = 0; i < n; ++i) for (int j = i; j < n; ++j) {\n    bool ok = true;\n    for (int l = i, r = j; l < r; ++l, --r)\n        if (s[l] != s[r]) { ok = false; break; }\n    if (ok) ++count;\n}\nreturn count;"
+  }
+ },
+ "13_1d_dp/0746_min_cost_climbing_stairs": {
+  "0": {
+   "cpp": "int prev2 = 0, prev1 = cost[0];\nfor (int i = 2; i <= n; ++i) {\n    int cur = cost[i - 1] + min(prev1, prev2);\n    prev2 = prev1; prev1 = cur;\n}\nreturn prev1;"
+  },
+  "1": {
+   "cpp": "vector<int> dp(n + 1, 0);\ndp[0] = 0; dp[1] = cost[0];\nfor (int i = 2; i <= n; ++i)\n    dp[i] = cost[i - 1] + min(dp[i - 1], dp[i - 2]);\nreturn dp[n];"
+  }
+ },
+ "14_2d_dp/0062_unique_paths": {
+  "2": {
+   "cpp": "// closed-form: C(m+n-2, m-1) computed in O(min(m,n))\nlong long r = 1;\nint k = min(m - 1, n - 1), tot = m + n - 2;\nfor (int i = 1; i <= k; ++i) r = r * (tot - k + i) / i;\nreturn (int)r;"
+  }
+ },
+ "14_2d_dp/0064_minimum_path_sum": {
+  "1": {
+   "cpp": "vector<int> dp(n, INT_MAX); dp[0] = 0;\nfor (int r = 0; r < m; ++r) {\n    for (int c = 0; c < n; ++c) {\n        int top = (r == 0) ? INT_MAX : dp[c];\n        int left = (c == 0) ? INT_MAX : dp[c - 1];\n        dp[c] = grid[r][c] + min(top, left);\n    }\n}\nreturn dp[n - 1];"
+  }
+ },
+ "16_intervals/0057_insert_interval": {
+  "0": {
+   "cpp": "vector<Interval> out;\nint i = 0, n = intervals.size();\nwhile (i < n && intervals[i].end < ni.start)\n    out.push_back(intervals[i++]);\nni.start = min(ni.start, intervals[i].start);\nni.end   = max(ni.end,   intervals[i].end);\nwhile (i < n && intervals[i].start <= ni.end) {\n    ni.start = min(ni.start, intervals[i].start);\n    ni.end   = max(ni.end,   intervals[i].end);\n    ++i;\n}\nout.push_back(ni);\nwhile (i < n) out.push_back(intervals[i++]);\nreturn out;"
+  },
+  "1": {
+   "cpp": "auto lo = lower_bound(intervals.begin(), intervals.end(), ni,\n    [](const Interval& a, const Interval& b) { return a.start < b.start; });\n// splice [lo, hi) into one merged interval, keep the rest"
+  }
+ },
+ "16_intervals/1851_minimum_interval_to_include_each_query": {
+  "0": {
+   "cpp": "sort(queries.begin(), queries.end());\nsort(intervals.begin(), intervals.end());\npriority_queue<pair<int,int>, vector<pair<int,int>>,\n               greater<pair<int,int>>> pq;   // (length, right)\nvector<int> ans(queries.size());\nint i = 0;\nfor (auto [k, idx] : queries) {\n    while (i < intervals.size() && intervals[i].first <= k)\n        pq.push({intervals[i].second - intervals[i].first,\n                 intervals[i].second});\n    while (!pq.empty() && pq.top().second < k) pq.pop();\n    ans[idx] = pq.empty() ? -1 : pq.top().first;\n}\nreturn ans;"
+  },
+  "1": {
+   "cpp": "for (int k : queries) {\n    int best = INT_MAX;\n    for (auto& iv : intervals)         // every query pays O(n)\n        if (iv.first <= k && k <= iv.second)\n            best = min(best, iv.second - iv.first);\n    ans.push_back(best);\n}"
+  }
+ },
+ "18_bit_manipulation/0007_reverse_integer": {
+  "1": {
+   "cpp": "long long r = 0;\nwhile (x != 0) { r = r * 10 + x % 10; x /= 10; }\nif (r > INT_MAX) return INT_MAX;\nif (r < INT_MIN) return INT_MIN;\nreturn (int)r;   // 64-bit accumulator makes this safe"
+  }
+ },
+ "18_bit_manipulation/0190_reverse_bits": {
+  "1": {
+   "cpp": "n = ((n & 0xaaaa) >> 1) | ((n & 0x5555) << 1);\nn = ((n & 0xcccc) >> 2) | ((n & 0x3333) << 2);\nn = ((n & 0xf0f0) >> 4) | ((n & 0x0f0f) << 4);\nn = ((n & 0xff00) >> 8) | ((n & 0x00ff) << 8);\nn = (n >> 16) | (n << 16);\nreturn n;   // branch-free, five stages"
+  }
+ },
+ "18_bit_manipulation/0371_sum_of_two_integers": {
+  "0": {
+   "cpp": "while (b != 0) {\n    int carry = (a & b) << 1;   // carry from the ORIGINAL a\n    a = a ^ b;                 // sum without carry\n    b = carry;\n}\nreturn a;"
+  }
+ },
+ "17_math_and_geometry/2013_detect_squares": {
+  "0": {
+   "py": "rows, cols = Counter(), Counter()\nfor x, y in points:\n    rows[y] += 1\n    cols[x] += 1\nres = 0\nfor x, y in points:\n    right = rows[y] - 1          # minus (x, y) itself\n    up    = cols[x] - 1\n    if right > 0 and up > 0: res += right * up\nreturn res",
+   "cpp": "unordered_map<int, int> rowCnt, colCnt;\nfor (auto& p : points) { ++rowCnt[p.second]; ++colCnt[p.first]; }\nint res = 0;\nfor (auto& p : points) {\n    int right = rowCnt[p.second] - 1;\n    int up    = colCnt[p.first] - 1;\n    if (right > 0 && up > 0) res += right * up;\n}\nreturn res;"
+  },
+  "1": {
+   "py": "cnt = Counter(points)\nrow, col = Counter(), Counter()\nfor (x, y) in points:\n    row[y] += cnt[(x, y)]   # weight duplicates\n    col[x] += cnt[(x, y)]\nres = 0\nfor (x, y) in points:\n    right = row[y] - cnt[(x, y)]\n    up    = col[x] - cnt[(x, y)]\n    if right > 0 and up > 0: res += right * up * cnt[(x, y)]\nreturn res",
+   "cpp": "// weight every point by how many times it occurs,\n// then the same row/col product scales by that weight"
+  }
+ }
+}

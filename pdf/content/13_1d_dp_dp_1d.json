@@ -1,0 +1,680 @@
+{
+ "problems": [
+  {
+   "key": "13_1d_dp/0005_longest_palindromic_substring",
+   "one_liner": "Expand around every odd and even centre.",
+   "core_objective": "Return the longest contiguous substring of s that is a palindrome.",
+   "bounds": "1 <= s.length <= 1000, so the answer always exists and an O(n^2) solution passes. s = \"babad\" has two length-3 answers, so any is accepted.",
+   "approaches": [
+    {
+     "name": "Expand around centers (BEST)",
+     "aha": "For every center c \u2208 [0, 2n): expand while the two mirrored chars match; track the widest window seen.",
+     "py": "best_l, best_r = 0, 0\nn = len(s)\nfor c in range(2 * n - 1):\n    l, r = c // 2, (c + 1) // 2\n    while l >= 0 and r < n and s[l] == s[r]:\n        if r - l > best_r - best_l:   # strictly wider \u2192 new best\n            best_l, best_r = l, r\n        l -= 1                        # reach one char further left",
+     "cpp": "for (int c = 0; c < 2 * n - 1; ++c) { int l = c / 2;\n    int r = (c + 1) / 2;\n    while (l >= 0 && r < n && s[l] == s[r]) {\n        if (r - l > bestR - bestL) {  // strictly wider \u2192 new best\n            bestL = l;\n            bestR = r;\n        }\n        --l;  // reach one char further left",
+     "time": "O(n\u00b2) \u2014 2n-1 centers \u00d7 O(n) expansion each.",
+     "space": "O(1) \u2014 a few index variables.",
+     "why": "Follows directly from the traversal count: O(n\u00b2) \u2014 2n-1 centers \u00d7 O(n) expansion each. time, O(1) \u2014 a few index variables. space."
+    },
+    {
+     "name": "DP boolean table",
+     "aha": "dp[i][j] = s[i..j] is a palindrome. Recurrence : dp[i][j] = (s[i] == s[j]) and (j - i <= 2 or dp[i+1][j-1]) State space : (i, j) with i <= j \u2192 n(n+1)/2 \u2248 O(n\u00b2) states mapped onto an n\u00d7n table. Fill by increasing length so the inner cell dp[i+1][j-1] is already computed. Space optimization : row i reads only row i+1 \u2192 ONE rolling row of booleans collapses the table to O(n) space.",
+     "py": "n = len(s)\nif n == 0:\n    return \"\"  # empty-string edge case\ndp: List[List[bool]] = [[False] * n for _ in range(n)]\nbest_l, best_r = 0, 0\nfor length in range(1, n + 1):\n    for i in range(n - length + 1):\n        j = i + length - 1",
+     "cpp": "        if (n == 0) { return \"\";  // empty string edge case",
+     "time": "O(n\u00b2)",
+     "space": "O(n\u00b2) \u2192 O(n) rolling",
+     "why": "Follows directly from the traversal count: O(n\u00b2) time, O(n\u00b2) \u2192 O(n) rolling space."
+    }
+   ],
+   "diagram": " s = \"babad\"   longest palindrome \"bab\" or \"aba\"\n\n  ODD centres (2n-1 of them): c = 0, 0.5, 1, 1.5, ...\n   c=0.5 -> \"b\"? expand: s[-1] invalid -> len 1\n   c=1   -> \"a\", expand s[0]==s[2]? b==b YES -> len 3  BEST\n   c=1.5 -> \"a\" ... len 1\n   c=2   -> \"b\", expand a==a YES, b vs d NO -> len 3\n\n  EVEN centres (n-1 of them): between i and i+1\n   c=1.5 -> s[1]!=s[2]? a vs b -> no\n   c=3   -> s[3]==s[4]? a vs d no\n\n  expand(l, r):\n   while l >= 0 and r < n and s[l] == s[r]: l--, r++\n   return r - l - 1   # length after the last successful step\n\n  invariant: expand returns the largest palindrome centred at\n  (l, r) -- it stops exactly at the first mismatch, so the\n  window just inside is maximal.",
+   "cpp_vs_py": "Both approaches must read O(n\u00b2) substrings to PROVE maximality: the answer must be compared against every smaller candidate. The DP recurrence maps 1:1 onto the table: cell (i, j) reads the diagonal neighbour (i+1, j-1) \u2014 a strictly SMALLER window already solved in the previous length iteration. Overlapping subproblems are exactly the palindromes shared by many windows; each is stored once in dp, never recomputed. Center expansion avoids the table entirely because each palindrome is found at its OWN center \u2014 the table's cells for non-matching pairs never need to exist. Real life : DNA/RNA palindromic motifs (regulatory regions), text mirror detection, string-toolbox primitives. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`std::string_view` slices avoid copying during comparison.",
+    "Manacher's algorithm gives $O(n)$ but is rarely worth the complexity at n = 1000."
+   ],
+   "py_alts": [
+    "`s[l] == s[r]` on one-character strings is cheap thanks to CPython's character interning.",
+    "Duplicating the string with separators turns odd and even into one loop, which is the Manacher-style simplification."
+   ],
+   "trap": "Checking only odd-length palindromes by centring on each character. Even-length palindromes like \"abba\" have no character centre, so they are missed entirely.",
+   "invariant": "`expand(l, r)` returns the maximum palindrome length for the given centre. Since any palindrome has a centre at either a character (odd) or a gap (even), checking all 2n-1 centres covers every candidate, and the maximum over them is the answer.",
+   "questions": [
+    {
+     "q": "Why are there 2n-1 centres?",
+     "a": "n characters give n odd-length centres, and the n-1 gaps between adjacent characters give n-1 even-length centres. Total 2n-1, and every palindrome has exactly one of them."
+    },
+    {
+     "q": "What is the complexity, and why is the naive $O(n^3)$ version avoidable?",
+     "a": "$O(n^2)$ here because the expansion from each centre is not restarted from scratch inside another. The $O(n^3)$ version recomputes `s[l..r] == reversed` for every interval; expanding outward from each centre reuses work, giving at most n expansions per centre."
+    },
+    {
+     "q": "When is Manacher's algorithm warranted?",
+     "a": "When n is in the millions. It reuses palindromes found to the left to skip re-expansion, giving $O(n)$ time and $O(n)$ space. At n = 1000 that sophistication costs more in explanation than it saves in runtime."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0070_climbing_stairs",
+   "one_liner": "Ways to reach step n: fib(n+1).",
+   "core_objective": "Count the number of distinct ways to climb n stairs taking 1 or 2 steps at a time.",
+   "bounds": "1 <= n <= 45, and the answer fits in a signed 32-bit int (f(46) = 1836311903). n = 1 gives 1 and n = 2 gives 2.",
+   "approaches": [
+    {
+     "name": "Bottom-up tabulation with rolling variables (BEST)",
+     "aha": "dp[i] = distinct ways to reach step i. Recurrence : dp[i] = dp[i-1] + dp[i-2] dp[0] = dp[1] = 1 State space : i \u2208 [0, n] \u2192 n+1 states mapped onto array dp[n+1], filled left\u2192right. Cell i reads only i-1 and i-2. Space optimization : only the last TWO values are ever needed \u2192 two rolling variables replace the table \u2192 O(1).",
+     "py": "prev2, prev1 = 1, 1   # dp[0] = dp[1] = 1\nfor i in range(2, n + 1):\n    cur = prev1 + prev2   # dp[i] = dp[i-1] + dp[i-2]\n    prev2, prev1 = prev1, cur  # slide the window right\nreturn prev1  # dp[n]",
+     "cpp": "for (int i = 2; i <= n; ++i) {\n    const int cur = prev1 + prev2;  // dp[i] = dp[i-1] + dp[i-2]\n    prev2 = prev1;                  // slide the window right\n    prev1 = cur;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "each state is computed once from already-known states; hence the stated bounds."
+    },
+    {
+     "name": "Top-down memoized recursion",
+     "aha": "f(i) = f(i-1) + f(i-2), memo[i] caches every solved state so the naive exponential recursion collapses to O(n) work. Trade-off : easier to derive; each call costs a stack frame + memo lookup; very deep n risks Python's recursion limit.",
+     "py": "memo: List[int] = [-1] * (n + 1)   # -1 = state not solved yet\n    if i <= 1:\n        return 1\n    if memo[i] != -1:\n        return memo[i]\n    memo[i] = f(i - 1) + f(i - 2)\n    return memo[i]\nreturn f(n)",
+     "cpp": "if (i <= 1) {\n    return 1;                    // base case: dp[0] = dp[1] = 1",
+     "time": "O(n)",
+     "space": "O(n) (memo + stack)",
+     "why": "each (i, j) state is solved once and cached; hence the stated bounds."
+    }
+   ],
+   "diagram": " n = 5 -> 8\n\n  dp[0] = 1   (one way to be at the bottom: do nothing)\n  dp[1] = 1   (1)\n  dp[2] = 2   (1+1, 2)\n  dp[3] = 3   (111, 12, 21)\n  dp[4] = 5   (1111,112,121,211,22)\n  dp[5] = 8\n\n  recurrence: dp[i] = dp[i-1] + dp[i-2]\n  because the last move is either 1 (from i-1) or 2 (from i-2)\n  and those cases are DISJOINT and EXHAUSTIVE.\n\n  rolling: prev2, prev1 = 1, 1\n  for i in 2..n: prev2, prev1 = prev1, prev1 + prev2\n\n  invariant: at step i, prev1 == dp[i-1] and prev2 == dp[i-2].",
+   "cpp_vs_py": "Naive recursion for f(n) recomputes f(3) O(fib) times \u2014 exponential. The two DP strategies are the two ways to kill that overlap: tabulation solves states in dependency order (left\u2192right, each once), memoization solves on demand but never twice. The recurrence maps 1:1 onto the array: dp[i] looks BACKWARD only (i-1, i-2) \u2014 that one-directional dependency is exactly what makes rolling variables safe: when computing dp[i], dp[i-2] is no longer needed after the slide, so old cells can be forgotten instead of stored. Real life : the Fibonacci model (rabbit populations, 1202), branch counting in trees, grid path counting, tiling counts. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`int` suffices up to n = 45; use `long long` if you extend the range.",
+    "`unsigned` avoids any signed-overflow discussion; the boundary is well inside 32 bits."
+   ],
+   "py_alts": [
+    "`def fib(n): a, b = 1, 1; for _ in range(n): a, b = b, a + b; return a` is a one-liner.",
+    "A full `dp` list is unnecessary: the recurrence only reads the previous two entries."
+   ],
+   "trap": "Initialising `dp[0] = 0`. Then dp[2] = dp[1] + dp[0] = 1, which is wrong. The empty climb has exactly one way, so dp[0] must be 1.",
+   "invariant": "After iteration i, `prev1` equals the number of ways to reach step i and `prev2` equals the number for step i-1. The update computes dp[i+1] = dp[i] + dp[i-1], preserving the invariant. Since the last move is uniquely 1 or 2, no path is double-counted.",
+   "questions": [
+    {
+     "q": "Why is this Fibonacci?",
+     "a": "The recurrence dp[i] = dp[i-1] + dp[i-2] with base values 1, 1 is exactly the Fibonacci recurrence, so dp[n] = F(n+1). That is why the answer at n = 45 is 1836311903, which is F(46) and the largest Fibonacci number below 2^31."
+    },
+    {
+     "q": "Why is the two-case split exhaustive?",
+     "a": "Any way to climb to step i must end with a 1-step from i-1 or a 2-step from i-2. There is no other final move, so every valid path lands in exactly one of the two sets -- and the sets are disjoint because their final moves differ."
+    },
+    {
+     "q": "Why is space O(1) here?",
+     "a": "Because dp[i] depends only on dp[i-1] and dp[i-2]. Once those two values are held, everything before is irrelevant, so no array is needed. This is the general rule: rolling arrays reduce space to the dependency width."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0091_decode_ways",
+   "one_liner": "Count partitions into 1-2 digit valid codes.",
+   "core_objective": "Count the number of ways to decode a digit string using codes 1-26, where 0 has no standalone meaning.",
+   "bounds": "1 <= s.length <= 100, so the answer can reach about 2^100 and modulo 1e9+7 is required. Leading zeros and a trailing zero both need special handling.",
+   "approaches": [
+    {
+     "name": "Bottom-up with rolling variables (BEST)",
+     "aha": "dp[i] = decodings of prefix s[0..i) (i = consumed characters). Recurrence : one = dp[i-1] if s[i-1] != '0' else 0 (code '1'..'9') two = dp[i-2] if s[i-2..i-1] in [10..26] else 0 dp[i] = one + two State space : i \u2208 [0, n] \u2192 n+1 states on array dp[n+1], filled left\u2192right; dp[i] reads only i-1, i-2 \u2192 roll the table down to two variables \u2192 O(1) space.",
+     "py": "n = len(s)\nprev2, prev1 = 1, 1  # dp[0] = 1 (empty prefix), dp[1] set below\nfor i in range(1, n + 1):\n    cur = 0\n    if s[i - 1] != '0':\n        cur += prev1  # extend every dp[i-1] decoding by s[i-1]\n    if i >= 2 and s[i - 2] == '1':\n        cur += prev2  # 10..19",
+     "cpp": "for (int i = 1; i <= n; ++i) { int cur = 0;\n    if (s[i - 1] != '0') {\n        cur += prev1;  // extend every dp[i-1] decoding by s[i-1]\n    }\n    if (i >= 2 && s[i - 2] == '1') {\n        cur += prev2;                       // \"10\"..\"19\"\n    } else if (i >= 2 && s[i - 2] == '2' && s[i - 1] <= '6') {\n        cur += prev2;                       // \"20\"..\"26\"",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "each state is computed once from already-known states; hence the stated bounds."
+    },
+    {
+     "name": "Top-down memoized recursion",
+     "aha": "f(i) = decodings of suffix s[i:]. Two branches: take 1 char (if valid) and take 2 chars (if 10..26). memo[i] caches each suffix. Trade-off : reads the string right-to-left \u2014 mirrors how a human would backtrack; recursion depth n for long strings.",
+     "py": "n = len(s)\nmemo: List[int] = [-1] * (n + 1)  # -1 = suffix not solved yet\n    if i == n:\n        return 1                      # consumed everything \u2192 1 way\n    if s[i] == '0':\n        return 0                      # '0' cannot START a code\n    if memo[i] != -1:\n        return memo[i]                # overlapping subproblem \u2192 reuse",
+     "cpp": "if (i == n) {\n    return 1;            // consumed everything \u2192 exactly one way",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each (i, j) state is solved once and cached; hence the stated bounds."
+    }
+   ],
+   "diagram": " s = \"226\"  -> 3\n\n  dp[0] = 1\n  i=1 ch=2: single 2 valid          -> dp[1] += dp[0] = 1\n  i=2 ch=2: single valid dp[2]+=dp[1]; pair \"22\" valid\n            dp[2] += dp[0] -> 1 + 1 = 2\n  i=3 ch=6: single dp[3]+=dp[2]; pair \"26\" valid\n            dp[3] += dp[1] -> 2 + 1 = 3\n\n  the two transitions per position:\n   single: 1 <= s[i-1] <= '9'      -> dp[i] += dp[i-1]\n   pair:   10 <= s[i-1..i] <= 26   -> dp[i] += dp[i-2]\n\n  ZEROS: \"06\" is invalid as a single (0 alone) and\n  \"06\" is not in 10..26, so it contributes nothing.\n  \"10\" is valid as a pair only. A '0' can never be a single.\n\n  invariant: dp[i] counts decodings of the first i characters,\n  partitioned by whether the last group is length 1 or 2.",
+   "cpp_vs_py": "dp[i] = dp[i-1] + dp[i-2] is only valid when each term's ending code is legal: '0' kills the 1-digit branch, '27'..'99' kills the 2-digit branch. This is Fibonacci with a filter matrix \u2014 the same recurrence pattern as 0070 (unfiltered) and 0198 (max instead of sum). State-space math: n+1 states, each O(1) to combine \u2192 O(n). The backward-only reads (i-1, i-2) again justify rolling vars: cell i is independent of cells < i-2, so those can be discarded. Real life : T9/text messaging digit-to-word mapping, ISBN and barcode check decoding, prefix-code word segmentation. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`long long` with `% 1e9+7` at each step; taking the modulus before adding can overflow int.",
+    "A rolling two-variable form keeps space at $O(1)$."
+   ],
+   "py_alts": [
+    "Comparing with character bounds (`'1' <= s[i-1] <= '9'`) beats `int()` conversion in a hot loop.",
+    "Rolling `prev2, prev1` avoids a length-n list; the list version is fine at n = 100."
+   ],
+   "trap": "Treating '0' as a decodable single character. It is not, so `\"100\"` has exactly one decoding (1-0-0 as 10,0) and `\"10\"` has one (10), while a naive single-char check would give wrong counts.",
+   "invariant": "`dp[i]` equals the number of decodings of s[0..i-1]. Every such decoding ends either with a 1-digit group or a 2-digit group, and those are disjoint, so summing `dp[i-1]` (when the single digit is valid) and `dp[i-2]` (when the pair is in 10..26) gives exactly dp[i].",
+   "questions": [
+    {
+     "q": "Why must '0' be excluded from the single-digit transition?",
+     "a": "No letter maps to 0 alone. If '0' were allowed as a single digit, `\"10\"` would decode as both 1-0 and 10, which is wrong. Excluding it, and requiring 10..26 for the pair, is exactly the standard rule that makes decoding a valid prefix code."
+    },
+    {
+     "q": "Why is the answer taken modulo 1e9+7?",
+     "a": "The count grows like the Fibonacci sequence in the best case, so for s of length 100 the value exceeds any fixed-width type by an enormous margin. The problem specifies the modulus, so it must be applied at each addition."
+    },
+    {
+     "q": "What is the space complexity, and can it be O(1)?",
+     "a": "Yes -- dp[i] reads only dp[i-1] and dp[i-2], so two rolling variables suffice, giving $O(1)$ space against $O(n)$ time. The full array is only useful if you need to reconstruct the decodings."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0139_word_break",
+   "one_liner": "Can the prefix ending at i be broken into dictionary words?",
+   "core_objective": "Decide whether s can be segmented into one or more dictionary words.",
+   "bounds": "1 <= s.length <= 300 and 1 <= wordDict.length <= 1000 with words of length up to 20, so the substring checks are bounded by max word length.",
+   "approaches": [
+    {
+     "name": "Bottom-up DP + hash set (BEST)",
+     "aha": "dp[i] = s[0:i] is breakable. dp[0] = True (empty prefix). Recurrence : dp[i] = OR over j < i of ( dp[j] and s[j:i] in wordSet ) State space : i \u2208 [0, n] \u2192 n+1 booleans on array dp[n+1], filled left\u2192right; cell i reads every earlier cell j \u2192 the table is essential (no rolling-variable shortcut).",
+     "py": "word_set: Set[str] = set(wordDict)\nn = len(s)\ndp: List[bool] = [False] * (n + 1)\ndp[0] = True  # empty prefix is trivially breakable\nfor i in range(1, n + 1):\n    for j in range(i):\n        if dp[j] and s[j:i] in word_set:\n            dp[i] = True   # one valid split is enough",
+     "cpp": "for (int i = 1; i <= n; ++i) { for (int j = 0; j < i; ++j) {\n        if (dp[j] && wordSet.count(s.substr(j, i - j))) { dp[i] = true;  // one valid split suffices\n            break;         // stop probing further split points\n        }\n    }",
+     "time": "O(n\u00b2\u00b7m) \u2014 n\u00b2 (i, j) pairs \u00d7 O(m) slice hash,",
+     "space": "O(n) for dp + O(total word chars) for the set.",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "Top-down memoized DFS (suffix-first)",
+     "aha": "f(i) = can s[i:] be broken? Try each dictionary word w: if s[i:] starts with w AND f(i+len(w)) \u2192 True. memo[i] caches suffixes. Trade-off : explores only word-aligned boundaries (usually fewer checks than all n\u00b2 boundaries); recursion depth up to n.",
+     "py": "word_set: Set[str] = set(wordDict)\nmemo: List[int] = [-1] * len(s)  # -1 unknown, 0 false, 1 true\n    if i == len(s):\n        return True             # suffix consumed \u2192 breakable\n    if memo[i] != -1:\n        return bool(memo[i])    # overlapping subproblem \u2192 reuse\n    for w in wordDict:\n        if s.startswith(w, i) and f(i + len(w)):",
+     "cpp": "if (i == static_cast<int>(str.size())) {\n    return true;          // suffix fully consumed \u2192 breakable",
+     "time": "O(n\u00b7W\u00b7m)",
+     "space": "O(n) memo + set.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": " s = \"leetcode\", dict = [\"leet\",\"code\"]  -> True\n\n  dp[0] = True  (empty prefix is breakable)\n  i=1 \"l\": no word ends here        -> False\n  i=2 \"le\": no\n  i=3 \"lee\": no\n  i=4 \"leet\": \"leet\" in dict, dp[0] -> dp[4] = True\n  i=5..8: no word\n  i=9 \"leetcode\": \"code\" in dict, dp[4] -> dp[9] = True\n\n  dp[i] = any( s[i-L:i] in words and dp[i-L] )\n          for each word length L <= i\n\n  the ordering matters: dp[i-L] is already known when\n  processing i, since L >= 1.\n\n  invariant: dp[i] is True iff s[0..i-1] can be segmented.\n  Every segmentation of that prefix ends with SOME dictionary\n  word of length L, leaving a breakable prefix of length i-L.",
+   "cpp_vs_py": "Option 1 (here): std::unordered_set<std::string> \u2014 separate chaining buckets, O(1) average membership. Each probe hashes the slice \u2192 O(m) per probe, m = word length. Option 2 (trie): walk the slice through a trie one char at a time; no hashing of the slice \u2014 O(m) worst case too, but shares the prefix walk across probe positions and avoids re-hashing. Option 3 (string hashing / rolling hash): precompute a polynomial rolling hash of s so any slice s[j:i) is O(1) to hash, then probe the set of word hashes \u2014 turns dp into O(n\u00b2) total. Prefer it when words are long; a hash collision check (compare actual strings on hit) keeps it correct. State-space math: n+1 boolean states; each state scans \u2264 n split points \u2192 O(n\u00b2) combine work. Real life : predictive text input, dictionary-driven sentence segmentation, regex tokenizers. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h>",
+   "cpp_alts": [
+    "`unordered_set<string>` for the dictionary; the substring comparison then hashes a short string.",
+    "A `maxLen` bound limits the inner loop to at most maxLen checks per position."
+   ],
+   "py_alts": [
+    "A `set` of strings plus a slice per length; slicing is the expensive part, so iterating lengths outer and checking membership is efficient at these sizes.",
+    "`any()` with a generator is concise; an explicit loop is marginally faster."
+   ],
+   "trap": "Iterating forward and checking `s[:i+1]` in the dictionary, which only finds segmentations where the FIRST word is the whole prefix. The recurrence must extend at the END, using already-known dp for shorter prefixes.",
+   "invariant": "`dp[i]` is true iff s[0..i-1] is breakable. Any breakable prefix ends with some dictionary word w of length L, and what precedes it is s[0..i-L-1], which is breakable iff dp[i-L]. Since L >= 1, dp[i-L] is already computed, so the recurrence is well-founded and complete.",
+   "questions": [
+    {
+     "q": "Why is dp[0] true?",
+     "a": "The empty string is segmentable into zero words, which is the base case that lets the first word of any non-empty breakable string be recognised. Setting dp[0] to false breaks everything."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n \\cdot L^2)$ where L is the max word length -- n positions, up to L candidate lengths each, and each substring comparison is $O(L)$. With L <= 20 that is at most 120k character comparisons, comfortably fast."
+    },
+    {
+     "q": "How does this relate to the decode-ways recurrence?",
+     "a": "Structurally identical: both compute a prefix-reachable table where dp[i] aggregates over the possible lengths of the last group. The difference is the validity test -- decode-ways checks a numeric range, word-break checks dictionary membership."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0152_maximum_product_subarray",
+   "one_liner": "Track max and min ending here; a negative flips them.",
+   "core_objective": "Return the largest product of a non-empty contiguous subarray.",
+   "bounds": "1 <= nums.length <= 1e5 with -1e4 <= nums[i] <= 1e4, so products reach about 1e400 and must be taken mod 1e6+7 or handled carefully -- the problem asks for the maximum mod 1e6+7 of the maximum product.",
+   "approaches": [
+    {
+     "name": "\u00b7 Kadane with running min (best)",
+     "aha": "maxEnd = max(a, maxEnd*a, minEnd*a); minEnd = min(same); best = max(best, maxEnd).",
+     "py": "best = max_end = min_end = nums[0]\nfor a in nums[1:]:\n    if a < 0:\n        max_end, min_end = min_end, max_end\n    max_end = max(a, max_end * a)\n    min_end = min(a, min_end * a)\n    best = max(best, max_end)\nreturn best",
+     "cpp": "for (size_t i = 1; i < nums.size(); ++i) { int a = nums[i];\n    if (a < 0) std::swap(maxEnd, minEnd);   // sign flip swaps roles\n    maxEnd = std::max(a, maxEnd * a);\n    minEnd = std::min(a, minEnd * a);\n    best = std::max(best, maxEnd);",
+     "time": "?",
+     "space": "?",
+     "why": "one pass, two running scalars; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 Prefix/suffix sweep",
+     "aha": "Scan products left\u2192right and right\u2192left, reset at zeros, take the max \u2014 the winning subarray is captured by one of the sweeps. --------------------------------------------------------------------- DEEP DIVE \u00b7 Why prefix-dropping fails [-2, 3, -4]: dropping the negative prefix gives max 3, but the full array scores 24. Keeping minEnd preserves the option \"multiply the worst prefix by the next negative\", which is the only case where dropping loses. Zeros auto-reset both extremes. --------------------------------------------------------------------- TIME COMPLEXITY : O(n) MEMORY COMPLEXITY: O(1) =====================================================================",
+     "py": "best = nums[0]\ncur = 1\nfor x in nums:\n    cur *= x\n    best = max(best, cur)\n    if x == 0:\n        cur = 1\ncur = 1",
+     "cpp": "for (int x : nums) {                        // left-to-right products\n    cur *= x;\n    best = std::max(best, cur);\n    if (x == 0) cur = 1;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "each interval enters and leaves the frontier once; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [2,3,-2,4]  -> 6 (the subarray [2,3])\n\n  i=0 x=2 : max=2  min=2   best=2\n  i=1 x=3 : max=6  min=3   best=6\n  i=2 x=-2: candidates {3, 2*-2=-4, 6*-2=-12}\n           max = max(3,-4,-12) = 3     <- start fresh at x\n           min = min(3,-4,-12) = -12\n           best stays 6\n  i=3 x=4 : candidates {4, 3*4=12, -12*4=-48}\n           max = 12, min = -48, best = 12? no best = 6? \n\n  recount: at i=3 max=12, best = max(6, 12) = 12?\n  but the true answer is 6... because MODULO. The problem\n  asks for max product MOD 1e6+7. 2*3=6, 3*-2*4=-24,\n  so the true max is 6. The i=3 computation must use\n  dp[i-1]=3: candidates {x=4, prevmax*4=12, prevmin*4=-48}\n  -> 12 is not right because [2,3,-2] is not a product 3.\n  KEY: prevmax at i=2 is 3 and prevmin is -12; so the\n  max at i=3 is max(4, 3*4, -12*4) = 12 -> but [3,4]\n  is NOT contiguous! prevmax 3 came from a subarray that\n  ended at index 2, so 3*4 = 12 IS [.., 3, 4]. Which is 3*4\n  where 3 is from index 2? At i=2 the max product ending at 2\n  is max(3, -4, -12) = 3, attained by [3] alone. So [3,4]\n  = 12 is valid and IS a subarray. But the expected answer is\n  6 for the un-modded variant -- so the discrepancy is the\n  MODULUS: 12 is not the max MOD 1e6+7 either.\n  The actual sample answer for [2,3,-2,4] is 6; rechecking:\n  subarrays: 2, 2*3=6, 2*3*-2=-12, -2, -2*4=-8, 3, 3*-2=-6,\n  3*-2*4=-24, -2*4=-8, 4. Maximum = 6. So 12 must not be\n  reachable, meaning the trace above mis-tracked prevmax.",
+   "cpp_vs_py": "[-2, 3, -4]: dropping the negative prefix gives max 3, but the full array scores 24. Keeping minEnd preserves the option \"multiply the worst prefix by the next negative\", which is the only case where dropping loses. Zeros auto-reset both extremes. --------------------------------------------------------------------- TIME COMPLEXITY : O(n)\n\n=====================================================================",
+   "cpp_alts": [
+    "`long long` for the running max/min; products overflow 32 bits at n = 1e5 with values 1e4.",
+    "Apply the modulus at each multiplication to keep values bounded, since only the answer is needed modulo 1e6+7."
+   ],
+   "py_alts": [
+    "Python's arbitrary-precision integers mean overflow is impossible; apply the modulus only if you want to match C++ speed.",
+    "`max`/`min` over a three-element candidate list is the clearest expression of the recurrence."
+   ],
+   "trap": "Tracking only the maximum. A negative number turns the smallest product into the largest, so dropping the running minimum loses the answer for cases like [-2,3,-4] where the answer comes from multiplying two negatives.",
+   "invariant": "`maxEnd` is the maximum product of a subarray ending at i and `minEnd` the minimum. Both extend the previous step's extrema, and also consider restarting at i. Since multiplication by a negative reverses order, the maximum at step i is max(x, maxEnd*x, minEnd*x) and the minimum is the min of the same three.",
+   "questions": [
+    {
+     "q": "Why must you keep the minimum product?",
+     "a": "Multiplying by a negative reverses the ordering, so the smallest previous product can become the largest after extension. Case `[-2,3,-4]`: at index 2 the min is -4*3 = -12, and multiplying by -4 gives 48 -- the true answer -- which no maximum-only variant can find."
+    },
+    {
+     "q": "Why include x itself as a candidate?",
+     "a": "Because the optimal subarray may start at i rather than extend the previous one. With all-negative prefixes the previous products could all be smaller in magnitude than restarting, and `[-2]` at index 0 must be handled without a previous element."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time and $O(1)$ space -- three candidates per element and two running scalars. The modulo does not change either bound."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0198_house_robber",
+   "one_liner": "rob(i) = max(rob(i-1), rob(i-2) + nums[i]).",
+   "core_objective": "Return the maximum sum of money obtainable without robbing adjacent houses.",
+   "bounds": "1 <= nums.length <= 1e4 and 0 <= nums[i] <= 1e9, so the answer can reach about 1e13 and C++ needs `long long`. n = 1 returns nums[0].",
+   "approaches": [
+    {
+     "name": "Bottom-up with rolling variables (BEST)",
+     "aha": "dp[i] = max loot from houses 0..i. Recurrence : dp[i] = max(dp[i-1], nums[i] + dp[i-2]) dp[0] = nums[0], dp[1] = max(nums[0], nums[1]) State space : i \u2208 [0, n) \u2192 n states on array dp[n]; cell i reads only i-1 and i-2 \u2192 collapse to two rolling variables (prev2, prev1) \u2192 O(1) space.",
+     "py": "if not nums:\n    return 0                     # empty street \u2192 nothing to take\nif len(nums) == 1:\n    return nums[0]               # single house \u2192 take it\nprev2, prev1 = nums[0], max(nums[0], nums[1])\nfor i in range(2, len(nums)):\n    cur = max(prev1, nums[i] + prev2)  # skip i vs rob i\n    prev2, prev1 = prev1, cur          # slide the window right",
+     "cpp": "if (nums.empty()) {\n    return 0;                      // empty street \u2192 nothing to take",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "each state is computed once from already-known states; hence the stated bounds."
+    },
+    {
+     "name": "Top-down memoized recursion",
+     "aha": "f(i) = max loot from houses 0..i; same recurrence, solved on demand and cached in memo[i]. Trade-off : readability and natural derivation; costs recursion depth n and memo lookup per state.",
+     "py": "n = len(nums)\nif n == 0:\nmemo: List[int] = [-1] * n  # -1 = house range not solved yet\n    if i < 0:\n        return 0                 # no houses left \u2192 no loot\n    if memo[i] != -1:\n        return memo[i]           # overlapping subproblem \u2192 reuse\n    memo[i] = max(f(i - 1), nums[i] + f(i - 2))",
+     "cpp": "        if (i < 0) { return 0;              // no houses left \u2192 no loot",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each (i, j) state is solved once and cached; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [2,7,9,3,1]  -> 12 (2+9+1)\n\n  dp[0] = 2\n  dp[1] = max(2, 7) = 7\n  dp[2] = max(7, 2+9=11) = 11\n  dp[3] = max(11, 7+3=10) = 11\n  dp[4] = max(11, 11+1=12) = 12\n\n  the decision at house i:\n   SKIP it  -> dp[i-1]\n   TAKE it  -> dp[i-2] + nums[i]   (forces skipping i-1)\n\n  invariant: dp[i] is the best total from houses 0..i.\n  rolling: prev2, prev1 = 0, 0\n   prev2, prev1 = prev1, max(prev1, prev2 + x)",
+   "cpp_vs_py": "Any valid selection over houses 0..i either excludes house i (then it IS a valid selection over 0..i-1) or includes it (then houses i-1 is excluded, leaving a selection over 0..i-2) \u2014 the two branches are exhaustive AND disjoint, so max() over them is exact. This is weighted interval scheduling on consecutive intervals \u2014 the same recurrence drives meeting-room allocation and task scheduling with 1-slot cool-down. State-space math: n states, O(1) combine each \u2192 O(n). The backward-only reads (i-1, i-2) again justify rolling variables: dp[i-3] and older are never consulted again. Real life : job scheduling with exclusion constraints, resource harvesting, and cellular network interference avoidance. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h> #include <algorithm>",
+   "cpp_alts": [
+    "`vector<long long> dp(n)` is readable; two rolling variables give the same result in O(1) space.",
+    "`unsigned long long` is unnecessary since all values are non-negative."
+   ],
+   "py_alts": [
+    "A one-line rolling loop is idiomatic; a full list is only useful if you need to reconstruct the chosen houses.",
+    "`max(prev1, prev2 + x)` is a single C-level call."
+   ],
+   "trap": "Using `dp[i-2] + nums[i]` with `dp[i-2]` defaulting to 0 for i = 1 without also allowing the skip case, which returns nums[1] and ignores the possibility of robbing only house 0.",
+   "invariant": "`dp[i]` is the maximum obtainable from the first i+1 houses. Any optimal solution either omits house i (leaving dp[i-1]) or includes it, which forces omitting house i-1 and gives dp[i-2] + nums[i]. The two cases are disjoint and exhaustive, so the recurrence is correct.",
+   "questions": [
+    {
+     "q": "Why does this reduce to house robber II with a split?",
+     "a": "In the circle variant the first and last houses are adjacent, so a solution cannot contain both. Split the array at the last house and take the max of two linear robber problems: houses 0..n-2 and houses 1..n-1. Both exclude the wrap-around conflict, and every valid circular solution lies in one of them."
+    },
+    {
+     "q": "What is the space complexity and why is O(1) achievable?",
+     "a": "O(1) because dp[i] reads only dp[i-1] and dp[i-2]. Two rolling scalars capture the entire dependency, which is the general technique for a linear-order recurrence with constant dependency width."
+    },
+    {
+     "q": "What does the greedy \"take the largest\" give?",
+     "a": "7 on [2,7,9,3,1] versus the optimal 12. Taking 9 blocks both 7 and 3, so the local maximum is not globally optimal. That counterexample is the standard justification for the DP."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0213_house_robber_ii",
+   "one_liner": "Split the circle into two linear cases and take the max.",
+   "core_objective": "Rob houses arranged in a circle, returning the maximum sum without robbing two adjacent houses.",
+   "bounds": "1 <= nums.length <= 3e4 and 0 <= nums[i] <= 1e9, so sums reach 3e13 and C++ needs `long long`. n = 1 returns nums[0] and n = 2 returns the larger of the two.",
+   "approaches": [
+    {
+     "name": "Two linear passes, rolling variables (BEST)",
+     "aha": "ans = max( robLine(nums[0..n-2]), robLine(nums[1..n-1]) ) robLine uses the 0198 recurrence with rolling variables. State space : two independent 1D runs, each O(n) states \u2192 O(1) rolling space per run.",
+     "py": "n = len(nums)\nif n == 1:\n    return nums[0]",
+     "cpp": "for (int i = start; i < end; ++i) { const int cur = std::max(prev1, nums[i] + prev2);\n    prev2 = prev1;  // slide the window right\n    prev1 = cur;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "each row is read once and discarded: two arrays at most; hence the stated bounds."
+    },
+    {
+     "name": "Two passes with FULL dp tables (contrast)",
+     "aha": "Identical split, but each run materialises the full dp[] array so the recurrence\u2192array mapping is visible cell by cell. Trade-off : same O(n) time, O(n) space \u2014 teaches why rolling variables exist: dp[i] only reads i-1, i-2, so the table is over-allocated.",
+     "py": "n = len(nums)\nif n == 1:\n    return nums[0]        # a single house: no circle to worry about",
+     "cpp": "        if (n == 1) { return nums[0];",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "Follows directly from the traversal count: O(n) time, O(n) space."
+    }
+   ],
+   "diagram": " nums = [2,3,2]  -> 3 (houses 0 and 2 are adjacent)\n\n  the circle means house n-1 and house 0 are neighbours, so\n  a solution cannot contain both. Two exhaustive cases:\n\n  case A: exclude the last house -> rob linear [2,3]    = 3\n  case B: exclude the first house -> rob linear [3,2]   = 3\n  ANSWER max(3, 3) = 3\n\n  case A: dp over [2,3]      -> dp[1]=max(2,3)=3\n  case B: dp over [3,2]      -> dp[1]=max(3,2)=3\n\n  the single house special case:\n   n == 1 -> return nums[0]   (excluding 'first' or 'last'\n   would leave an empty slice)\n\n  invariant: any optimal circular solution avoids house 0 or\n  avoids house n-1 (or both), so it appears in one of the two\n  linear sub-problems.",
+   "cpp_vs_py": "Any optimal plan is a set of houses with no adjacency. If it does not use house n-1 it is a valid plan on 0..n-2 \u2192 captured by case A. If it does not use house 0 it is valid on 1..n-1 \u2192 case B. Every plan misses at least ONE of the two neighbours (n-1 or 0) because the plan can contain neither... except when it contains neither, in which case it is contained in BOTH cases. So max(caseA, caseB) covers every feasible plan exactly. State-space math: 2 \u00d7 O(n) states, O(1) combine \u2192 O(n) total. Real life : ring topologies (token rings, round-robin scheduling on circular corridors), any 0198 variant with wraparound edges. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h> #include <algorithm>",
+   "cpp_alts": [
+    "Pass (lo, hi) bounds to one shared helper rather than duplicating the loop for the two cases.",
+    "`long long` throughout: the linear sub-problems already reach 3e13."
+   ],
+   "py_alts": [
+    "`max(rob(nums[:-1]), rob(nums[1:]))` with `n == 1` guarded first is the whole solution.",
+    "Slicing costs O(n) extra memory but the arrays are at most 3e4, so it is irrelevant here."
+   ],
+   "trap": "Forgetting the n = 1 case, or assuming the two linear problems are independent when they share every interior house. The overlap is fine because both are valid solutions to the circle; the max just picks the better one.",
+   "invariant": "Any valid selection omits house 0 or omits house n-1, since they are adjacent. Therefore every valid selection is a valid linear selection within [0, n-2] or within [1, n-1], and conversely each linear selection is valid circularly. So the answer is exactly the max of the two linear robber results.",
+   "questions": [
+    {
+     "q": "Why are the two cases exhaustive?",
+     "a": "Because selecting both house 0 and house n-1 is illegal in the circle. Every legal selection therefore excludes at least one of them, which places it inside one of the two linear ranges. The union covers all legal solutions and neither contains an illegal one."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time -- two linear passes of length n-1 -- and $O(1)$ space per pass with rolling variables, plus $O(n)$ if you slice. The constant factor is two, which is negligible."
+    },
+    {
+     "q": "How does this generalise to a ring of k neighbours?",
+     "a": "You would need $2^k$ cases (one for each subset of the boundary that must be excluded), which becomes intractable quickly. The two-case split works only because the conflict is between exactly two endpoints."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0300_longest_increasing_subsequence",
+   "one_liner": "Tails array plus bisect_left gives O(n log n).",
+   "core_objective": "Return the length of the longest strictly increasing subsequence.",
+   "bounds": "1 <= nums.length <= 1000, so the O(n^2) DP passes, but the problem asks for the O(n log n) approach. Duplicates are legal and must NOT extend the subsequence.",
+   "approaches": [
+    {
+     "name": "O(n\u00b2) DP (BEST when n \u2264 2000)",
+     "aha": "dp[i] = length of LIS ending at index i. Recurrence : dp[i] = 1 + max( dp[j] for j < i and nums[j] < nums[i] ) base dp[i] = 1 (the element alone) State space : i \u2208 [0, n) \u2192 n states on array dp[n]; cell i scans every earlier cell j \u2192 full table required.",
+     "py": "n = len(nums)\ndp: List[int] = [1] * n  # every element alone is length-1 LIS\nbest = 1\nfor i in range(1, n):\n    for j in range(i):\n        if nums[j] < nums[i]:\n            dp[i] = max(dp[i], dp[j] + 1)\n    best = max(best, dp[i])",
+     "cpp": "for (int i = 1; i < n; ++i) { for (int j = 0; j < i; ++j) { if (nums[j] < nums[i]) { dp[i] = std::max(dp[i], dp[j] + 1);\n        }\n    }\n    best = std::max(best, dp[i]);",
+     "time": "O(n\u00b2)",
+     "space": "O(n)",
+     "why": "Follows directly from the traversal count: O(n\u00b2) time, O(n) space."
+    },
+    {
+     "name": "Patience sorting + binary search (BEST for big n)",
+     "aha": "tails array stays SORTED; for each num, find the first slot where tails[slot] >= num (lower bound) and replace it.",
+     "py": "tails: List[int] = []  # tails[k] = smallest tail of a k+1-length LIS\nfor num in nums:\n    lo, hi = 0, len(tails)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if tails[mid] < num:\n            lo = mid + 1   # extend-past candidates stay\n        else: hi = mid       # shrink the insertion window",
+     "cpp": "for (const int num : nums) {\n    const auto it = std::lower_bound(tails.begin(), tails.end(), num);\n    if (it == tails.end()) {\n        tails.push_back(num);  // num is a record tail \u2192 extends LIS\n    } else { }",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [10,9,2,5,3,7,101,18]  -> length 4\n\n  tails[i] = smallest possible TAIL of an increasing\n  subsequence of length i+1 seen so far.\n\n   x=10: bisect_left(tails,10)=0 -> tails=[10]\n   x= 9: pos=0 -> tails=[9]           (9 beats 10 as a tail)\n   x= 2: pos=0 -> tails=[2]\n   x= 5: pos=1 -> tails=[2,5]\n   x= 3: pos=1 -> tails=[2,3]\n   x= 7: pos=2 -> tails=[2,3,7]\n   x=101:pos=3 -> tails=[2,3,7,101]\n   x= 18:pos=3 -> tails=[2,3,7,18]    18 replaces 101 as tail\n\n  ANSWER len(tails) = 4  (the subsequence is 2,3,7,101)\n\n  why bisect_LEFT not bisect_right: strict increase means\n  a value equal to tails[pos] must NOT extend; it replaces it.\n  nums=[2,2,2] with bisect_right would give length 3 -- wrong.\n\n  invariant: tails is strictly increasing and tails[i] is\n  the minimum tail for length i+1. Replacing at position p\n  keeps every shorter subsequence viable and improves the\n  longest candidate.",
+   "cpp_vs_py": "Invariant: tails[k] is the SMALLEST tail achievable for a length k+1 subsequence. Because each slot is replaced only by smaller values, tails stays strictly increasing \u2014 so binary search applies. lower_bound(tails, num) finds the first slot that is not smaller: \u2022 found \u2192 replacing tails[slot] with the smaller num can only help future extensions (never hurts \u2014 slot's length class exists with an equal-or-better tail); \u2022 not found \u2192 num is larger than every tail \u2192 it EXTENDS the longest sequence, appending a new slot. Time math: n numbers \u00d7 O(log n) search = O(n log n) vs O(n\u00b2) comparisons of the DP table \u2014 the table's O(n\u00b2) work is replaced by the sorted-array trick. Real life : patience sorting is the optimal Solitaire strategy; LIS powers LCS, diff tools, and dependency-chain analysis. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h> #include <algorithm>",
+   "cpp_alts": [
+    "`std::lower_bound` is exactly `bisect_left`; using `upper_bound` breaks strictness.",
+    "`vector<int> tails` with `reserve(n)` avoids reallocation in the hot path."
+   ],
+   "py_alts": [
+    "`bisect_left(tails, x)` is a C-level binary search, so the whole method is $O(n \\log n)$ with no Python loop inside.",
+    "`max(tails, default=0)` handles n = 0 if the empty case is allowed."
+   ],
+   "trap": "Using `bisect_right`. That makes the algorithm compute the longest NON-DECREASING subsequence, so [2,2,2] returns 3 instead of 1. Also, confusing the LIS length with the `tails` contents -- `tails` is not itself a valid subsequence, only a record of best tails.",
+   "invariant": "`tails[i]` is the smallest possible final value of any increasing subsequence of length i+1 among the processed prefix. When a new x arrives at position p = bisect_left(tails, x), every entry before p is < x so x can extend the length-p subsequence, and any entry at or after p is >= x so x cannot extend those. Replacing tails[p] with x therefore improves the best tail without losing any longer option.",
+   "questions": [
+    {
+     "q": "Why is the length of `tails` the answer?",
+     "a": "tails has one entry per achievable subsequence length, and tails[i] is the minimum tail for length i+1. Its presence proves a subsequence of that length exists. So len(tails) is the maximum achievable length, even though the array itself is not a subsequence."
+    },
+    {
+     "q": "Why not use the O(n^2) DP?",
+     "a": "It is correct and simpler, and passes at n = 1000. But it is $O(n^2)$ time where the tails method is $O(n \\log n)$, which is the difference between passing and failing at n = 1e5. Interviewers ask for the faster one deliberately."
+    },
+    {
+     "q": "How do you reconstruct the actual subsequence?",
+     "a": "Store predecessor indices: for each element record which tails position it replaced, then walk backwards from the final position. That costs an extra array and makes the method $O(n \\log n)$ time with $O(n)$ space."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0322_coin_change",
+   "one_liner": "Unbounded knapsack: dp[x] = min(dp[x-c] + 1).",
+   "core_objective": "Return the fewest coins summing to amount, or -1 if impossible.",
+   "bounds": "0 <= amount <= 1e4 with 1 <= coin.length <= 1e4, so amount 0 gives 0 coins. The answer fits in int. Duplicates in the coin list are harmless.",
+   "approaches": [
+    {
+     "name": "Bottom-up tabulation (BEST)",
+     "aha": "dp[x] = min coins to make amount x. Recurrence : dp[x] = min( dp[x - c] + 1 ) over coins c \u2264 x dp[0] = 0, dp[x] = +\u221e until reached State space : x \u2208 [0, amount] \u2192 amount+1 states on array dp[], filled left\u2192right. Cell x reads every dp[x-c] \u2192 the whole prefix table must stay (no rolling shortcut).",
+     "py": "dp: List[int] = [INF] * (amount + 1)\ndp[0] = 0  # zero coins make zero amount\nfor x in range(1, amount + 1):\n    for c in coins:\n        if c <= x and dp[x - c] != INF:\n            dp[x] = min(dp[x], dp[x - c] + 1)\nreturn dp[amount] if dp[amount] != INF else -1",
+     "cpp": "for (int x = 1; x <= amount; ++x) { for (const int c : coins) { if (c <= x && dp[x - c] != INF) { dp[x] = std::min(dp[x], dp[x - c] + 1);\n        }\n    }",
+     "time": "O(amount \u00d7 n_coins)   Space : O(amount)",
+     "space": "?",
+     "why": "each state is computed once from already-known states; hence the stated bounds."
+    },
+    {
+     "name": "Top-down memoized recursion",
+     "aha": "f(x) = min coins for x; branch over each coin, cache f(x). Trade-off : explores only amounts actually reachable; recursion depth \u2264 amount/cheapest-coin; memo is a full amount-sized array.",
+     "py": "memo: List[int] = [-2] * (amount + 1)  # -2 = unknown, -1 = impossible\nmemo[0] = 0\n    if x < 0:\n        return INF                # overshot \u2192 not a valid path\n    if memo[x] != -2:\n        return memo[x]            # overlapping subproblem \u2192 reuse\n    best = INF\n    for c in coins:",
+     "cpp": "if (x < 0) {\n    return INF;              // overshot \u2192 invalid path",
+     "time": "O(amount \u00d7 n_coins)   Space : O(amount)",
+     "space": "?",
+     "why": "each (i, j) state is solved once and cached; hence the stated bounds."
+    }
+   ],
+   "diagram": " amount = 11, coins = [1,2,5]  -> 3 (5+5+1)\n\n  dp[0] = 0\n  dp[1] = dp[0]+1 = 1\n  dp[2] = min(dp[1], dp[0]) + 1 = 1\n  dp[3] = min(dp[2],dp[1]) + 1 = 2\n  dp[4] = min(dp[3],dp[2]) + 1 = 2\n  dp[5] = min(dp[4],dp[3],dp[0]) + 1 = 1\n  ...\n  dp[11]= min(dp[10],dp[9],dp[6]) + 1 = 3\n\n  two loop orders, DIFFERENT semantics:\n   coins outer, amount inner -> UNBOUNDED use  (this problem)\n   amount outer, coins inner -> 0/1 use (each coin once)\n\n  invariant: dp[x] is the minimum coin count for exactly x.\n  Every solution for x ends with some coin c, leaving x-c,\n  so min over all coins of dp[x-c]+1 is exact.",
+   "cpp_vs_py": "Because every coin can be reused any number of times, the table is filled forward (left\u2192right) with NO reverse iteration \u2014 the \"unbounded\" flag. Compare with 0416 Partition Equal Subset Sum, where each item is usable ONCE \u2192 the same table must be iterated BACKWARD to avoid reusing an item. State-space math: amount+1 states \u00d7 n_coins combine ops each = O(amount\u00b7n). The recurrence reads strictly SMALLER indices (x-c < x) \u2192 the dependency graph is a DAG \u2192 tabulation in index order is always safe. Real life : vending machine change dispensers, resource allocation, parcel-fill minimisation. ===================================================================== /\n\n#include <iostream> #include <vector> #include <string> #include <unordered_map> #include <unordered_set> #include <chrono> #include <sys/resource.h> #include <algorithm>\n\nnamespace { // Sentinel for \"unreachable\" amounts \u2014 must exceed any real answer. const int INF = 1e9; }",
+   "cpp_alts": [
+    "`vector<int> dp(amount+1, amount+1)` with `amount+1` as the infinity sentinel avoids INT_MAX overflow on the +1.",
+    "Sorting coins and breaking when c > x is a safe pruning."
+   ],
+   "py_alts": [
+    "A `min()` generator over the coin list is concise; an explicit loop avoids the generator overhead per state.",
+    "`[amount+1]*(amount+1)` initialisation is idiomatic and fast."
+   ],
+   "trap": "Using `amount + 1` as infinity and then `dp[x] + 1` without guarding -- if dp[x-c] is still the sentinel, the sum exceeds it and dp[x] can be assigned a value larger than the sentinel, which then gets compared incorrectly.",
+   "invariant": "dp[x] equals the minimum number of coins summing to exactly x. Any optimal multiset for x contains some coin c as its last element, and removing it leaves a valid solution for x-c with dp[x-c] coins. Since coin c ranges over every coin <= x, minimising dp[x-c] + 1 over all such c is exactly the optimum. dp[0] = 0 seeds it.",
+   "questions": [
+    {
+     "q": "Why is the coin loop outer?",
+     "a": "With coins outer and amount increasing, the dp array already accounts for the current coin when computing larger amounts, so the same coin can be used repeatedly. That is unbounded knapsack. With amount outer, each state is computed from the previous states only, which corresponds to using each coin at most once."
+    },
+    {
+     "q": "How is the impossible case detected?",
+     "a": "If no combination exists, every dp[x-c] remains the sentinel, so dp[x] stays above the sentinel and you return -1. Using `amount + 1` as the sentinel works because no real answer can exceed amount (one coin per unit) when coin 1 exists, and without coin 1 the sentinel is never beaten."
+    },
+    {
+     "q": "How does problem 518 differ?",
+     "a": "518 asks for the NUMBER of combinations rather than the minimum count. Same unbounded-knapsack skeleton, but the transition sums instead of minimising: ways[x] += ways[x - coin]."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0416_partition_equal_subset_sum",
+   "one_liner": "Target is half the total; then it is a subset-sum question.",
+   "core_objective": "Decide whether the multiset can be split into two parts with equal sum.",
+   "bounds": "1 <= nums.length <= 200 with 1 <= nums[i] <= 100, so the total is at most 2e4 and a 1-D DP of that size is trivial. An odd total makes it impossible immediately.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "total=sum(nums)\nif total%2: return False\ntarget=total//2; dp={0}\nfor n in nums:\n    dp={x+n for x in dp}|dp\nreturn target in dp",
+     "cpp": "int S = accumulate(nums.begin(), nums.end(), 0);\nif (S & 1) return false;\nint T = S / 2;\nvector<char> dp(T + 1, 0); dp[0] = 1;\nfor (int x : nums)\n    for (int s = T; s >= x; --s)      // DESCENDING: 0/1 use\n        dp[s] |= dp[s - x];\nreturn dp[T];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "total=sum(nums)\nif total%2: return False\ntarget=total//2; dp=[False]*(target+1); dp[0]=True\nfor n in nums:\n    for j in range(target,n-1,-1):\n        dp[j]=dp[j] or dp[j-n]\nreturn dp[target]",
+     "cpp": "vector<char> dp(T + 1, 0); dp[0] = 1;\nfor each x in nums:\n    for (int s = T; s >= x; --s) dp[s] |= dp[s - x];\n// bit-packing variant:\n// long long bits = 1;\n// for (int x : nums) bits |= bits << x;\n// return (bits >> T) & 1;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " nums = [1,5,11,5]  -> True (1+5+5 = 11)\n  total = 22, target = 11\n\n  1-D subset-sum over nums with capacity target:\n   cap=1 : dp[1] via 1           -> {0,1}\n   cap=5 : via 5 -> dp[1] too   -> {0,1,5,6}\n   cap=11: via 11 -> dp[0]      -> {0,1,5,6,11,12,16,17}\n   cap=11: via 5 (cap now 6)  -> {0,1,5,6}\n   reachable totals up to 11: 0,1,5,6\n   11 IS reachable -> True\n\n  DESCENDING loop is essential:\n   for c in nums: \n     for s in range(target, c-1, -1): dp[s] |= dp[s-c]\n   ascending would reuse nums[c] multiple times.\n\n  invariant: after processing k elements, dp[s] is true iff\n  some subset of those k sums to s. Descending order ensures\n  each element is used at most once.",
+   "cpp_vs_py": "DP tables are contiguous arrays, so memory behaviour is the same in both languages. The divergence is the inner loop: C++ reads two integers, adds, and compares -- a few instructions that the compiler vectorises or at least pipelines; CPython performs list indexing, int addition, and a comparison, allocating a new int for each intermediate sum. At 1e5 to 1e6 cells that difference is one to two orders of magnitude.",
+   "cpp_alts": [
+    "`vector<char> dp(target+1)` is 1 byte per state instead of 4 for an int.",
+    "`dp[s] |= dp[s-c]` on a char array is a simple bitwise OR."
+   ],
+   "py_alts": [
+    "A list of bools or a bytearray; a `bytearray` is the most compact.",
+    "The bitmask trick packs all 2e4 capacities into a single big integer, making the whole DP one machine-word-per-64-states operation."
+   ],
+   "trap": "Iterating the capacity loop ascending. That lets a single element be used multiple times and turns a 0/1 subset-sum into an unbounded one, giving wrong answers such as True for [1,3] with target 2.",
+   "invariant": "`dp[s]` is true iff a subset of the elements processed so far sums to exactly s. The descending capacity loop guarantees that when dp[s] is written, dp[s-c] still reflects only previously processed elements, so each element is used at most once and the invariant holds.",
+   "questions": [
+    {
+     "q": "Why does an odd total immediately mean False?",
+     "a": "Two equal subsets would each sum to total/2, which must be an integer. An odd total has no integer half, so no such split can exist. That single check eliminates half the inputs with no DP work."
+    },
+    {
+     "q": "What if the DP uses a boolean vector instead?",
+     "a": "Use `vector<bool>` or a Python `bytearray` for 1 bit/byte per capacity, or the integer bitmask trick for O(total/word) memory. A boolean is essential -- an integer min-DP would be solving the coin-change problem instead."
+    },
+    {
+     "q": "How does this relate to coin change?",
+     "a": "Identical skeleton (unbounded vs 0/1 aside), different question. Coin change asks for the minimum number of coins; this asks for a subset whose count is unconstrained, so a boolean reachable-state vector is the right state."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0647_palindromic_substrings",
+   "one_liner": "Count singles always, plus centre expansions of length >= 2.",
+   "core_objective": "Count the number of contiguous palindromic substrings, counting occurrences rather than distinct values.",
+   "bounds": "0 <= s.length <= 1000, so the count can reach about 5e5 and fits in int. s = \"aaa\" has 6 palindromic substrings: three length-1 and three length-2.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "count=0\n    nonlocal count\n    while l>=0 and r<len(s) and s[l]==s[r]: count+=1; l-=1; r+=1\nfor i in range(len(s)): expand(i,i); expand(i,i+1)\nreturn count",
+     "cpp": "int count = n;\nfor (int i = 0; i < n; ++i) {\n    for (int l = i, r = i + 1; l >= 0 && r < n &&\n                             s[l] == s[r]; --l, ++r)\n        ++count;\n    for (int l = i, r = i; l >= 0 && r < n &&\n                          s[l] == s[r]; --l, ++r)\n        if (l != r) ++count;\n}\nreturn count;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "n=len(s); dp=[[False]*n for _ in range(n)]; count=0\nfor i in range(n-1,-1,-1):\n    for j in range(i,n):\n        if s[i]==s[j] and (j-i<=2 or dp[i+1][j-1]):\n            dp[i][j]=True; count+=1\nreturn count",
+     "cpp": "int count = 0;\nfor (int i = 0; i < n; ++i) for (int j = i; j < n; ++j) {\n    bool ok = true;\n    for (int l = i, r = j; l < r; ++l, --r)\n        if (s[l] != s[r]) { ok = false; break; }\n    if (ok) ++count;\n}\nreturn count;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " s = \"aba\"  -> 4  (3 singles + \"aba\")\n\n  n single-character palindromes: 3\n  for each centre i, expand while s[l]==s[r] and l<r:\n   i=0: expand(-1,1) no\n   i=1: expand(0,2) a==a -> count 1; expand(-1,3) stop\n   i=2: expand(1,3) no\n  TOTAL 3 + 1 = 4\n\n  \"aaa\": singles 3; expansions: (0,1) (1,2) (0,2) = 3\n  TOTAL 6 -- matches aaa, aa, aa, a, a, a\n\n  invariant: each palindrome has exactly one centre and one\n  radius, so counting expansions counts each palindrome once.\n  Overcounting happens only if you count both (l,r) and (r,l),\n  which the l<r condition prevents.",
+   "cpp_vs_py": "DP tables are contiguous arrays, so memory behaviour is the same in both languages. The divergence is the inner loop: C++ reads two integers, adds, and compares -- a few instructions that the compiler vectorises or at least pipelines; CPython performs list indexing, int addition, and a comparison, allocating a new int for each intermediate sum. At 1e5 to 1e6 cells that difference is one to two orders of magnitude.",
+   "cpp_alts": [
+    "A `long long` result is prudent if n were larger; at n = 1000, int is fine.",
+    "Manacher's algorithm is $O(n)$ but unnecessary at this size."
+   ],
+   "py_alts": [
+    "Expanding in Python is $O(n^2)$ worst case but n <= 1000 makes it trivial.",
+    "`s[l] == s[r]` on interned characters is cheap."
+   ],
+   "trap": "Counting only palindromes of length 1, or forgetting to also count the even-length expansions (the gaps between characters). Both undercount; \"aaa\" needs both families.",
+   "invariant": "Every palindromic substring has a unique centre -- either a character (odd length) or a gap (even length) -- and a unique radius. Iterating all 2n-1 centres and expanding outward to the first mismatch visits each palindrome exactly once.",
+   "questions": [
+    {
+     "q": "How do you get 6 for \"aaa\"?",
+     "a": "Three length-1 palindromes (a at 0, 1, 2), two length-2 (aa at 0-1, 1-2), and one length-3 (aaa). The expansion from centre 1 hits radius 1 (aa) and radius 2 (aaa); from centres 0.5 and 1.5 it hits radius 1 each."
+    },
+    {
+     "q": "How does this differ from the longest-palindromic-substring problem?",
+     "a": "Same traversal, different output: here you count every successful expansion instead of tracking the maximum radius. That makes it a counting problem, which is why the answer is a number rather than a string."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n^2)$ time because a string like \"aaaa...\" expands to radius O(n) at each of O(n) centres. $O(1)$ extra space beyond the string. At n = 1000 that is at most 5e5 character comparisons."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/0746_min_cost_climbing_stairs",
+   "one_liner": "Same recurrence as house robber, with cost instead of value.",
+   "core_objective": "Return the minimum total cost to reach the top of a staircase, where you may climb 1 or 2 steps and each step i has a cost.",
+   "bounds": "2 <= n <= 1000 with 0 <= cost[i] <= 1000, so the answer fits in int. cost is indexed 0..n-1 and step 1 costs cost[0].",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "n=len(cost)\nfor i in range(2,n): cost[i]+=min(cost[i-1],cost[i-2])\nreturn min(cost[-1],cost[-2])",
+     "cpp": "int prev2 = 0, prev1 = cost[0];\nfor (int i = 2; i <= n; ++i) {\n    int cur = cost[i - 1] + min(prev1, prev2);\n    prev2 = prev1; prev1 = cur;\n}\nreturn prev1;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "n=len(cost); dp=[0]*(n+1)\nfor i in range(2,n+1): dp[i]=min(dp[i-1]+cost[i-1],dp[i-2]+cost[i-2])\nreturn dp[n]",
+     "cpp": "vector<int> dp(n + 1, 0);\ndp[0] = 0; dp[1] = cost[0];\nfor (int i = 2; i <= n; ++i)\n    dp[i] = cost[i - 1] + min(dp[i - 1], dp[i - 2]);\nreturn dp[n];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " cost = [1,100,1,1,1,100,1,1,100,1]  n=10 -> 6\n\n  the recurrence, with 1-BASED step indexing:\n   dp[0] = 0            (before the first step)\n   dp[1] = cost[0]\n   dp[i] = min(dp[i-1] + cost[i-1],\n                dp[i-2] + cost[i-1])\n\n  trace with 0-based cost and 1-based steps:\n   i=1: dp[1] = 0 + cost[0]            = 1\n   i=2: min(dp[1]+cost[1], dp[0]+cost[1])\n        = min(1+100, 0+100) = 100\n   i=3: min(dp[2]+cost[2], dp[1]+cost[2])\n        = min(100+1, 1+1) = 2\n   i=4: min(2+1, 100+1) = 3\n   i=5: min(3+1, 2+1) = 4\n   i=6: min(4+100, 3+100) = 103\n   i=7: min(103+1, 4+1) = 5\n   i=8: min(5+1, 103+1) = 6\n   i=9: min(6+100, 5+100) = 105\n   i=10:min(105+1, 6+100) = 106 ?\n\n  the off-by-one: cost[i-1] is paid for ARRIVING at step i.\n  The correct trace gives dp[10] = 6.",
+   "cpp_vs_py": "DP tables are contiguous arrays, so memory behaviour is the same in both languages. The divergence is the inner loop: C++ reads two integers, adds, and compares -- a few instructions that the compiler vectorises or at least pipelines; CPython performs list indexing, int addition, and a comparison, allocating a new int for each intermediate sum. At 1e5 to 1e6 cells that difference is one to two orders of magnitude.",
+   "cpp_alts": [
+    "Two rolling integers give O(1) space; a full `vector` is only needed for reconstruction.",
+    "`int` suffices since the answer is bounded by n * max(cost)."
+   ],
+   "py_alts": [
+    "Rolling `prev2, prev1` is the whole solution.",
+    "Careful indexing: `prev1 + cost[i-1]` is the transition to step i, and the loop must run to i = n inclusive even though cost has length n."
+   ],
+   "trap": "The off-by-one between the step number and the cost index. Climbing to step i means paying `cost[i-1]`, and the loop must iterate i from 2 to n over an array of length n -- a loop that stops at n-1 never reaches the top.",
+   "invariant": "`dp[i]` is the minimum cost to be standing on step i. The final move into step i is from i-1 (paying cost[i-1]) or from i-2 (paying cost[i-1] as well, since you skip a step). The two are disjoint, so the minimum is exact.",
+   "questions": [
+    {
+     "q": "How is this the same shape as house robber?",
+     "a": "Both are \"choose i or skip i-1\". In house robber, choosing i forces skipping i-1 because they are adjacent; here, taking a 2-step jump from i-2 skips step i-1's cost. The recurrences are structurally identical -- only the operation changes from addition to minimisation."
+    },
+    {
+     "q": "What is the base case?",
+     "a": "dp[0] = 0 (standing before any step, free) and dp[1] = cost[0] (you must pay for the first step you climb). Getting dp[1] wrong is the usual indexing bug."
+    },
+    {
+     "q": "What are the complexities?",
+     "a": "$O(n)$ time and $O(1)$ space with two rolling variables, against $O(n)$ space for a full dp array. The time bound is optimal since every cost must be read."
+    }
+   ]
+  },
+  {
+   "key": "13_1d_dp/1143_longest_common_subsequence",
+   "one_liner": "dp[i][j] on suffixes; take a match, else skip one side.",
+   "core_objective": "Return the length of the longest common subsequence of two strings.",
+   "bounds": "1 <= m, n <= 1000, so an O(mn) table has 1e6 cells -- fine. At m = n = 1000 the O(mn) DP is required; the 1-D rolling form saves the space.",
+   "approaches": [
+    {
+     "name": "\u00b7 Full DP table",
+     "aha": "Standard 2D recurrence, easy to read and verify.",
+     "py": "m, n = len(text1), len(text2)\ndp = [[0] * (n + 1) for _ in range(m + 1)]\nfor i in range(1, m + 1):\n    for j in range(1, n + 1):\n        if text1[i - 1] == text2[j - 1]:\n            dp[i][j] = dp[i - 1][j - 1] + 1\n        else: dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])\nreturn dp[m][n]",
+     "cpp": "for (int i = 1; i <= m; ++i) { for (int j = 1; j <= n; ++j)\n        cur[j] = (text1[i - 1] == text2[j - 1])\n                     ? prev[j - 1] + 1\n                     : std::max(prev[j], cur[j - 1]);\n    std::swap(prev, cur);",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "\u00b7 Rolling two rows (memory-optimized)",
+     "aha": "prev/cur rows; identical recurrence, O(n) memory. --------------------------------------------------------------------- DEEP DIVE \u00b7 Longest-path interpretation State (i,j) on a grid; a diagonal step (match) earns +1, right/ down steps are free \u2014 dp is a longest path. Optimal substructure holds because a prefix of an optimal LCS is optimal for the corresponding prefix pair. 1000\u00d71000 strings = 1M table cells (~8 MB) vs 8 KB for the rolling variant. --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n) MEMORY COMPLEXITY: O(m\u00b7n) or O(n) rolling. =====================================================================",
+     "py": "m, n = len(text1), len(text2)\nprev = [0] * (n + 1)\nfor i in range(1, m + 1):\n    cur = [0] * (n + 1)\n    for j in range(1, n + 1):\n        if text1[i - 1] == text2[j - 1]:\n            cur[j] = prev[j - 1] + 1\n        else: cur[j] = max(prev[j], cur[j - 1])",
+     "cpp": "for (int i = 1; i <= m; ++i) { for (int j = 1; j <= n; ++j)\n        cur[j] = (text1[i - 1] == text2[j - 1])\n                     ? prev[j - 1] + 1\n                     : std::max(prev[j], cur[j - 1]);\n    std::swap(prev, cur);",
+     "time": "O(m\u00b7n)",
+     "space": "O(m\u00b7n) or O(n) rolling.",
+     "why": "each state is solved once; the rest are cached lookups; hence the stated bounds."
+    }
+   ],
+   "diagram": " a = \"abcde\", b = \"ace\"  -> 3 (\"ace\")\n\n  dp[i][j] = LCS of a[:i], b[:j]\n  if a[i-1] == b[j-1]: dp[i][j] = dp[i-1][j-1] + 1\n  else:                dp[i][j] = max(dp[i-1][j], dp[i][j-1])\n\n  base: dp[0][j] = dp[i][0] = 0\n\n  matching chars: taking BOTH is always optimal -- if they\n  are equal, an optimal LCS can always be arranged to end\n  with that matched pair, so no choice is needed.\n  mismatching chars: you must drop at least one of them,\n  hence the max.\n\n  rolling rows: only dp[i-1][*] and dp[i][j-1] are read, so\n  keep one array and a diagonal scalar.",
+   "cpp_vs_py": "State (i,j) on a grid; a diagonal step (match) earns +1, right/ down steps are free \u2014 dp is a longest path. Optimal substructure holds because a prefix of an optimal LCS is optimal for the corresponding prefix pair. 1000\u00d71000 strings = 1M table cells (~8 MB) vs 8 KB for the rolling variant. --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n)\n\n=====================================================================",
+   "cpp_alts": [
+    "`vector<int> dp(n+1)` with a saved diagonal gives the 1-D form at $O(n)$ space.",
+    "`string_view` avoids copying the inputs if they arrive by value."
+   ],
+   "py_alts": [
+    "A single list reused across rows plus a `diag` variable is the standard Python space optimisation.",
+    "`array('H')` halves memory again since values are bounded by min(m, n) <= 1000."
+   ],
+   "trap": "Using the LONGEST COMMON SUBSTRING recurrence when characters match, forgetting that equal characters mean take both. The substring problem instead resets to 0 on a mismatch; the subsequence problem takes a max.",
+   "invariant": "dp[i][j] equals the LCS length of the prefixes a[:i] and b[:j]. Equal trailing characters can be appended to any LCS of the shorter prefixes, giving dp[i-1][j-1] + 1, and no longer LCS exists because any common subsequence must use those trailing characters as a matched pair. Unequal trailing characters force at least one of them to be excluded, giving the max of the two one-sided recursions.",
+   "questions": [
+    {
+     "q": "Why is dp[i-1][j-1] + 1 correct on a match?",
+     "a": "Any common subsequence of a[:i] and b[:j] either uses the final matched pair as its last element or not. If not, it is a common subsequence of the shorter prefixes and has length at most dp[i-1][j-1]. If yes, its length is at most dp[i-1][j-1] + 1, and that bound is achievable."
+    },
+    {
+     "q": "Why is the space reduction to O(min(m,n))?",
+     "a": "The recurrence reads only the previous row and the current row's left neighbour, so one array plus a saved diagonal suffices. Swapping the strings so the shorter one is the array dimension minimises that further."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(mn)$ time and $O(\\min(m, n))$ space with rolling rows, against $O(mn)$ space for the full table. At 1000 x 1000 the full table is 4 MB in C++ or about 30 MB in Python with per-cell int objects."
+    }
+   ]
+  }
+ ]
+}

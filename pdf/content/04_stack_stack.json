@@ -1,0 +1,382 @@
+{
+ "problems": [
+  {
+   "key": "04_stack/0020_valid_parentheses",
+   "one_liner": "Push opens, pop and match on every close.",
+   "core_objective": "Return true if every opening bracket in the string is closed by the same type of bracket in the correct order.",
+   "bounds": "1 <= s.length <= 1e4; the only characters present are '(', ')', '{', '}', '[' and ']'. An empty string is valid. The invariant must be checked on close before popping, so an unmatched closer on an empty stack returns false immediately rather than underflowing.",
+   "approaches": [
+    {
+     "name": "Stack + dict (BEST)",
+     "aha": "Single pass. Closers are looked up in a dict and compared to the stack top; any mismatch (or a closer over an empty stack) is an immediate False. A valid string leaves the stack EMPTY.",
+     "py": "match: Dict[str, str] = {\")\": \"(\", \"}\": \"{\", \"]\": \"[\"}\nst: List[str] = []\nfor c in s:\n    if c in match:\n        if not st or st[-1] != match[c]:\n            return False   # wrong type or unmatched \u2014 fail fast\n        st.pop()           # pair matched \u2192 remove the opener\n    else: st.append(c)",
+     "cpp": "        std::unordered_map<char, char> match = { {')', '('}, {'}', '{'}, {']', '['}",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    },
+    {
+     "name": "Repeated pair erasure (no stack, no dict)",
+     "aha": "Delete the substrings \"()\", \"{}\", \"[]\" from a working copy until it stops shrinking; valid \u21d4 the result is empty.",
+     "py": "work = s\nwhile True:\n    before = work\n    for pair in (\"()\", \"{}\", \"[]\"):\n        work = work.replace(pair, \"\")\n    if work == before:\n        break   # stable: fully balanced (empty) or invalid\nreturn work == \"\"",
+     "cpp": "while (true) { bool changed = false;\n    static const std::string pairs[] = {\"()\", \"{}\", \"[]\"};\n    for (const std::string& p : pairs) { std::size_t pos = work.find(p);\n        if (pos != std::string::npos) { work.erase(pos, 2);\n            changed = true;  // did remove a pair this pass\n        }\n    }\n    if (!changed) break;",
+     "time": "O(n\u00b2)",
+     "space": "O(n)",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    }
+   ],
+   "diagram": " s = \"([)]\"  -> false\n\n s = \"({[]})\" -> true\n\n   ch (  stack: (\n   ch {  stack: ( {\n   ch [  stack: ( { [\n   ch ]  close ] -> pop [   match!    stack: ( {\n   ch }  close } -> pop {   match!    stack: (\n   ch )  close ) -> pop (   match!    stack: (empty)\n   end: stack empty AND no mismatch -> true\n\n s = \"([)]\" -> false\n   (  stack: (\n   [  stack: ( [\n   )  close ) -> TOP is [ not (  -> MISMATCH -> false\n\\n trap: popping before checking empties the stack\n and lets \")]\" through",
+   "cpp_vs_py": "The stack here is at most three elements deep for a well-formed string, so both languages live entirely in registers or L1 and the difference is pure interpreter overhead. C++ runs the loop as a load, an array index with a branch on the character class, and a compare -- the `switch` compiles to a jump table, which is a single indirect branch the CPU predicts well for a repeating bracket pattern. CPython must execute roughly 20 bytecodes per character (unpack the char, index the dict for the closer, compare strings) and allocates nothing here only because CPython interns single-character Latin-1 strings, so `ch` is a pointer chase to a cached object rather than a fresh allocation.",
+   "cpp_alts": [
+    "`switch (ch)` on the character compiles to a jump table, beating a `std::unordered_map<char,char>` lookup (no hashing, no node).",
+    "`std::string::find_last_of` style scanning is $O(n^2)$ and wrong; a `std::stack<char>` is fine but a raw `std::array<char,64>` avoids allocation."
+   ],
+   "py_alts": [
+    "A `dict` of closer-to-opener beats `if/elif` chains and keeps the intent data-driven.",
+    "`while stack and stack[-1] != pairs[ch]` followed by `if not stack: return False` is the bug-free idiom -- it checks the guard and the match in one pass.",
+    "An f-string-free `stack.pop() != opener` comparison is the tightest check: one pop, one compare, no temp variable."
+   ],
+   "trap": "Popping the top and comparing, without first verifying the stack is non-empty. `s = ')'` then indexes an empty list, or in C++ reads uninitialised memory.",
+   "invariant": "After each processed character, the stack contains exactly the opening brackets that have been seen but not yet matched, in their original order. So a closer must match the top element, and if it does not, the string is invalid regardless of what comes later.",
+   "questions": [
+    {
+     "q": "Why does only the top of the stack need checking?",
+     "a": "Nesting requires proper LIFO order, so a closer must immediately undo the most recent unclosed opener. Anything deeper in the stack was opened earlier and must be closed after the current one, so a mismatch at the top is already fatal."
+    },
+    {
+     "q": "What is the difference between counting and matching?",
+     "a": "Counting openers and closers of each type ignores order, so `')('` and `'([)]'` would pass. Order is exactly what the stack enforces, which is why this problem is a stack exercise rather than a counting exercise."
+    },
+    {
+     "q": "Can this be solved with a counter?",
+     "a": "Only for a single bracket type. With three types you need at minimum a stack of types, since `{[)]` has balanced counts but wrong nesting. The counter version works for `()` and nothing else."
+    }
+   ],
+   "category_note": "The stack is the right structure whenever the last unclosed thing must be resolved first -- nested brackets, nested calls, infix evaluation, and monotonic scans where a later element can retroactively cancel an earlier one. Three flavours recur across this category: a stack of openers with a closing-to-opener map, a stack that carries a running summary (a min-stack, a running arrival time) so a query is $O(1)$ instead of $O(n)$, and a MONOTONIC stack where each element is pushed once and popped at most once, giving amortised $O(1)$ per item. The monotonic pattern is the hardest and most valuable: it converts an $O(n^2)$ nested scan into a single pass by keeping only the elements that are still capable of being an answer."
+  },
+  {
+   "key": "04_stack/0022_generate_parentheses",
+   "one_liner": "Backtrack with two budgets: opens left, closes left.",
+   "core_objective": "Generate all combinations of well-formed parentheses of length n, using exactly n pairs.",
+   "bounds": "1 <= n <= 8, so at most 2n = 16 characters and C(8,4) = 70 valid strings -- the answer set is small enough to enumerate exhaustively. Every generated string must have exactly n opens and n closes.",
+   "approaches": [
+    {
+     "name": "Backtracking DFS (BEST)",
+     "aha": "Recursively grow a string, only taking the two legal moves above, and record the string when it reaches length 2n. Every generated string is valid by construction \u2014 no filtering needed.",
+     "py": "result: List[str] = []\n    if len(cur) == 2 * n:\n        result.append(cur)\n        return  # no more moves possible from a full string\n    if open_count < n:\n        dfs(cur + \"(\", open_count + 1, close_count)\n    if close_count < open_count:\n        dfs(cur + \")\", open_count, close_count + 1)",
+     "cpp": "[&](std::string cur, int open, int close) { if (static_cast<int>(cur.size()) == 2 * n) { result.push_back(cur);\n    return;          // no more moves possible from a full string\n}\nif (open < n) { dfs(cur + '(', open + 1, close);\n}\nif (close < open) { dfs(cur + ')', open, close + 1);\n}",
+     "time": "O(4\u207f/\u221an)",
+     "space": "O(n) recursion",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "Iterative BFS (explicit queue, no recursion)",
+     "aha": "Same expansion, level by level: a deque of (string, opens, closes) grows every frontier simultaneously until length 2n.",
+     "py": "result: List[str] = []\nfrontier: Deque[Tuple[str, int, int]] = deque([(\"\", 0, 0)])\nwhile frontier:\n    cur, open_count, close_count = frontier.popleft()\n    if len(cur) == 2 * n:\n        result.append(cur)\n        continue  # leaf: nothing else to expand\n    if open_count < n:",
+     "cpp": "while (!frontier.empty()) { auto [cur, open, close] = frontier.front();\n    frontier.pop();\n    if (static_cast<int>(cur.size()) == 2 * n) { result.push_back(cur);\n        continue;        // leaf: nothing else to expand\n    }\n    if (open < n) { frontier.push({cur + '(', open + 1, close});\n    }\n    if (close < open) { frontier.push({cur + ')', open, close + 1});",
+     "time": "O(4\u207f/\u221an)",
+     "space": "O(4\u207f/\u221an)",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    }
+   ],
+   "diagram": " n = 3   -> [\"((()))\", \"(()())\", \"(())()\", \"()(())\", \"()()()\"]\n\n dfs(path, open, close):\n   if len(path) == 2n: emit; return\n   if open  < n: dfs(path + '(' , open+1, close)   # can always open\n   if close < open: dfs(path + ')' , open, close+1) # can only close\n\n                         '('  open 1 close 0\n                  /                     \\\n           '('  open2 cl0          ')'  open1 close1\n           /          \\\\|               /          \\\n      '(' o3c0    ')' o2c1        '(' o2c1     ')' o1c2\n        |            \\\\             |           \\\\\n   ')' '(())'  '(()())'      '(())()'    '()()()'\n\\n the close branch needs close < open: you may never\n close more than you have opened (else ')' first).",
+   "cpp_vs_py": "This is a search tree of depth 2n with branching factor 2, so there are at most $2^{16}$ nodes here and about 1e5 in the worst allowed case -- tiny. The interesting difference is memory: every node in Python holds a new `path` string built by `path + '('`, which allocates a fresh string of length up to 2n and copies the whole prefix. That is $O(n)$ per node, making the whole thing $O(n \\cdot 2^n)$ in allocation traffic. C++ has exactly the same trap with `string path`, but passing `path` by value and appending, or mutating a single buffer with push/pop and one `push_back`, avoids the copy entirely and turns each node into $O(1)$ amortised work.",
+   "cpp_alts": [
+    "Mutate one `string path` with `push_back` / `pop_back` instead of copying per node -- the single biggest win here.",
+    "Use a fixed `std::array<char,16>` and a length counter for zero-allocation enumeration.",
+    "`std::function` recursion has indirect-call overhead; a plain static recursive function or a template lambda is inlined."
+   ],
+   "py_alts": [
+    "A list `path` with `append`/`pop` avoids the $O(n)$ string copy per node; join once at the leaves.",
+    "Pruning with `if close < open` is what keeps the tree at Catalan size instead of $2^{2n}$.",
+    "An iterative BFS with a deque is the second approach; it trades recursion for explicit queue churn and is not faster here."
+   ],
+   "trap": "Allowing a close when `close == open`. That produces strings like `(()` with an unmatched closer and you end up emitting invalid output unless you also check `open == close == n` at the leaf.",
+   "invariant": "`path` is always a prefix of a valid parenthesis string, `open` counts its '(', `close` counts its ')', and the guard `close <= open <= n` holds at every node. That is sufficient to guarantee every leaf is well formed.",
+   "questions": [
+    {
+     "q": "Why is the condition `close < open` enough to prevent invalid prefixes?",
+     "a": "A prefix is extendable to a valid string iff it never has more closers than openers, and we never exceed n of either. Checking `close < open` before appending a closer preserves `close <= open` at every node, so every leaf has balanced counts and proper nesting."
+    },
+    {
+     "q": "How many strings are produced?",
+     "a": "The n-th Catalan number, $C_n = \\frac{1}{n+1}\\binom{2n}{n}$, which is 70 for n = 8 and 5 for n = 3. The output is exponential, so the algorithm is output-bound rather than work-bound."
+    },
+    {
+     "q": "What would be wrong with a greedy construction?",
+     "a": "There is no fixed rule for where to place the next bracket -- the choice depends on the prefix. That is precisely why this is a backtracking search rather than a greedy or DP problem."
+    }
+   ]
+  },
+  {
+   "key": "04_stack/0084_largest_rectangle_in_histogram",
+   "one_liner": "Increasing stack of indices; each pop reveals one maximal rectangle.",
+   "core_objective": "Return the largest area of an axis-aligned rectangle fully contained in a histogram, where the rectangle's height is limited by the shortest bar it spans.",
+   "bounds": "1 <= heights.length <= 1e5; 0 <= heights[i] <= 1e4. Areas reach about $10^9$, so `long long` is the safe C++ type. Zero-height bars are legal and contribute area 0.",
+   "approaches": [
+    {
+     "name": "Monotonic increasing stack (BEST)",
+     "aha": "Invariant: stack indices hold STRICTLY INCREASING heights. For each new bar h: pop every index whose height is > h. Each popped bar p has h as its first-shorter bar to the RIGHT; the new stack top is the first-shorter bar to its LEFT \u2192 width resolved, area computed once, never again. A sentinel 0 at the end forces every bar to be popped exactly once.",
+     "py": "st: List[int] = []      # indices; heights[st] strictly increasing\nbest = 0\nh = heights + [0]\nfor i, h_i in enumerate(h):\n    while st and heights[st[-1]] > h_i:\n        height = heights[st.pop()]\n        width = i if not st else i - st[-1] - 1\n        best = max(best, height * width)",
+     "cpp": "for (int i = 0; i < static_cast<int>(h.size()); ++i) { while (!st.empty() && h[st.top()] > h[i]) { int height = h[st.top()];\n        st.pop();\n        int width = st.empty() ? i : i - st.top() - 1;\n        best = std::max(best, height * width);\n    }\n    st.push(i);",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    },
+    {
+     "name": "Brute force (contrast)",
+     "aha": "For every pair (i, j) of bars, the best rectangle spanning them has height min(heights[i..j]); take the max over all pairs. Correct but quadratic \u2014 no structure used.",
+     "py": "n = len(heights)\nbest = 0\nfor i in range(n):\n    min_h = heights[i]\n    for j in range(i, n):\n        min_h = min(min_h, heights[j])   # shrink bound\n        best = max(best, min_h * (j - i + 1))\nreturn best",
+     "cpp": "for (int i = 0; i < n; ++i) { int min_h = heights[i];\n    for (int j = i; j < n; ++j) {\n        min_h = std::min(min_h, heights[j]);  // shrink bound\n        best = std::max(best, min_h * (j - i + 1));\n    }",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    }
+   ],
+   "diagram": " h = [2,1,5,6,2,3]   -> answer 10 (bars 2..4, height 5)\n\n  i=0 h=2 stack:[0]\n  i=1 h=1 pop 0: w = 1-(empty? -1: )-1 = 1-0 = 1? width=1 area=2*1=2\n        stack:[1]\n  i=2 h=5 stack:[1,2]\n  i=3 h=6 stack:[1,2,3]\n  i=4 h=2 pop 3: width = 4-2-1 = 1  area=6*1=6\n        pop 2: width = 4-1-1 = 2  area=5*2=10  BEST\n        stack:[1,4]\n  i=5 h=3 stack:[1,4,5]\n  i=6 SENTINEL h=0 pop 5: width=6-4-1=1 area=3\n              pop 4: width=6-1-1=4 area=2*4=8\n              pop 1: width=6-(-1)-1=6 area=1*6=6\n        stack:[]\n\\n width rule: the popped bar's height is valid all the way\n from (new stack top + 1) to (i - 1).",
+   "cpp_vs_py": "This is where the monotonic-stack pattern pays off most. In C++ the stack is a preallocated `vector<int>` with an index pointer, so push and pop are a store and an integer decrement into a single cache line, and the inner `while` reads `heights[st.back()]` -- a load from the histogram array at an index the CPU has just computed, so it is an L1 hit. Total work is a single pass with 2n stack operations. In Python the same loop runs against a `list` of ints, which is nearly as good for the stack itself, but `heights[st[-1]]` boxes nothing here (existing int objects are reused) while `max(area, height * (i - w - 1))` allocates a new int for every candidate, and the `while` condition re-evaluates `st` truthiness plus an indexing operation. The asymptotic bound is identical; the constant is roughly 30x.",
+   "cpp_alts": [
+    "`vector<int> st; st.reserve(n + 1);` and an index pointer beat `std::stack<int>` -- no adaptor indirection, one contiguous block.",
+    "Push a sentinel height of 0 (or -1) as `heights[n]` to flush the stack in the same loop, avoiding a second pass.",
+    "For very large n, the two-pass block-maximum approach (van Herk/Gil-Werman) gives $O(n)$ with better cache behaviour and no stack at all."
+   ],
+   "py_alts": [
+    "`while st and heights[st[-1]] > h:` is the canonical loop; using `>=` breaks ties differently but is also correct as long as the width formula stays consistent.",
+    "Append a 0 sentinel to the heights list rather than special-casing the loop exit -- removes a duplicated code path.",
+    "Python lists support amortised O(1) `append`/`pop`, so a list is a fine stack; no `deque` needed."
+   ],
+   "trap": "Computing the width before popping, or using `i` instead of the new stack top in the width formula. The width is `i - st.back() - 1` evaluated AFTER the pop, because the popped bar is no longer a boundary.",
+   "invariant": "The stack holds indices with strictly increasing heights, and every index between consecutive stack entries is shorter than the entry above it. When index i is popped, the stack top is the nearest bar to the left that is shorter, so bars from top+1 to i-1 all have height at least `heights[i]`.",
+   "questions": [
+    {
+     "q": "Why is the width `i - st.back() - 1` after popping, not before?",
+     "a": "After popping index i, `st.back()` is the nearest bar strictly to the left with a smaller height, which is exactly the left boundary of the maximal span for `heights[i]`. The right boundary is i-1 because the current bar is shorter. Using the pre-pop top would include the boundary bar and overcount."
+    },
+    {
+     "q": "What does the sentinel flush accomplish?",
+     "a": "It forces every remaining index to be popped as if a bar of height 0 had appeared at position n. Without it you need a separate loop after the main one, and forgetting that loop loses the rectangles that extend to the right edge."
+    },
+    {
+     "q": "Why is the whole algorithm linear despite the nested while?",
+     "a": "Each index is pushed once and popped at most once, so the total number of inner-loop iterations across the entire run is at most n. The nested loop is amortised O(1) per outer iteration."
+    }
+   ]
+  },
+  {
+   "key": "04_stack/0150_evaluate_reverse_polish_notation",
+   "one_liner": "Two operands plus an operator form a three-token reduction.",
+   "core_objective": "Evaluate an expression given in reverse Polish notation, where every operator follows its operands and `/` truncates toward zero.",
+   "bounds": "1 <= tokens.length <= 1e5, with integer operands in [-100, 100] and division by zero guaranteed not to occur. Operand count is always valid, so the stack never underflows. Intermediate results can exceed 32 bits, which is the classic C++ trap.",
+   "approaches": [
+    {
+     "name": "Stack + operator set (BEST)",
+     "aha": "Operands are pushed; operators pop a and b (b popped SECOND is the LEFT operand \u2014 order matters for - and /), then push the result. A set answers \"is this token an operator?\" in O(1).",
+     "py": "ops: Set[str] = {\"+\", \"-\", \"*\", \"/\"}\nst: List[int] = []\nfor tok in tokens:\n    if tok not in ops:\n        st.append(int(tok))\n        continue\n    b = st.pop()\n    a = st.pop()",
+     "cpp": "for (const std::string& tok : tokens) { if (ops.find(tok) == ops.end()) { st.push(std::stoi(tok));\n        continue;\n    }\n    int b = st.top(); st.pop();\n    int a = st.top(); st.pop();\n    if (tok == \"+\")      st.push(a + b);\n    else if (tok == \"-\") st.push(a - b);\n    else if (tok == \"*\") st.push(a * b);",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each element is probed once; pairs cancel or are recorded; hence the stated bounds."
+    },
+    {
+     "name": "Stack + char switch (no hash set)",
+     "aha": "Same algorithm, but operators are recognised by shape: every operator token is a SINGLE character and not a digit. That makes a 4-case if/elif chain possible and avoids allocating a set.",
+     "py": "st: List[int] = []\nfor tok in tokens:\n    is_op = len(tok) == 1 and not tok.isdigit()\n    if not is_op:\n        st.append(int(tok))\n        continue\n    b = st.pop()\n    a = st.pop()",
+     "cpp": "for (const std::string& tok : tokens) { bool is_op = tok.size() == 1 &&\n                 !std::isdigit(static_cast<unsigned char>(tok[0]));\n    if (!is_op) { st.push(std::stoi(tok));\n        continue;\n    }\n    int b = st.top(); st.pop();\n    int a = st.top(); st.pop();\n    switch (tok[0]) { case '+': st.push(a + b); break;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " tokens = [\"2\",\"1\",\"+\",\"3\",\"*\"]  -> 9\n\n is an operand?  push 2            [2]\n is an operand?  push 1            [2,1]\n '+' : b=pop()=1, a=pop()=2 -> 2+1=3   [3]\n '3' : push                     [3,3]\n '*' : b=3, a=3            -> 3*3=9   [9]\n\\n operand test: token is a digit, or starts with '-'/'+' followed\n by a digit. The classic bug is testing isdigit() alone,\n which rejects negative operands like \"-3\".\n\\n DIVISION TRAP: C++ int division truncates toward zero, so\n -7 / 2 == -3 (not -4). Python's // floors to -4, so Python\n needs int(a / b) to match.",
+   "cpp_vs_py": "The stack depth is bounded by the number of operands, which for a balanced RPN expression is modest, so both languages keep it in cache. C++ does one `isdigit` scan per token and one division per operator, with the token comparison against `'-'` handled by a branch. CPython's `str.isdigit()` allocates nothing (one-character cached strings) but the repeated `int(token)` conversion goes through the full string-to-integer parser, and the operator dispatch via a dict lookup returns a function object that is then called -- a full Python-level call per operator. That call overhead is the dominant cost, not the arithmetic.",
+   "cpp_alts": [
+    "Dispatch operators with a `switch` on `tok[0]` rather than an `unordered_map<string,function>` -- no string hashing, no indirect call.",
+    "`stoll` on the operand after the digit check, or `std::from_chars` which is allocation-free and locale-independent.",
+    "Reserve the stack with `stack.reserve(tokens.size())` to avoid repeated reallocation."
+   ],
+   "py_alts": [
+    "A dict of lambdas for the five operators is concise but each call is a Python-level function call.",
+    "`tok.isdigit() or (tok[0] in '+-' and tok[1:].isdigit())` correctly handles negative operands.",
+    "Use `int(a / b)` not `a // b` so the truncation matches LeetCode's C++ semantics."
+   ],
+   "trap": "Popping in the wrong order. For a non-commutative operator like `-` or `/`, the FIRST pop is the RIGHT operand and the second pop is the LEFT one. Swapping them gives correct-looking output on symmetric inputs and wrong answers otherwise.",
+   "invariant": "After processing each token, the stack holds, in order, the values of all complete subexpressions that have not yet been consumed by an operator. An operator therefore always finds its two operands on top.",
+   "questions": [
+    {
+     "q": "Why is the first pop the right operand?",
+     "a": "In reverse Polish notation the operands appear before the operator, left operand first. Popping takes the most recently pushed, which is the right operand, so `a = pop()` must be the SECOND pop. Subtraction and division are not commutative, so this matters immediately."
+    },
+    {
+     "q": "How do you distinguish an operand from an operator robustly?",
+     "a": "Check the first character: digits or a leading sign followed by a digit mean operand. `isdigit()` alone fails on `-3`, and a set of operator characters alone is fragile if the token set grows."
+    },
+    {
+     "q": "What is the C++-versus-Python semantic trap here?",
+     "a": "Integer division. C++ truncates toward zero, so -7/2 is -3; Python's // floors, giving -4. A Python port must use `int(a / b)` to reproduce the judge's expected output."
+    }
+   ]
+  },
+  {
+   "key": "04_stack/0155_min_stack",
+   "one_liner": "Push the running minimum alongside every value.",
+   "core_objective": "Support push, pop, top, and getMin in constant worst-case time each.",
+   "bounds": "Operations arrive in any order with at most 3e6 calls, so worst-case O(1) per operation is required. The main stack holds up to 1e5 elements. Duplicates are legal, so the auxiliary structure must handle equal minima correctly.",
+   "approaches": [
+    {
+     "name": "Two parallel stacks (BEST)",
+     "aha": "Main stack holds values; min stack holds the running minimum. push(v): push v; push min(min_top, v). pop(): pop BOTH stacks together (lockstep by design). getMin(): peek the min stack's top.",
+     "py": "self.data: List[Tuple[int, int]] = []\nnew_min = val if not self.data else min(self.data[-1][1], val)\nself.data.append((val, new_min))\nself.data.pop()\nreturn self.data[-1][0]\nreturn self.data[-1][1]",
+     "cpp": "stack<int> main_s, mins;\nvoid push(int v) {\n    main_s.push(v);\n    mins.push(mins.empty() || v < mins.top() ? v\n                                        : mins.top());\n}\nvoid pop() { main_s.pop(); mins.pop(); }\nint top() { return main_s.top(); }\nint getMin() { return mins.top(); }",
+     "time": "O(1) for EVERY operation \u2014 nothing is scanned.",
+     "space": "O(n) \u2014 two stacks, n entries each.",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    },
+    {
+     "name": "Single stack of (value, runningMin) pairs",
+     "aha": "One stack; every element is a tuple (v, currentMin). Same logic, one physical stack, but each entry carries a second word.",
+     "py": "self.stack: List[int] = []      # the real stack of values\nself.min_stack: List[int] = []  # running minimum at each depth\nself.stack.append(val)\nnew_min = val if not self.min_stack else min(self.min_stack[-1], val)\nself.min_stack.append(new_min)\nself.stack.pop()\nself.min_stack.pop()\nreturn self.stack[-1]",
+     "cpp": "vector<pair<int,int>> st;   // (value, runningMin)\nvoid push(int v) {\n    int mn = st.empty() ? v : min(v, st.back().second);\n    st.emplace_back(v, mn);\n}\nvoid pop() { st.pop_back(); }\nint top() { return st.back().first; }\nint getMin() { return st.back().second; }",
+     "time": "O(1)",
+     "space": "O(n)",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    }
+   ],
+   "diagram": " ops: push(-2) push(0) push(-3) getMin() pop() top() getMin()\n\n main    : [-2] [-2,0] [-2,0,-3]\n mins    : [-2] [-2,-2] [-2,-2,-3]\n\n getMin -> mins.back() = -3\n pop() : main.pop() -> -3 ; mins.pop() -> -2 (restored!)\n top()  : main.back() -> 0\n getMin -> mins.back() = -2   CORRECT (0 was popped? no, min was -2)\n\\n invariant: |mins| == |main| always, and\n mins[i] == min(main[0..i]) at every depth i.\n Popping is symmetric, so the two stay in lockstep.\n\n alternative: one stack of (value, runningMin) pairs --\n half the push/pop calls, twice the per-node memory.",
+   "cpp_vs_py": "This is the rare problem where Python's memory model is a genuine liability. Two parallel stacks mean two `deque`s, and each CPython deque block holds pointers, so a 1e5-element stack costs roughly 800 KB of pointers plus the int objects. C++ `std::stack<int>` over a `std::vector<int>` stores the values inline in one 400 KB block with perfect locality, and the running-min vector is likewise 400 KB -- 1.6x denser with no per-element object header and no indirection on read. Pushing a Python int does not allocate when the value is interned or already referenced, but a large computed minimum is a fresh PyLong, so the auxiliary stack allocates on every push where the min changes.",
+   "cpp_alts": [
+    "`vector<pair<int,int>>` holding (value, runningMin) halves the number of push/pop calls at the cost of doubling per-node bytes.",
+    "A single `vector<int>` for values plus a `vector<int>` for mins, with `reserve`, is faster than `std::stack` because there is no adaptor indirection.",
+    "An `std::multiset` with a matching iterator per element gives O(log n) getMin with O(1) push/pop and erase -- only worth it if you need ordering too."
+   ],
+   "py_alts": [
+    "`deque` is the natural stack; a `list` with negative indexing works too and is faster to push/pop but its `pop()` from the end is the same operation.",
+    "Storing `(value, running_min)` tuples halves the calls but allocates a tuple per push -- usually a net loss in CPython.",
+    "`min_stack[-1]` is O(1); do not use `min(min_stack)` anywhere in the hot path."
+   ],
+   "trap": "Pushing to the auxiliary stack only when the new value is smaller. Then the auxiliary stack no longer has the same depth as the main one, and a pop cannot know how many minima to discard -- you must push unconditionally and pop unconditionally.",
+   "invariant": "`|mins| == |main|` and `mins[i] == min(main[0..i])` for every depth i. Push appends `min(v, mins.top())`, pop discards one entry, and the invariant then holds for the shorter stack by construction.",
+   "questions": [
+    {
+     "q": "Why must you push the running min unconditionally?",
+     "a": "The auxiliary stack's depth must mirror the main stack's so that popping once from each stays in sync. Pushing only on decrease leaves fewer entries than there are values, and there is no way to recover how many to discard on pop."
+    },
+    {
+     "q": "What is the space cost of the two-stack design versus the pair design?",
+     "a": "Two stacks of n ints is 2n words. A stack of n pairs is also 2n words, so the memory is identical. The difference is call count: two stacks do two push and two pop calls per operation, the pair design does one each but allocates a pair per node."
+    },
+    {
+     "q": "Can getMin be O(1) without extra space?",
+     "a": "Not without extra state -- you would have to rescan, which is O(n). The whole point of the problem is that the extra structure buys O(1); the space cost is the price."
+    }
+   ]
+  },
+  {
+   "key": "04_stack/0739_daily_temperatures",
+   "one_liner": "Monotonic decreasing stack: a warmer day resolves the wait.",
+   "core_objective": "For each day, return how many days you must wait for a strictly warmer temperature; 0 if none exists.",
+   "bounds": "1 <= temperatures.length <= 1e5; 30 <= temperatures[i] <= 100, so the value range is tiny and a 71-slot array could replace the stack, but the stack generalises. A day with no warmer future returns 0, not -1.",
+   "approaches": [
+    {
+     "name": "Monotonic decreasing stack (BEST)",
+     "aha": "Invariant: stack holds indices whose temperatures are STRICTLY DECREASING from bottom to top. For each day i: while the stack is non-empty and temperatures[i] > temperatures[stack[-1]], the top index has found its first warmer day \u2192 answer = i \u2212 top. Then push i. Every index is pushed and popped exactly once.",
+     "py": "n = len(temperatures)\nanswer = [0] * n\nst: List[int] = []\nfor i, temp in enumerate(temperatures):\n    while st and temperatures[st[-1]] < temp:\n        answer[st[-1]] = i - st[-1]\n        st.pop()   # resolved \u2014 remove from the pending stack\n    st.append(i)",
+     "cpp": "for (int i = 0; i < n; ++i) {\n    while (!st.empty() && temperatures[i] > temperatures[st.top()]) { answer[st.top()] = i - st.top();\n        st.pop();   // resolved \u2014 remove from the pending stack\n    }\n    st.push(i);",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each element is pushed once and popped at most once; hence the stated bounds."
+    },
+    {
+     "name": "Brute force (contrast)",
+     "aha": "For each day scan forward until a warmer day is found.",
+     "py": "n = len(temperatures)\nanswer = [0] * n\nfor i in range(n):\n    for j in range(i + 1, n):\n        if temperatures[j] > temperatures[i]:\n            answer[i] = j - i\n            break   # stop scanning this i\nreturn answer",
+     "cpp": "for (int i = 0; i < n; ++i) { for (int j = i + 1; j < n; ++j) { if (temperatures[j] > temperatures[i]) { answer[i] = j - i;\n            break;   // stop scanning this i\n        }\n    }",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    }
+   ],
+   "diagram": " T = [73, 74, 75, 71, 69, 72, 76, 73]\n     idx 0  1  2  3  4  5  6  7\n\n i=0 73 st=[]            -> push 0   st=[0]\n i=1 74 T[0]=73 < 74 -> ans[0]=1-0=1 ; push 1  st=[1]\n i=2 75 T[1]=74 < 75 -> ans[1]=1     ; push 2  st=[2]\n i=3 71 T[2]=75 > 71 -> not warmer; push 3  st=[2,3]\n i=4 69 push 4                        st=[2,3,4]\n i=5 72 pop 4 (69<72) ans[4]=1\n              pop 3 (71<72) ans[3]=2\n              T[2]=75 > 72 stop; push 5  st=[2,5]\n i=6 76 pop 5 (72) ans[5]=1\n              pop 2 (75) ans[2]=4\n              push 6  st=[6]\n i=7 73 push 7  st=[6,7]  (no one left to warm them)\n\\n ans = [1,1,4,2,1,1,0,0]   (index 6,7 stay 0)",
+   "cpp_vs_py": "Each index is pushed once and popped at most once, so the stack operations total 2n and the amortised cost is O(1). In C++ the stack is a `vector<int>` with a pointer, the `while (T[st.back()] <= T[i])` test is two L1 loads, and popping is one decrement -- all register work with the histogram array streaming through L1 once. Python's list-based stack behaves nearly identically for the stack itself, but each iteration allocates an int for `i - st[-1]` before storing it into the answer list, and CPython cannot keep the loop-carried comparison in a register. Realistically the C++ version runs about 25 times faster at n = 1e5, purely from interpreter dispatch.",
+   "cpp_alts": [
+    "Use `<=` in the pop condition so equal temperatures also pop; `<` leaves equal values in the stack, which is still correct but does more work.",
+    "Because temperatures are 30..100, a `vector<int> last(101, -1)` forward pass is also $O(n)$ with no stack.",
+    "`std::vector<int>` plus an index counter beats `std::stack<int>` (which defaults to `std::deque`) on both speed and locality."
+   ],
+   "py_alts": [
+    "`while st and T[st[-1]] < t:` must be re-tested after each pop; the loop condition alone handles it.",
+    "`st.append(i)` / `st.pop()` on a list is amortised O(1) and faster than `deque` here because there is no block splitting.",
+    "Leaving the answer list pre-filled with zeros avoids a second pass to handle unresolved stack entries."
+   ],
+   "trap": "Using `<` instead of `<=` in the pop condition, or popping on `<=`. With `<=` equal temperatures resolve each other (and the later one correctly reports 0 for a day whose equal-temperature successor is not strictly warmer -- check this against the expected output). More commonly the bug is forgetting to initialise unresolved entries to 0.",
+   "invariant": "The stack holds indices in strictly increasing order of position and strictly decreasing order of temperature, and every one of them is still waiting for a warmer day. When a warmer day arrives it resolves all stack entries with a smaller temperature, and each is resolved exactly once with the nearest qualifying day.",
+   "questions": [
+    {
+     "q": "Why does each entry get the NEAREST warmer day rather than just any?",
+     "a": "Because entries are popped the moment a warmer day is seen, and days are processed left to right. The first warmer day encountered after index i is by definition the nearest one, so the answer is correct the instant the pop happens."
+    },
+    {
+     "q": "Why must the stack be decreasing rather than increasing?",
+     "a": "An increasing stack would pop on a colder day, but the question asks for warmer. Decreasing order means the stack top is the most recent day that nothing warmer has resolved, so a warmer arrival pops exactly the entries it can answer."
+    },
+    {
+     "q": "What happens to indices left in the stack at the end?",
+     "a": "Their answers stay 0, meaning no warmer day ever appeared. That is the correct answer and the reason the result array is initialised to 0 rather than assigned in a final flush."
+    }
+   ]
+  },
+  {
+   "key": "04_stack/0853_car_fleet",
+   "one_liner": "Sort by position; scan from the back comparing arrival times.",
+   "core_objective": "Return the minimum number of cars that arrive at the target. A faster car that catches a slower one ahead merges into that fleet and arrives with it.",
+   "bounds": "1 <= n <= 1e4; 1 <= target <= 1e9; 1 <= speed[i], position[i] <= 1e9. `target - position[i]` can be zero or negative and must be handled as an immediate arrival. The product speed * time can reach about 1e18, so C++ needs `long long`.",
+   "approaches": [
+    {
+     "name": "Sort + stack of arrival times (BEST)",
+     "aha": "Sort (position, speed) pairs by position DESCENDING (nearest to the target first). Maintain a stack of arrival times that is STRICTLY INCREASING bottom\u2192top. Push t only if t is greater than the current top \u2014 otherwise the car merges into the fleet ahead. Answer = stack size.",
+     "py": "         speed: List[int]) -> int:\ncars = sorted(zip(position, speed), reverse=True)\ntimes: List[float] = []\nfor pos, spd in cars:\n    t = (target - pos) / spd\n    if not times or t > times[-1]:\n        times.append(t)\nreturn len(times)",
+     "cpp": "sort(cars.begin(), cars.end());\nvector<double> t;\nfor (auto& c : cars)\n    t.push_back(1.0 * (target - c.first) / c.second);\nint fleets = 0;\ndouble slowest = 0;\nfor (int i = (int)t.size() - 1; i >= 0; --i) {\n    if (t[i] > slowest) { ++fleets; slowest = t[i]; }\n}\nreturn fleets;",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Sort + running maximum (no stack)",
+     "aha": "Same sort and walk, but the \"stack\" shrinks to one variable: the arrival time of the slowest leader so far (the fleet's time). Count a new fleet every time a car's time exceeds it.",
+     "py": "         speed: List[int]) -> int:\ncars = sorted(zip(position, speed), reverse=True)\nslowest: float = 0.0\nfleets = 0\nfor pos, spd in cars:\n    t = (target - pos) / spd\n    if t > slowest:\n        fleets += 1",
+     "cpp": "sort(cars.begin(), cars.end());\nvector<double> t;\nfor (auto& c : cars)\n    t.push_back(1.0 * (target - c.first) / c.second);\ndouble slow = 0;\nfor (int i = (int)t.size() - 1; i >= 0; --i)\n    if (t[i] > slow) slow = t[i];\n// count suffix maxima\nint fleets = 0; slow = -1;\nfor (int i = (int)t.size() - 1; i >= 0; --i)\n    if (t[i] > slow) { ++fleets; slow = t[i]; }",
+     "time": "O(n log n)",
+     "space": "O(1) extra",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " target = 12, position = [10,8,0,5,3], speed = [2,4,1,1,3]\n\n sorted by position desc: (10,2) (8,4) (5,1) (3,3) (0,1)\n\n scan from the BACK (closest to target first):\n (3,3)  time = 9/3 = 3      -> slowest=3, fleets=1\n (5,1)  time = 7/1 = 7      -> 7 > 3 : SLOWER, new fleet  fleets=2\n (8,4)  time = 4/4 = 1      -> 1 < 3 : catches up, joins fleet\n (10,2) time = 2/2 = 1      -> 1 < 3 : catches up, joins fleet\n (0,1)  time = 12/1 = 12    -> 12 > 3: SLOWER, new fleet  fleets=3\n\\n ANSWER 3\n\n invariant: `slowest` is the arrival time of the fleet nearest the\n target seen so far. A car arriving LATER must be its own fleet;\n a car arriving EARLIER or equal merges behind it.",
+   "cpp_vs_py": "The dominant cost here is the sort of up to 1e4 pairs. C++ sorts `vector<pair<int,int>>` with introsort -- the second element makes it lexicographic, which is a comparison on two registers per element, so roughly 1e5 comparisons in well-predicted branches on a 80 KB array that fits in L2. CPython's `list.sort()` uses Timsort with tuple comparison, and tuple `__lt__` goes through a generic rich-comparison slot, so each of the ~1e5 comparisons is an indirect C call. Then the scan divides by `speed[i]`, and Python's `/` on ints produces a float -- allocating a float object per car and risking precision issues near 1e18, which is why the integer ceil-division form is mandatory in both languages here.",
+   "cpp_alts": [
+    "`sort` by position descending, or sort ascending and iterate from `n-1` down.",
+    "Integer ceil division `(d + s - 1) / s` avoids the float round-trip and the precision hazard entirely.",
+    "`long long` throughout: `(target - position) * time` intermediate products overflow 32 bits immediately."
+   ],
+   "py_alts": [
+    "`(d + s - 1) // s` is exact integer ceiling division and much faster than `math.ceil(d / s)`.",
+    "Sort with `key=lambda p: -p[0]` or sort ascending and reverse-index; both avoid a custom comparator, which in Python is far more expensive than a key function.",
+    "`max(slowest, t)` inline instead of `max()` calls keeps the scan free of function dispatch."
+   ],
+   "trap": "Scanning from the front (largest position gap first) instead of the back. The nearest car sets the pace for everyone behind it, so you must process from the target backwards. Scanning forward gives the wrong fleet count.",
+   "invariant": "After processing the i closest cars, `slowest` is the arrival time of the rearmost fleet among them. A car with arrival time <= slowest catches that fleet; a car with arrival time > slowest cannot catch anything and forms its own fleet, updating slowest.",
+   "questions": [
+    {
+     "q": "Why scan from the back?",
+     "a": "Fleet membership is determined by arrival time ordering, and the car closest to the target has no car ahead of it, so it always forms its own fleet. Working backwards, each subsequent car either catches that fleet (arrives no later) or overtakes it and becomes the new pace-setter. Scanning forwards has no such anchor."
+    },
+    {
+     "q": "What does the running `slowest` value represent?",
+     "a": "The arrival time at the target of the rearmost fleet encountered so far. It is non-decreasing as you scan backwards, which is the invariant that makes the single comparison per car sufficient."
+    },
+    {
+     "q": "Why must you use integer ceiling division?",
+     "a": "Two reasons. Exactness: floating point near 1e18 has no room for an integer, so `(d + s - 1) / s` is the only safe form. And correctness of the comparison: a car that arrives 0.0000001 later is a separate fleet, and float rounding would merge them incorrectly."
+    }
+   ]
+  }
+ ]
+}

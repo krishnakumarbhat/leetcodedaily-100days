@@ -1,0 +1,491 @@
+{
+ "problems": [
+  {
+   "key": "01_arrays_and_hashing/0001_two_sum",
+   "one_liner": "Complement lookup collapses O(n^2) pairing into a single pass.",
+   "core_objective": "Return the indices of the two distinct elements whose values sum to `target`. Exactly one solution is guaranteed and no element may be used twice.",
+   "bounds": "2 <= nums.length <= 1e4; -1e9 <= nums[i], target <= 1e9. Duplicates are allowed, so [3,3] with target 6 is a legal input. Overflow is impossible in Python but is real in C++ if you accumulate rather than subtract. The single boundary trap is probe-before-insert.",
+   "approaches": [
+    {
+     "name": "One-pass hash map (BEST)",
+     "aha": "Walk the array once. Before inserting `num`, check whether its complement `target - num` is already in the map.",
+     "py": "seen = {}\nfor i, x in enumerate(nums):\n    if target - x in seen:\n        return [seen[target - x], i]\n    seen[x] = i",
+     "cpp": "unordered_map<int,int> seen;\nfor (int i = 0; i < n; ++i) {\n    int need = target - nums[i];\n    if (seen.count(need))\n        return {seen[need], i};\n    seen[nums[i]] = i;\n}",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "Sort + two pointers (no hash map)",
+     "aha": "Pair each value with its original index, sort, then let `l` and `r` meet in the middle adjusting by the sum sign.",
+     "py": "pairs = sorted((v, i) for i, v in enumerate(nums))\nl, r = 0, len(pairs) - 1\nwhile l < r:\n    s = pairs[l][0] + pairs[r][0]\n    if s == target: return [pairs[l][1], pairs[r][1]]\n    l, r = (l + 1, r) if s < target else (l, r - 1)",
+     "cpp": "sort(pairs.begin(), pairs.end());\nint l = 0, r = pairs.size() - 1;\nwhile (l < r) {\n    int s = pairs[l].first + pairs[r].first;\n    if (s == target) return {pairs[l].second,\n                            pairs[r].second};\n    s < target ? ++l : --r;\n}",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums  :  [2] [7] [11] [15]\n         i=0  i=1   i=2   i=3\n         need9 need2  need-2 need-11\n\n i=0 x=2  need=9  in seen? NO   -> seen={2:0}\n i=1 x=7  need=2  in seen? YES  -> [0,1]  DONE\n i=2 ...            (never reached)\n\n invariant: before step i, seen = {value:index for index < i}",
+   "cpp_vs_py": "CPython boxes every int: `nums[i]` is a pointer chase to a separately allocated PyLong, and `target - num` allocates a brand-new PyLong per iteration, so a one-pass scan performs n heap allocations for the subtrahends alone. C++ keeps the ints inline in a contiguous `vector<int>`, so the subtraction happens in a register with no traffic at all. The map itself inverts the usual expectation: Python's `dict` is one flat open-addressed table of PyObject* slots, so a 1e4-entry int map costs roughly 400 KB densely packed, while `std::unordered_map` allocates a node per entry plus a bucket array, costing more memory but keeping each bucket's chain cache-friendly for iteration.",
+   "cpp_alts": [
+    "`std::map<int,int>` is the wrong tool: an RB-tree makes every lookup $O(\\log n)$ for no benefit here, since we never need the keys ordered.",
+    "`__gnu_pbds::gp_hash_table` with a splitmix64 custom hasher defeats the standard anti-test payload that walks `std::unordered_map` with keys congruent modulo the bucket count.",
+    "For very large n, a sorted `vector<pair<int,int>>` plus two pointers beats a hash map on memory and cache, at $O(n \\log n)$ time."
+   ],
+   "py_alts": [
+    "`dict.setdefault` and `defaultdict` only hide the miss case; the explicit `in` probe is fastest and reads closest to the C++ version.",
+    "`enumerate` beats `for i in range(len(nums))` because it avoids the second index load.",
+    "`Counter` is dead weight for a single partner query -- it maintains 26-fold more state than you read."
+   ],
+   "trap": "Writing `seen[x] = i` before the membership probe. With nums = [3, 3] and target = 6 that returns [0, 0], reusing one element twice. Probe first, insert second.",
+   "invariant": "At the top of iteration i, `seen` maps every value at an index strictly below i to its index, and nothing else. If that holds, a hit means the partner is a genuinely earlier, distinct element.",
+   "questions": [
+    {
+     "q": "Why must the probe happen before the insert?",
+     "a": "Inserting first lets a value satisfy its own complement when x + x == target, which reuses one element. The problem forbids that, so the current element must not be visible to its own query."
+    },
+    {
+     "q": "What input kills an identity-hashed `std::unordered_map` here, and how do you stop it?",
+     "a": "Keys chosen to be congruent modulo the bucket count, e.g. multiples of the prime bucket size, all land in one chain and turn the lookup into $O(n)$ per probe. A splitmix64 custom hasher, or `gp_hash_table` with open addressing, restores $O(1)$ expected."
+    },
+    {
+     "q": "The answer is guaranteed unique. Why may you return on the first hit?",
+     "a": "If a second valid pair existed, the scan would have found it at an earlier index, contradicting the stated uniqueness. So the first hit is provably the expected pair and no backtracking is needed."
+    }
+   ],
+   "category_note": "This category is about trading memory for time. The recurring move is to ask the array one question per element -- \"have I seen the thing that completes this?\" -- and answer it with a hash table instead of a rescan. Every approach below is that same idea wearing different clothes: frequency tables for multiplicity, complement maps for pairing, prefix/suffix sweeps when you need a value from both sides, and bucket ordering when the values themselves carry the structure. The Python-C++ story is uniform too: a flat open-addressed `dict` versus node-per-entry `std::unordered_map`, which is why the Python version is often the denser one for small-int keys even though it is slower per operation."
+  },
+  {
+   "key": "01_arrays_and_hashing/0036_valid_sudoku",
+   "one_liner": "Three sets of masks (row, column, box) check each cell once.",
+   "core_objective": "Decide whether a partially filled 9x9 Sudoku board obeys Sudoku rules: no digit repeats in any row, column, or 3x3 box. Empty cells are always permitted.",
+   "bounds": "The board is always exactly 9x9, so the alphabet is fixed at 27 nine-bit masks and 81 cells. '.' means empty and must be skipped before any bit test. Digits arrive as characters, so a 0-9 digit test beats any bit shift unless you subtract '1' first.",
+   "approaches": [
+    {
+     "name": "Bitmask per row / column / box (MEMORY-OPTIMAL)",
+     "aha": "Time Complexity : O(81) Space Complexity : O(27) ints \u2248 108 B. Box index = (r//3)*3 + (c//3). WHY bitmasks: a hash-set version needs 27 containers with hashing + probing overhead. Same O() class, far smaller constants. ---------------------------------------------------------------------",
+     "py": "rows, cols, boxes = [0]*9, [0]*9, [0]*9\nfor r in range(9):\n    for c in range(9):\n        ch = board[r][c]\n        if ch == '.': continue\n        d, bit = int(ch), 1 << (int(ch) - 1)\n        b = (r // 3) * 3 + c // 3\n        if (rows[r] | cols[c] | boxes[b]) & bit: return False\n        rows[r] |= bit; cols[c] |= bit; boxes[b] |= bit",
+     "cpp": "uint16_t rows[9] = {}, cols[9] = {}, box[9] = {};\nfor (int r = 0; r < 9; ++r)\n  for (int c = 0; c < 9; ++c) {\n    char ch = board[r][c];\n    if (ch == '.') continue;\n    uint16_t bit = 1 << (ch - '1');\n    int b = (r / 3) * 3 + c / 3;\n    if ((rows[r] | cols[c] | box[b]) & bit) return false;\n    rows[r] |= bit; cols[c] |= bit; box[b] |= bit;\n  }",
+     "time": "O(81)",
+     "space": "O(27) ints \u2248 108 B.",
+     "why": "each state is solved once; the rest are cached lookups; hence the stated bounds."
+    },
+    {
+     "name": "Set of (owner, digit) tuples (simplest to write)",
+     "aha": "Time Complexity : O(81) Space Complexity : O(81). Pedagogical contrast: hash sets trade memory for simplicity. =====================================================================",
+     "py": "seen = set()\nfor r in range(9):\n    for c in range(9):\n        ch = board[r][c]\n        if ch == '.': continue\n        if (r, ch) in seen or (c, ch) in seen \\\n                or ((r // 3) * 3 + c // 3, ch) in seen:\n            return False\n        seen |= {(r, ch), (c, ch), ((r // 3) * 3 + c // 3, ch)}\nreturn True",
+     "cpp": "unordered_set<int> seen;\nfor (int r = 0; r < 9; ++r)\n  for (int c = 0; c < 9; ++c) {\n    char ch = board[r][c];\n    if (ch == '.') continue;\n    int d = ch - '0', b = (r / 3) * 3 + c / 3;\n    if (seen.count(r * 10 + d) || seen.count(100 + c * 10 + d)\n        || seen.count(200 + b * 10 + d)) return false;\n    seen.insert(r * 10 + d); seen.insert(100 + c * 10 + d);\n    seen.insert(200 + b * 10 + d);\n  }",
+     "time": "O(81)",
+     "space": "O(81).",
+     "why": "each element is probed once; pairs cancel or are recorded; hence the stated bounds."
+    }
+   ],
+   "diagram": " 0 1 2 | 3 4 5 | 6 7 8        box = (r//3)*3 + (c//3)\n 0 . 5 3 . . 7 . . .\n 0 . 6 . . 1 9 . . .\n 0 9 8 . . . . 6 . .\n ---------+-------+--------\n 3 4 . . . . . . 8 .\n\n bit test : mask[box] >> d & 1\n r0c0 d=5 : boxes[0] bit 5 clear -> set\n r0c6 d=7 : boxes[2] bit 7 clear -> set\n r0c0 d=5 again -> HIT -> invalid\n\n invariant: masks hold exactly the digits already placed",
+   "cpp_vs_py": "Nine-bit masks fit in a machine word, so C++ does one shift and one AND per check with the mask living in a register or a 27-element stack array that stays in L1. Python cannot use the `int` as a bit carrier cheaply -- a small `int` is still a heap object -- so `mask | (1 << d)` allocates, and the masks cost 27 boxed integers with pointer chasing at every probe. In exchange Python gets free arbitrary precision, so a 27-bit or 26-bit mask costs nothing extra while the C++ author must remember that `1 << d` with d as the digit 9 needs `-1` to stay inside a byte if they use `uint8_t`.",
+   "cpp_alts": [
+    "`std::bitset<9>` or a plain `uint16_t` per row/col/box gives compile-time masking; a `bool grid[9][9]` is simplest and still $O(1)$ per cell.",
+    "`std::array<std::array<uint16_t,9>,9>` keeps all 243 bits in one contiguous block -- 27 cache lines -- instead of three separate containers.",
+    "A `std::unordered_set<char>` per row works but allocates one node per cell; masks allocate nothing."
+   ],
+   "py_alts": [
+    "Three `defaultdict(set)` rows/cols/boxes is the readable version but allocates a set object per line -- 27 set objects plus 81 inserts.",
+    "Bit masks with `1 << (int(ch) - 1)` are fastest in Python and mirror C++ exactly.",
+    "`str.isdigit()` is locale-free here but slower than comparing against `'1' <= ch <= '9'`."
+   ],
+   "trap": "Testing the digit against the mask before skipping empties, so `'.'` gets hashed into a bit. The second classic bug is computing the box index as `r * 3 + c` instead of `(r // 3) * 3 + (c // 3)`.",
+   "invariant": "After processing cell k, `rows`, `cols`, `boxes` contain exactly the digits already committed in the first k cells. A duplicate is therefore exactly a set bit that was already present.",
+   "questions": [
+    {
+     "q": "Why 9 bits and not a set per row?",
+     "a": "A mask turns \"has digit d already appeared here?\" into one shift and one AND on a single machine word, with zero allocation. A set needs a pointer chase and a node allocation per insert."
+    },
+    {
+     "q": "What is the box index for cell (4, 7) and why?",
+     "a": "(4 // 3) * 3 + (7 // 3) = 1 * 3 + 2 = 5. Integer division on both coordinates folds the 9x9 grid into 3x3 blocks; row-major multiplication would give 4*3+7 = 19, which is out of range."
+    },
+    {
+     "q": "The board is fixed at 9x9 -- does that make the problem trivial?",
+     "a": "It removes input parsing, not the design question. The real content is choosing a per-line data structure that makes the duplicate test O(1), and noticing that a fixed alphabet invites bit packing rather than hashing."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0049_group_anagrams",
+   "one_liner": "Anagrams share a multiset signature, so signature is the key.",
+   "core_objective": "Partition a list of strings so that all strings that are permutations of each other land in the same group, and return the groups in any order.",
+   "bounds": "1 <= strs.length <= 1e4; 1 <= strs[i].length <= 100, all lowercase. Worst-case total characters is 1e6, so a sort-based key is $O(L \\log L)$ while a 26-slot count signature is $O(L)$. Duplicate strings are legal inputs and simply collide into the same group.",
+   "approaches": [
+    {
+     "name": "Count-tuple key (BEST for long words)",
+     "aha": "Time Complexity : O(n\u00b7k) Space Complexity : O(n\u00b7k) (n words \u00d7 k letters each) WHY tuple: Python tuples are IMMUTABLE and therefore HASHABLE \u2014 they can be dict keys. Lists are mutable \u2192 unhashable \u2192 rejected. ---------------------------------------------------------------------",
+     "py": "groups: dict[tuple, list] = {}\nfor w in words:\n    cnt = [0] * 26\n    for ch in w:\n        cnt[ord(ch) - 97] += 1\n    groups.setdefault(tuple(cnt), []).append(w)\nreturn list(groups.values())",
+     "cpp": "unordered_map<string, vector<string>> g;\nfor (auto& w : words) {\n    array<char,26> cnt{};\n    for (char ch : w) ++cnt[ch - 'a'];\n    g[string(cnt.data(), 26)].push_back(w);\n}\nvector<vector<string>> out;\nfor (auto& kv : g) out.push_back(kv.second);",
+     "time": "O(n\u00b7k)",
+     "space": "O(n\u00b7k)",
+     "why": "Follows directly from the traversal count: O(n\u00b7k) time, O(n\u00b7k) space."
+    },
+    {
+     "name": "Sorted-string key",
+     "aha": "Time Complexity : O(n\u00b7k log k) Space Complexity : O(n\u00b7k) Simpler to write; slower on long words (k log k per word). =====================================================================",
+     "py": "groups: dict[str, list] = {}\nfor w in words:\n    key = ''.join(sorted(w))\n    groups.setdefault(key, []).append(w)\nreturn list(groups.values())",
+     "cpp": "map<string, vector<string>> g;\nfor (auto& w : words) {\n    string key = w;\n    sort(key.begin(), key.end());\n    g[key].push_back(w);\n}\nvector<vector<string>> out;\nfor (auto& kv : g) out.push_back(kv.second);",
+     "time": "O(n\u00b7k log k)",
+     "space": "O(n\u00b7k)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " str      sorted-key   count-key\n \"eat\"      \"aet\"        \"a#e#t##...\"\n \"tea\"      \"aet\"        \"a#e#t##...\"\n \"tan\"      \"ant\"        \"a#n#t##...\"\n \"ate\"      \"aet\"        \"a#e#t##...\"\n \"nat\"      \"ant\"        \"a#n#t##...\"\n\n dict = {\"aet\": [eat,tea,ate],\n        \"ant\": [tan,nat]}\n\n cost: count-key 26 slots vs sort's O(L log L)",
+   "cpp_vs_py": "The 26-slot signature is the whole story in both languages. C++ builds it as a `std::array<char,26>` on the stack, increments 26 bytes of L1-resident memory, then needs a 26-byte array as a hash key -- which means `std::unordered_map` must hash and memcmp 26 bytes per lookup, all still in L1. Python builds the same tuple but as 26 heap-allocated small ints; because Python caches ints -5..256 the increments return interned objects with no allocation, yet the tuple itself is a fresh 26-slot object each time, so the dictionary stores one pointer to it. Python therefore trades roughly one 26-element tuple allocation per string for a much lighter lookup.",
+   "cpp_alts": [
+    "`array<char,26>` + a custom hasher beats `std::string` keys made from sorted copies: no $O(L \\log L)$ sort and no heap string.",
+    "`std::map<array<char,26>, vector<string>>` keeps groups ordered by signature, at $O(L \\log G)$ for G groups.",
+    "Packing the 26 counts into two 64-bit words (5 bits per letter covers length <= 31) makes the key trivially hashable."
+   ],
+   "py_alts": [
+    "`''.join(sorted(s))` is the one-liner but costs $O(L \\log L)$ and a fresh string per input.",
+    "`tuple(count)` where `count = [0]*26` and you bump `count[ord(c)-97]` is the fast signature.",
+    "`defaultdict(list)` collects the groups without a second pass; `itertools.groupby` on a sorted list is an alternative that pays one sort."
+   ],
+   "trap": "Using the sorted string as the key and then claiming $O(n)$ time. It is $O(L \\log L)$; with 1e4 strings of length 100 that sort dominates everything else in the solution.",
+   "invariant": "Two strings share a dictionary key exactly when they are permutations of each other -- which is true if and only if they contain the same multiset of characters.",
+   "questions": [
+    {
+     "q": "What must the hash key capture, and what is the cheapest sufficient encoding?",
+     "a": "Only the multiset of characters. A 26-slot count vector encodes it in $O(L)$; sorted order encodes it in $O(L \\log L)$; a bitmask alone would be wrong because it loses multiplicity."
+    },
+    {
+     "q": "Why can a plain set of characters not be the key?",
+     "a": "{a, b} cannot distinguish \"ab\" from \"aabb\". Duplicates matter, so the encoding must be a multiset -- counts, not membership."
+    },
+    {
+     "q": "What is the total work bound in terms of L, the sum of all lengths?",
+     "a": "$O(L)$ for the count signature plus $O(L)$ hashing, so linear in the input size. The sorted-key version is $O(L \\log L)$, which is why the counting version is the better interview answer."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0128_longest_consecutive_sequence",
+   "one_liner": "Only start a walk where value-1 is absent, making it O(n).",
+   "core_objective": "Return the length of the longest run of consecutive integers appearing anywhere in an unsorted array, with $O(n)$ time.",
+   "bounds": "0 <= nums.length <= 1e5, so an $O(n^2)$ scan times out. Values span -1e9..1e9, so the run is not a contiguous index range. Duplicates must not inflate the answer, and the empty array returns 0.",
+   "approaches": [
+    {
+     "name": "Hash set + head-of-run growth (BEST)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(n) WHY the \"x-1 in set?\" guard matters: without it, [1,2,3,4] would trigger counting from 1,2,3,4 \u2192 O(n\u00b2). With it, only 1 counts. Python set = open addressing + linear probing: h(k,i) = (hash(k)+i) mod m \u2192 one contiguous table, great cache locality. ---------------------------------------------------------------------",
+     "py": "nums = set(nums)\nbest = 0\nfor x in nums:                 # only run-minima pass the gate\n    if x - 1 in nums: continue\n    y = x\n    while y + 1 in nums: y += 1\n    best = max(best, y - x + 1)\nreturn best",
+     "cpp": "unordered_set<int> s(nums.begin(), nums.end());\nint best = 0;\nfor (int x : s) {\n    if (s.count(x - 1)) continue;   // not a run start\n    int y = x;\n    while (s.count(y + 1)) ++y;\n    best = max(best, y - x + 1);\n}",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "Sort + linear scan",
+     "aha": "Time Complexity : O(n log n) Space Complexity : O(1) Wins when memory is tight; loses the O(n) requirement. =====================================================================",
+     "py": "nums = sorted(set(nums))\nbest = run = 1\nfor i in range(1, len(nums)):\n    run = run + 1 if nums[i] == nums[i-1] + 1 else 1\n    best = max(best, run)\nreturn best if nums else 0",
+     "cpp": "sort(nums.begin(), nums.end());\nint best = 0, run = 0;\nfor (int i = 0; i < n; ++i) {\n    if (i > 0 && nums[i] == nums[i-1] + 1) ++run;\n    else run = 1;\n    best = max(best, run);\n}",
+     "time": "O(n log n)",
+     "space": "O(1)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [100,4,200,1,3,2]   (longest run = 4)\n\n step 1: put every value in a set\n step 2: only walk from values whose predecessor is MISSING\n\n   x=100  99 in set? NO  -> walk 100 (len 1)\n   x=4    3 in set? YES -> skip  (do NOT walk here)\n   x=200  199 in set? NO -> walk 200 (len 1)\n   x=1    0 in set? NO  -> walk 1->2->3->4  (len 4) BEST\n   x=3    2 in set? YES -> skip\n   x=2    1 in set? YES -> skip\n\n every element is touched O(1) times -> O(n) total",
+   "cpp_vs_py": "The fix is structural: each run is walked exactly once because only its minimum is a start. In C++ that means each successful probe is a `find` into an open-addressed `unordered_set<int>` -- one cache miss on a miss, two on a hit -- and the walk is a tight dependent chain of loads. Python pays the same probe count, but each `x - 1 in s` allocates a new PyLong for the probe key, so a 1e5-element scan performs hundreds of thousands of small allocations that C++ never makes. Set membership in CPython short-circuits on identity first, which rescues the repeat probes on already-interned values but not on large negatives.",
+   "cpp_alts": [
+    "`std::unordered_set<int>` with a reserve() call sized to n -- without it, rehashing dominates for adversarial inputs.",
+    "Sorting then a single scan is $O(n \\log n)$ time but $O(1)$ extra space beyond the sort and avoids hashing entirely.",
+    "A `std::bitset` over the value range is only viable when the range is small; here -1e9..1e9 rules it out."
+   ],
+   "py_alts": [
+    "`set(nums)` once, then a second pass over the set -- iterating the set rather than the list avoids re-checking duplicates.",
+    "`s.discard`/`s.remove` while walking shrinks the working set but changes the start-detection logic; the membership gate is cleaner.",
+    "A sorted-list scan is slower in Python than the set version because `bisect` is $O(\\log n)$ per step and you pay Python-level loop overhead."
+   ],
+   "trap": "Walking from every element. That is $O(n \\cdot \text{runLength})$ and blows up on inputs like [1..100000]. The gate `if x - 1 in s: continue` is what makes it linear.",
+   "invariant": "A walk is started at x only when x-1 is absent, so every walk begins at the minimum of its run; consequently no two walks ever cover the same element.",
+   "questions": [
+    {
+     "q": "Why is checking only run-minima enough?",
+     "a": "Every consecutive run has exactly one minimum, and only that minimum lacks a predecessor in the set. Walking from the minimum visits every element of the run, so all other starting points are redundant work."
+    },
+    {
+     "q": "What is the total probe count, and why is it linear rather than quadratic?",
+     "a": "At most two probes per element -- one failed predecessor test and one successful membership test per walk step -- because the runs partition the set. Hence $O(n)$ expected."
+    },
+    {
+     "q": "What breaks if you drop the set and sort instead?",
+     "a": "Nothing breaks, the bound just degrades to $O(n \\log n)$ time and $O(n)$ or $O(1)$ extra space depending on sort. That is still accepted; it is simply not the tightest answer."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0217_contains_duplicate",
+   "one_liner": "Insert into a set; the size tells you a repeat happened.",
+   "core_objective": "Return true if any integer appears at least twice in the array, false otherwise.",
+   "bounds": "1 <= nums.length <= 2e5; -2e9 <= nums[i] < 2e9, so sorting changes the array's index order but not membership. A single element can never be a duplicate, and negatives are ordinary keys.",
+   "approaches": [
+    {
+     "name": "Hash set (BEST)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(n) Python `set` = dict without values (open addressing + linear probing, h(k,i) = (hash(k)+i) mod m) \u2014 one contiguous table, tiny memory, great cache locality. ---------------------------------------------------------------------",
+     "py": "seen = set()\nfor x in nums:\n    if x in seen: return True\n    seen.add(x)\nreturn False",
+     "cpp": "unordered_set<int> seen;\nseen.reserve(nums.size());\nfor (int x : nums) {\n    if (!seen.insert(x).second) return true;\n}\nreturn false;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    },
+    {
+     "name": "Sort + adjacent scan (zero extra memory)",
+     "aha": "Time Complexity : O(n log n) Space Complexity : O(1) Wins when memory is critical; loses the O(n) time bound. --------------------------------------------------------------------- REAL LIFE \u2022 Login systems: is this username taken? (uniqueness check) \u2022 Deduplicating logs, inventory SKUs, search-engine crawlers. =====================================================================",
+     "py": "nums.sort()\nfor i in range(1, len(nums)):\n    if nums[i] == nums[i-1]: return True\nreturn False",
+     "cpp": "sort(nums.begin(), nums.end());\nfor (int i = 1; i < n; ++i)\n    if (nums[i] == nums[i-1]) return true;\nreturn false;",
+     "time": "O(n log n)",
+     "space": "O(1)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1, 2, 3, 1]\n\n s = {}\n  1 -> not in s -> s = {1}\n  2 -> not in s -> s = {1,2}\n  3 -> not in s -> s = {1,2,3}\n  1 -> FOUND        -> True\n\n invariant: len(s) == count of distinct values seen so far",
+   "cpp_vs_py": "Both languages do the same amount of work -- n probes -- so the difference is constant factor. C++ inserts into `std::unordered_set<int>` where each insert is a bucket index, a node allocation and a pointer write; with `reserve(n)` the bucket array is one contiguous block and the whole structure is n mallocs plus n probes. CPython's `set` needs no per-element allocation at all for the table itself and its probe uses the value's own hash, but the set stores a PyObject* per slot, so it costs 16 bytes per slot on 64-bit versus C++'s 8-byte node plus 8-byte key plus 8-byte next pointer spread across separate allocations -- which is why Python's set, despite the slower interpreter loop, ends up competitive in memory.",
+   "cpp_alts": [
+    "`std::unordered_set` with `reserve(n)` and `max_load_factor(0.7)` -- otherwise repeated rehashing triples the cost.",
+    "Sorting then adjacent comparison is $O(n \\log n)$ time, $O(1)$ extra space, and wins decisively on memory-constrained judges.",
+    "`gp_hash_table` with open addressing removes the per-node malloc entirely -- one flat array, n probes."
+   ],
+   "py_alts": [
+    "`len(set(nums)) < len(nums)` is the entire solution; no explicit loop needed.",
+    "`return len(nums) != len(set(nums))` is the idiomatic single-expression form interviewers want.",
+    "For a pre-sorted array, comparing neighbours is $O(1)$ space and beats building a set."
+   ],
+   "trap": "Comparing each element against the previous one. That detects only ADJACENT duplicates, so [1, 2, 1] passes. Either sort first or use a set.",
+   "invariant": "After processing k elements, `len(seen)` equals the number of distinct values among the first k. So the answer is determined the moment `len(seen)` fails to grow.",
+   "questions": [
+    {
+     "q": "Why does the set version beat the sort version here even though sort is cache friendly?",
+     "a": "Expected time: $O(n)$ versus $O(n \\log n)$. The sort's wins are space ($O(1)$ versus $O(n)$) and constant factor predictability, which is the right trade only when memory is the binding constraint."
+    },
+    {
+     "q": "What is the space cost, and can it be reduced?",
+     "a": "$O(n)$ for the set. Sorting in place and scanning neighbours gets it to $O(1)$ auxiliary space (or $O(\\log n)$ stack for introsort), at $O(n \\log n)$ time."
+    },
+    {
+     "q": "How would you detect a duplicate in a 10 GB stream you cannot hold?",
+     "a": "Bloom filter (probabilistic, no false negatives), or sort-external-merge and scan for adjacent equality (exact, needs disk). The set approach fails because its space is linear in the stream."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0238_product_of_array_except_self",
+   "one_liner": "Prefix pass left, suffix pass right -- no division allowed.",
+   "core_objective": "Return an array where the element at index i is the product of every input element except nums[i], without using division and in $O(n)$ time.",
+   "bounds": "1 <= nums.length <= 2e5, so division is banned by the problem statement (and would also fail on zeros). Elements may be 0 or negative, and with exactly one zero the whole output is zero except at that index.",
+   "approaches": [
+    {
+     "name": "Prefix \u00d7 suffix in the output array (BEST)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(1) extra. ---------------------------------------------------------------------",
+     "py": "out = [1] * n\npre = 1\nfor i in range(n):        # pass 1: prefix products\n    out[i] = pre\n    pre *= nums[i]\nsuf = 1\nfor i in range(n-1, -1, -1):   # pass 2: fold in suffix\n    out[i] *= suf\n    suf *= nums[i]",
+     "cpp": "vector<long long> out(n, 1);\nlong long pre = 1;\nfor (int i = 0; i < n; ++i) { out[i] = pre; pre *= nums[i]; }\nlong long suf = 1;\nfor (int i = n - 1; i >= 0; --i) { out[i] *= suf; suf *= nums[i]; }",
+     "time": "O(n)",
+     "space": "O(1) extra.",
+     "why": "two linear passes; the suffix is carried in a scalar; hence the stated bounds."
+    },
+    {
+     "name": "Divide-by-self (CONTRAST, rejected by the problem)",
+     "aha": "answer[i] = total / nums[i]. O(n)/O(1) but: division is banned, and a zero input CRASHES the division (or corrupts every other answer when there are two+ zeros). Listed only to explain why the prefix/suffix trick exists. --------------------------------------------------------------------- NUMPY NOTE : for pure computation numpy's np.prod / cumprod would vectorize this in C speed \u2014 but LeetCode forbids external libs. Conceptually, np.cumprod IS the prefix product used here. =====================================================================",
+     "py": "out = [1] * n\npre = 1\nfor i in range(n):\n    out[i] = pre\n    pre *= nums[i]\nfor i in range(n-2, -1, -1):\n    out[i] *= out[i+1] * nums[i+1]",
+     "cpp": "vector<long long> out(n, 1);\nlong long pre = 1;\nfor (int i = 0; i < n; ++i) { out[i] = pre; pre *= nums[i]; }\n// out[i] already holds nums[0..i-1]; multiply the running tail\nfor (int i = n - 2; i >= 0; --i)\n    out[i] *= out[i + 1] * nums[i + 1];",
+     "time": "?",
+     "space": "?",
+     "why": "the recursion splits the work; the bound is the sum over levels; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,2,3,4]      out = [24,12,8,6]\n\n pass 1 (left):  out[i] = product of nums[0..i-1]\n   prefix=1 -> out[0]=1 ; prefix*=1 -> 1\n   out[1]=1  ; prefix*=2 -> 2\n   out[2]=2  ; prefix*=3 -> 6\n   out[3]=6  ; prefix*=4 -> 24\n\n pass 2 (right): multiply the suffix\n   suffix=1 -> out[3]=24*1=24 ; suffix*=4 -> 4\n   out[2]= 6*4=24 ; suffix*=3 -> 12\n   out[1]= 1*12=12 ; suffix*=2 -> 24\n   out[0]= 1*24=24\n\n with a zero [1,0,3]: out=[0,3,0]  division would divide by zero",
+   "cpp_vs_py": "The two passes are pure arithmetic on already-loaded values, so C++ keeps the running product in a register and the output vector is one contiguous, write-once buffer that the prefetcher streams perfectly. Python allocates a new int for every product it writes, and for values beyond 2^63 CPython promotes to arbitrary precision: a single 32-digit product means a 100-byte object plus a multiplication routine instead of one `imul`. Python also re-reads the output list element by element in the reverse pass, so the second sweep walks memory backwards, which is mildly prefetcher-hostile on top of the object chasing.",
+   "cpp_alts": [
+    "One vector doubles as the prefix output array -- $O(1)$ extra space beyond the required output.",
+    "Division plus a total-product scan is $O(n)$ and shorter, but is forbidden here and divides by zero whenever the input contains 0.",
+    "`long long` is mandatory: with values up to 1e4 and n up to 2e5 the intermediate products overflow 32 bits instantly."
+   ],
+   "py_alts": [
+    "Python integers never overflow, so the whole overflow argument disappears -- but arbitrary-precision multiply is not free.",
+    "`math.prod` computes the total but is O(n) per call; slicing products is $O(n^2)$ and fails.",
+    "Filling with 1s so the identity element needs no special case at index 0 or n-1 keeps both passes uniform."
+   ],
+   "trap": "Using the total product and dividing. It is banned, and it crashes on any zero. The prefix/suffix sweep is the only structure that survives zeros.",
+   "invariant": "After the left pass, out[i] equals the product of nums[0]..nums[i-1]. After the right pass at index i, out[i] equals product(nums[0..i-1]) * product(nums[i+1..n-1]), which is exactly the answer.",
+   "questions": [
+    {
+     "q": "Why is division forbidden even when no zeros are present?",
+     "a": "The problem bans it, and more fundamentally it only works when every element is invertible. A single 0 in the input makes the total product 0 and the quotient undefined, so the algorithm would need a zero pass anyway -- at which point the prefix/suffix version is simpler."
+    },
+    {
+     "q": "Why does out[0] need to be seeded with 1 rather than nums[0]?",
+     "a": "out[i] must hold the product of everything strictly left of i, so at i = 0 that product is the empty product, which is 1. Seeding with nums[0] would double-count the element."
+    },
+    {
+     "q": "What is the space complexity, and can it be O(1)?",
+     "a": "$O(1)$ auxiliary, because the output array itself is reused as the prefix store. Total space including the required output is $O(n)$."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0242_valid_anagram",
+   "one_liner": "26 counters: equal multisets iff all 26 slots return to zero.",
+   "core_objective": "Decide whether two strings are anagrams of each other, that is whether one is a permutation of the other.",
+   "bounds": "1 <= s.length, t.length <= 5e4. Lengths must match first, which rejects half the cases in O(1). Only lowercase English letters are guaranteed, so a 26-slot array is exact; a general solution needs a 26-entry array plus an ASCII guard or a dict.",
+   "approaches": [
+    {
+     "name": "Fixed-size frequency array (BEST)",
+     "aha": "Only 26 lowercase letters \u2192 a list of 26 ints. Index = ord(c)-97.",
+     "py": "if len(s) != len(t): return False\nneed = [0] * 26\nfor ch in s: need[ord(ch) - 97] += 1\nfor ch in t:\n    i = ord(ch) - 97\n    if need[i] == 0: return False\n    need[i] -= 1\nreturn all(v == 0 for v in need)",
+     "cpp": "if (s.size() != t.size()) return false;\narray<int,26> need{};\nfor (char ch : s) ++need[ch - 'a'];\nfor (char ch : t) {\n    if (--need[ch - 'a'] < 0) return false;\n}\nreturn all_of(need.begin(), need.end(),\n              [](int v) { return v == 0; });",
+     "time": "O(n)",
+     "space": "O(1)  (26 slots!)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1)  (26 slots!) space."
+    },
+    {
+     "name": "Sort both strings",
+     "aha": "Time Complexity : O(n log n) Space Complexity : O(1). Canonical form of an anagram is its sorted self. =====================================================================",
+     "py": "return sorted(s) == sorted(t)",
+     "cpp": "string a = s, b = t;\nsort(a.begin(), a.end());\nsort(b.begin(), b.end());\nreturn a == b;",
+     "time": "O(n log n)",
+     "space": "O(1).",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " s = \"anagram\", t = \"nagaram\"\n\n need = [0]*26\n for ch in s: need[ord(ch)-97] += 1\n  a+1 n+1 g+1 r+1 m+2\n for ch in t:\n  if need[ord(ch)-97] == 0: return False   (t longer/alien)\n  need[ord(ch)-97] -= 1\n return all(v == 0 for v in need)   (s fully consumed)\n\n invariant: need counts (s prefix) minus (t prefix); never negative",
+   "cpp_vs_py": "Twenty-six counters is 26 bytes, so C++ touches a single cache line and increments in place with a `++count[ch - 'a']` -- no allocation, no branching beyond the bounds guard. Python's list of 26 small ints is heap-allocated and CPython caches the values 0..256, so `need[i] += 1` stores back an interned int and allocates nothing, but the list itself costs 264 bytes plus 26 pointers of indirection per access. Python pays about 3x in interpreter dispatch overhead per increment; the memory story is a wash.",
+   "cpp_alts": [
+    "`std::array<int,26> need{}` is stack-allocated and zero-initialised in one instruction sequence.",
+    "Sorting both strings is $O(L \\log L)$ but $O(1)$ extra space and trivially correct for any character set.",
+    "`std::string_view` avoids the by-value copies that `std::string` parameters would force."
+   ],
+   "py_alts": [
+    "`Counter(s) == Counter(t)` is a one-liner but builds two 26-entry dicts.",
+    "`sorted(s) == sorted(t)` is $O(L \\log L)$ and allocates two lists of L elements.",
+    "`collections.Counter(s) - Counter(t)` computes the multiset difference directly, which is the same idea with dict internals."
+   ],
+   "trap": "Checking only that every character of s appears in t. Without the counters running back to zero, \"aab\" vs \"abb\" or \"aab\" vs \"aba\" pass. The final all-zero test is the load-bearing line.",
+   "invariant": "After each t character, `need[c]` equals the count of c in s minus the count of c in the t prefix. It must never go negative, and it is all zeros at the end exactly when s and t are permutations.",
+   "questions": [
+    {
+     "q": "Why check the lengths first?",
+     "a": "Different lengths cannot be permutations, and the check is O(1). It also guarantees that if no counter ever goes negative, all counters must finish at zero -- which lets you drop the final scan."
+    },
+    {
+     "q": "How do you adapt this to arbitrary characters including unicode?",
+     "a": "Replace the 26-array with a dict keyed by code point, or map code points to ids first. The invariant is unchanged; only the index function changes."
+    },
+    {
+     "q": "What is the difference between the sorted and counted approaches in asymptotics and space?",
+     "a": "Counted is $O(L)$ time and $O(1)$ space (26 slots). Sorted is $O(L \\log L)$ time and $O(L)$ space for the two sorted copies. Counting wins on both once the alphabet is fixed."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0271_encode_and_decode_strings",
+   "one_liner": "Length-prefix framing makes the boundary of each string unambiguous.",
+   "core_objective": "Implement `encode` turning a list of strings into one string and `decode` recovering the exact original list. The two must be perfect inverses on any input, including the delimiter character itself.",
+   "bounds": "0 <= strs.length <= 1e5; 0 <= strs[i].length <= 100, so a list of 1e5 empty strings is legal and must round-trip. Total encoded length is bounded by roughly 7e6. The delimiter-collision case is the entire difficulty: any scheme that just joins on a character is broken by that character appearing inside a word.",
+   "approaches": [
+    {
+     "name": "Length-prefix framing (BEST, robust)",
+     "aha": "Time Complexity : O(T) Space Complexity : O(T) (T = total characters). WHY length prefix beats a delimiter: if a word contains the delimiter itself, parsing breaks. Lengths are unambiguous \u2014 the same trick as HTTP Content-Length and Protobuf varints. ---------------------------------------------------------------------",
+     "py": "def encode(strs):\n    return ''.join(f'{len(w)}#{w}' for w in strs)\n\ndef decode(s):\n    out, i = [], 0\n    while i < len(s):\n        j = s.index('#', i)\n        n = int(s[i:j])\n        out.append(s[j+1:j+1+n])\n        i = j + 1 + n\n    return out",
+     "cpp": "string encode(vector<string>& strs) {\n    string out;\n    for (auto& w : strs) { out += to_string(w.size());\n                          out += '#'; out += w; }\n    return out;\n}\nvector<string> decode(string& s) {\n    vector<string> out; int i = 0;\n    while (i < s.size()) {\n        size_t j = s.find('#', i);\n        int n = stoi(s.substr(i, j - i));\n        out.push_back(s.substr(j + 1, n));\n        i = j + 1 + n;\n    }\n    return out;\n}",
+     "time": "O(T)",
+     "space": "O(T)",
+     "why": "two linear passes; the suffix is carried in a scalar; hence the stated bounds."
+    },
+    {
+     "name": "Escaped delimiter ('#' \u2192 \"/#\", '/' \u2192 \"//\")",
+     "aha": "Also O(T)/O(T). Works, but every escape costs CPU and the stream is harder to read by eye. =====================================================================",
+     "py": "def encode(strs):\n    return '#'.join(w.replace('/', '//').replace('#', '/#')\n                    for w in strs)\n\ndef decode(s):\n    out, cur, esc = [], '', False\n    for ch in s:\n        if esc: cur += ch; esc = False\n        elif ch == '/': esc = True\n        elif ch == '#': out.append(cur); cur = ''\n        else: cur += ch\n    return out",
+     "cpp": "string encode(vector<string>& strs) {\n    string out;\n    for (auto& w : strs)\n      for (char ch : w) {\n        if (ch == '/') out += \"//\";\n        else if (ch == '#') out += \"/#\";\n        else out += ch;\n      }\n      out += '#';\n    return out;\n}",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " input : [\"a\", \"b#c\", \"d\"]        (delimiter '#')\n\n BAD  join : \"a#b#c#d\"\n       decode cannot tell if the token is\n       [a,b,c,d] or [a,b#c,d]\n\n GOOD length-prefix :\n       \"1#a#3#b#c#1#d\"\n        ^ each header states the exact length,\n          so the decoder never guesses a boundary\n\n decode:\n       read digits until '#' -> len\n       take next len chars -> word\n       advance; repeat until exhausted\n\n round trip: [a, b#c, d] -> same list, always",
+   "cpp_vs_py": "This is a serialisation problem, so the cost is dominated by per-byte append. In C++ `str.append(s)` writes into a `std::string` whose capacity doubles, so the total copy work is amortised O(total) and the final buffer is one contiguous block -- the decoder can then parse with a raw pointer and a `stoi`-like digit loop touching nothing but the string's own bytes. Python's `str += piece` on a str is also amortised O(1) thanks to CPython's resize heuristic, but the string is UCS-2/UCS-4 internally, so each element costs 1-4 bytes; joining a list of pieces with `''.join` is measurably faster because it does one pass with a precomputed total length instead of repeated resize checks.",
+   "cpp_alts": [
+    "`std::string::append(s.data(), len)` with a manual length header beats `to_string` + `+` because it avoids temporary string objects.",
+    "Reserve the output up front with `reserve(total)` to remove the doubling copies entirely.",
+    "`std::string_view` lets `decode` parse without owning a copy; safe only if the encoded buffer outlives the views."
+   ],
+   "py_alts": [
+    "`''.join(parts)` in one pass beats repeated `+=` for many small pieces.",
+    "Building the length header with an f-string `f'{len(s)}#'` is faster than `str(len(s)) + '#'`.",
+    "`io.StringIO` with `getvalue()` is the other way to batch appends without quadratic risk."
+   ],
+   "trap": "Joining on a delimiter with no escaping. That round-trips fine on the examples and fails the moment an input string contains the delimiter, which is exactly the hidden test.",
+   "invariant": "At every decode step, the cursor sits on the first digit of a length header whose declared length is exactly the number of characters up to the next cursor position. If that holds, the parse never needs to search for a separator.",
+   "questions": [
+    {
+     "q": "What property must the encoding have for `decode` to be correct?",
+     "a": "It must be unambiguously decodable: the encoded string must determine the original list uniquely. Length-prefixing achieves that by making every boundary explicit rather than inferred from a separator."
+    },
+    {
+     "q": "Is the escaping scheme ('#' -> '/#', '/' -> '//') correct?",
+     "a": "It is decodable provided no input string ever contains '/'. That is an unstated assumption about the alphabet, which is why the length-prefix design is the safer answer."
+    },
+    {
+     "q": "Why does length-prefixing still decode when the input list is empty or all elements are empty?",
+     "a": "An empty list encodes to the empty string and decodes to nothing. A list of k empty strings encodes to '0#' repeated k times, and each header of 0 consumes zero characters -- so the cursor advances by the header length only, and the count of headers carries the count of empty strings."
+    }
+   ]
+  },
+  {
+   "key": "01_arrays_and_hashing/0347_top_k_frequent_elements",
+   "one_liner": "Count frequencies, then take the top k of the counter.",
+   "core_objective": "Return the k most frequent elements in an array, in any order.",
+   "bounds": "1 <= nums.length <= 2e4; 1 <= k <= nums.length, so k can equal n and the answer is then just every distinct value. All values are integers in a bounded range, so counting is exact rather than approximate.",
+   "approaches": [
+    {
+     "name": "Counter + bucket sort (BEST)",
+     "aha": "buckets[f] = values appearing exactly f times. Walk buckets from high f down until k collected.",
+     "py": "count = Counter(nums)\nbuckets = [[] for _ in range(len(nums) + 1)]\nfor value, freq in count.items():\n    buckets[freq].append(value)\nout = []\nfor freq in range(len(nums), 0, -1):\n    for v in buckets[freq]:\n        out.append(v)\n        if len(out) == k: return out",
+     "cpp": "unordered_map<int,int> count;\nfor (int x : nums) ++count[x];\nvector<vector<int>> bucket(n + 1);\nfor (auto& kv : count) bucket[kv.second].push_back(kv.first);\nvector<int> out;\nfor (int f = n; f >= 1 && out.size() < k; --f)\n    for (int v : bucket[f]) out.push_back(v);",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "one O(1) counter update per element; hence the stated bounds."
+    },
+    {
+     "name": "Counter + min-heap of size k",
+     "aha": "Time Complexity : O(n log k) Space Complexity : O(n) Wins when k \u226a n and data arrives streaming (no full array). =====================================================================",
+     "py": "return heapq.nlargest(k, Counter(nums).items(),\n                       key=lambda kv: kv[1])",
+     "cpp": "vector<pair<int,int>> f;      // (freq, value)\nfor (auto& kv : count) f.push_back({kv.second, kv.first});\nnth_element(f.begin(), f.begin() + k, f.end(),\n            [](auto& a, auto& b) { return a.first > b.first; });\nvector<int> out;\nfor (int i = 0; i < k; ++i) out.push_back(f[i].second);",
+     "time": "O(n log k)",
+     "space": "O(n)",
+     "why": "one O(1) counter update per element; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,1,1,2,2,3]  k = 2\n\n counter: {1:3, 2:2, 3:1}\n\n heap.nlargest(2, counter, key=counter.get)\n   push (3,1) -> keep 1\n   push (2,2) -> keep 2,2\n   push (1,3) -> better than 2 -> drop 2\n   -> [1,2]   correct\n\n bucket sort O(n):\n   buckets[3]=[1] buckets[2]=[2] buckets[1]=[3]\n   walk freq 3..1, collect 1 then 2 -> [1,2]",
+   "cpp_vs_py": "Counting is the same integer-increment work in both languages, but the selection step diverges. C++ `nth_element` partitions the frequency vector in place with introselect: linear average time, no allocation, and it leaves the k largest in the first k slots unordered -- exactly the freedom this problem allows. Python has no `nth_element`, so `heapq.nlargest(k, ...)` is a lazy min-heap of size k (or `sorted` for $O(n \\log n)$); both allocate a real heap of k Python tuples and pay full interpreter overhead per comparison. Bucket sort in Python is $O(n)$ but with a large constant because `max(counts)` plus n bucket appends is n Python-level operations.",
+   "cpp_alts": [
+    "`std::nth_element(begin, begin + k, end)` on a vector of pairs is $O(n)$ average with no extra memory.",
+    "Sorting a vector of (frequency, value) pairs descending and taking k is simpler and $O(n \\log n)$.",
+    "For a bounded value range, counting into a fixed-size array and then a descending frequency sweep gives strict $O(n)$."
+   ],
+   "py_alts": [
+    "`Counter(nums).most_common(k)` is the intended one-liner; internally it is `heapq.nlargest`.",
+    "`heapq.nlargest(k, counter, key=counter.get)` avoids materialising the (count, value) pairs.",
+    "`sorted(counter, key=counter.get, reverse=True)[:k]` is the readable fallback but $O(n \\log n)$."
+   ],
+   "trap": "Sorting the input array and taking a slice. Order carries no frequency information, so this returns the k largest VALUES, not the k most frequent ones -- wrong for [1,1,1,2,2,3], k=2.",
+   "invariant": "The counter's value set equals the distinct values of nums, and each count equals its exact multiplicity. Selecting the top k of that multiset of counts is therefore equivalent to selecting the k most frequent values.",
+   "questions": [
+    {
+     "q": "Why can you do better than sorting the array?",
+     "a": "Only multiplicities matter, not positions, so you first compress n items into at most n distinct counts and then select the top k of those. Sorting nums spends its effort on a total order that is then discarded."
+    },
+    {
+     "q": "What does `nth_element` guarantee, and what does it not?",
+     "a": "It guarantees the first k elements are the k smallest (or largest, per comparator) as a set, in linear average time. It does NOT sort them, which is fine here since any order is accepted."
+    },
+    {
+     "q": "If k equals n, which approach collapses?",
+     "a": "Everything works, but heapq.nlargest special-cases k >= len and returns a sorted list directly. The bucket sweep also degenerates to a full scan of the frequency axis, so it stays O(n)."
+    }
+   ]
+  }
+ ]
+}

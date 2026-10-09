@@ -1,0 +1,524 @@
+{
+ "problems": [
+  {
+   "key": "10_backtracking/0017_letter_combinations_of_a_phone_number",
+   "one_liner": "Index i into the digit string; each level picks a letter.",
+   "core_objective": "Return all letter combinations that the digit string represents, mapping each digit to its 2-4 letters.",
+   "bounds": "0 <= digits.length, digits[i] != '1' (no letters for 1), so an empty digits string yields one empty combination. 2^n output size, so the output dominates the runtime.",
+   "approaches": [
+    {
+     "name": "\u00b7 Backtracking (best)",
+     "aha": "dfs(d): d == len(digits) \u2192 record; else loop the digit's letters, append, recurse(d+1), pop.",
+     "py": "if not digits:\nout, cur = [], []\n    if d == len(digits):\n        out.append(\"\".join(cur))\n        return\n    for ch in KEYPAD[digits[d]]:\n        cur.append(ch)\n        dfs(d + 1)",
+     "cpp": "for (char ch : map_[(*d_)[pos] - '2']) { cur_.push_back(ch);\n    dfs(pos + 1);\n    cur_.pop_back();                   // backtrack the letter",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "\u00b7 Iterative product",
+     "aha": "Start [\"\"]; per digit extend every prefix by every letter. --------------------------------------------------------------------- DEEP DIVE \u00b7 Why empty input must return [] [\"\"] seed would yield [\"\"] for digits=\"\" \u2014 an invalid combination (digits produced no letters). Both idioms special-case it. Answer size = \u03a0 letters(digit); \"999\" \u2192 4^3 = 64. --------------------------------------------------------------------- TIME COMPLEXITY : O(4^n) worst case (all 9s). MEMORY COMPLEXITY: O(n) DFS depth. =====================================================================",
+     "py": "if not digits:\nout = [\"\"]\nfor d in digits:\n    out = [p + ch for p in out for ch in KEYPAD[d]]\nreturn out",
+     "cpp": "        const std::array<std::string, 8> map = {\"abc\", \"def\", \"ghi\", \"jkl\",",
+     "time": "O(4^n) worst case (all 9s).",
+     "space": "O(n) DFS depth.",
+     "why": "Follows directly from the traversal count: O(4^n) worst case (all 9s). time, O(n) DFS depth. space."
+    }
+   ],
+   "diagram": " digits = \"23\"\n\n   2 -> a b c        3 -> d e f\n\n   i=0 path=''\n     pick 'a' -> i=1 pick 'd' -> 'ad'  <- leaf\n                        pick 'e' -> 'ae'\n                        pick 'f' -> 'af'\n     pick 'b' -> 'bd' 'be' 'bf'\n     pick 'c' -> 'cd' 'ce' 'cf'\n\n   invariant: path is always a prefix of exactly one output, and\n   len(path) == i. The tree has 3*3 = 9 leaves for \"23\".\n\n   key = digits[i] - '0'; letters = KEYS[key]\n   for ch in letters: dfs(i+1, path + ch)",
+   "cpp_vs_py": "[\"\"] seed would yield [\"\"] for digits=\"\" \u2014 an invalid combination (digits produced no letters). Both idioms special-case it. Answer size = \u03a0 letters(digit); \"999\" \u2192 4^3 = 64. --------------------------------------------------------------------- TIME COMPLEXITY : O(4^n) worst case (all 9s).\n\n=====================================================================",
+   "cpp_alts": [
+    "`static const string KEYS[10]` indexed by `digits[i] - '0'` beats a map.",
+    "`string path` with `push_back`/`pop_back` avoids the $O(n)$ copy that `path + ch` forces at every node."
+   ],
+   "py_alts": [
+    "Mutate a single list with append/pop instead of concatenating strings -- avoids an $O(L)$ copy per node.",
+    "A dict keyed by digit character is clearer than a list indexed by digit minus zero."
+   ],
+   "trap": "Indexing the keys table with the digit's character value rather than the digit minus '0'. That reads out of bounds and returns the wrong key for every multi-digit input.",
+   "invariant": "`dfs(i, path)` enumerates all completions of the suffix starting at digit index i. The recursion is exhaustive because every letter of digit i is tried, and it emits no duplicates because each output corresponds to exactly one choice sequence.",
+   "questions": [
+    {
+     "q": "What is the size of the output space?",
+     "a": "The product of the letter counts, between $2^n$ and $4^n$. For n = 8 that is up to 65536 combinations, so any solution is output-bound: the algorithm is $\\Theta(\\text{output size})$ and cannot beat enumeration."
+    },
+    {
+     "q": "Why not a greedy per-position choice?",
+     "a": "Every letter at every position is valid independently -- there is no constraint linking positions. So the solution set is the cartesian product, which is exactly what recursion over independent choices generates."
+    },
+    {
+     "q": "How does string concatenation affect the complexity?",
+     "a": "`path + ch` copies the whole prefix each time, making the traversal $\\Theta(n \\cdot \\text{output})$ in the worst case. Mutating one buffer with push/pop brings it down to $\\Theta(\\text{output})$, which is optimal."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0039_combination_sum",
+   "one_liner": "Index-based recursion, reuse the current candidate to allow repeats.",
+   "core_objective": "Return all combinations that sum to target, where each number may be used unlimited times.",
+   "bounds": "1 <= candidates.length <= 30 and 1 <= target <= 30, so the output is small but recursion depth is bounded by target (each element adds at least 1). Zero targets would loop forever.",
+   "approaches": [
+    {
+     "name": "\u00b7 Backtracking with repeat (best)",
+     "aha": "dfs(i, rem): rem == 0 \u2192 record. For j in i..n: skip c[j] > rem (prune), take, recurse(j) \u2014 same j = unlimited use \u2014 then pop.",
+     "py": "out, cur = [], []\n    if rem == 0:\n        out.append(cur[:])\n        return\n    for j in range(i, len(candidates)):\n        if candidates[j] > rem:\n            continue\n        cur.append(candidates[j])",
+     "cpp": "for (size_t i = 0; i < candidates.size(); ++i) { int c = candidates[i];\n    for (int t = c; t <= target; ++t) { for (auto& combo : dp[t - c]) { auto next = combo;\n            next.push_back(c);\n            dp[t].push_back(next);\n        }\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "\u00b7 DP table of combinations",
+     "aha": "dp[t] lists combos for sum t; extend dp[t-c] with c for t = c..T. --------------------------------------------------------------------- DEEP DIVE \u00b7 The one-character difference from Subsets II recurse(j+1) forbids reuse; recurse(j) allows it. The j from the LOOP start also forbids order permutations (no (2,3) after (3,2)) because j only moves forward. Pruning c[j] > rem cuts most of the tree when the target is small relative to candidates. --------------------------------------------------------------------- TIME COMPLEXITY : O(n^(target/min)) worst case. MEMORY COMPLEXITY: O(target/min). =====================================================================",
+     "py": "dp = [[] for _ in range(target + 1)]\ndp[0] = [[]]\nfor c in candidates:\n    for t in range(c, target + 1):\n        for combo in dp[t - c]:\n            dp[t].append(combo + [c])\nreturn dp[target]",
+     "cpp": "for (size_t i = 0; i < candidates.size(); ++i) { int c = candidates[i];\n    for (int t = c; t <= target; ++t) { for (auto& combo : dp[t - c]) { auto next = combo;\n            next.push_back(c);\n            dp[t].push_back(next);\n        }\n    }",
+     "time": "O(n^(target/min)) worst case.",
+     "space": "O(target/min).",
+     "why": "Follows directly from the traversal count: O(n^(target/min)) worst case. time, O(target/min). space."
+    }
+   ],
+   "diagram": " candidates = [2,3,6,7], target = 7\n\n  dfs(i=0, rem=7):\n    candidates[0]=2\n      dfs(0, 5):  candidates[0]=2  <- SAME index, reuse allowed\n        dfs(0, 3):\n          dfs(0, 1):  1 % 2 != 0, dead\n        candidates[1]=3 -> 3==3 -> HIT  [2,2,3]\n      candidates[1]=3 -> 3 < 5\n        dfs(1, 2):\n          candidates[1]=3 > 2 -> dead\n      candidates[2]=6 > 5  candidates[3]=7 > 5  dead\n    candidates[1]=3\n      dfs(1, 4): candidates[1]=3 ... 3+? no\n    candidates[2]=6\n      dfs(2, 1): 6 > 1 dead\n    candidates[3]=7\n      dfs(3, 0): 7 == 7 -> HIT  [7]\n\n  ANSWER [[2,2,3], [7]]\n\n  two index rules that make it work:\n   recurse with i       -> element reusable (problem 39)\n   recurse with i + 1   -> element single-use  (problem 40)",
+   "cpp_vs_py": "recurse(j+1) forbids reuse; recurse(j) allows it. The j from the LOOP start also forbids order permutations (no (2,3) after (3,2)) because j only moves forward. Pruning c[j] > rem cuts most of the tree when the target is small relative to candidates. --------------------------------------------------------------------- TIME COMPLEXITY : O(n^(target/min)) worst case.\n\n=====================================================================",
+   "cpp_alts": [
+    "Sort candidates and prune with `if (c[i] > rem) break` -- a large practical speedup.",
+    "Pass `vector<int>& cur` by reference and push/pop, avoiding a copy per leaf."
+   ],
+   "py_alts": [
+    "Sorting the list first and breaking out of the loop early prunes an enormous amount of the tree.",
+    "`cur + [c]` at the leaf copies once per solution, which is acceptable since it happens only at output points."
+   ],
+   "trap": "Recursing with `i + 1` instead of `i`, which silently forbids reuse and returns only [[7]] for the example above. The distinction between problems 39 and 40 is exactly one character.",
+   "invariant": "`dfs(i, rem)` enumerates all combinations summing to `rem` drawn from candidates[i:]. Recursing with the same `i` permits unbounded reuse of candidates[i], and recursing with `i+1` guarantees combinations are generated in non-decreasing candidate order, so no solution is produced twice.",
+   "questions": [
+    {
+     "q": "Why does starting at the same index prevent duplicates?",
+     "a": "Because a combination like [2,3] can only be built by taking 2 then 3. If you always move forward or stay, you never build [3,2], and the monotonic construction is unique per multiset. Sorting makes this even more obvious by letting you break when a candidate exceeds the remainder."
+    },
+    {
+     "q": "What bounds the recursion depth?",
+     "a": "The target, since each element is at least 1 -- depth is at most `target`. With candidates containing 0 the recursion would not terminate, so a zero candidate requires an explicit guard."
+    },
+    {
+     "q": "How do you prune aggressively?",
+     "a": "Sort ascending, then at each level break as soon as candidates[i] > rem. Any later candidate is larger, so the entire remaining subtree at that level is infeasible. This typically removes most of the tree."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0040_combination_sum_ii",
+   "one_liner": "Same index, but start at i+1 and skip duplicate values.",
+   "core_objective": "Return all unique combinations that sum to target, using each input element at most once.",
+   "bounds": "1 <= candidates.length <= 30, all values 1..30, distinct, target 1..40. Duplicates in the input must produce duplicate combinations, so input-level dedupe is mandatory.",
+   "approaches": [
+    {
+     "name": "\u00b7 Sorted DFS (best)",
+     "aha": "for j in i..n: if j > i and c[j]==c[j-1]: continue; if c[j] > rem: break; take, recurse(j+1), pop.",
+     "py": "candidates.sort()\nout, cur = [], []\n    if rem == 0:\n        out.append(cur[:])\n        return\n    for j in range(i, len(candidates)):\n        if candidates[j] > rem:\n            break",
+     "cpp": "for (size_t j = i; j < a_->size(); ++j) {\n    if ((*a_)[j] > rem) break;                 // sorted \u2192 prune hard\n    if (j > i && (*a_)[j] == (*a_)[j - 1]) continue;  // skip dup\n    cur_.push_back((*a_)[j]);\n    dfs(j + 1, rem - (*a_)[j]);                // j+1: use each once\n    cur_.pop_back();",
+     "time": "?",
+     "space": "?",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 Frequency-map branching",
+     "aha": "Group values with counts; branch per distinct value 0..cnt copies. --------------------------------------------------------------------- DEEP DIVE \u00b7 break vs continue after sorting In Combination Sum I (unlimited use, unsorted) we `continue` because a big candidate doesn't rule out smaller ones later. Here sorting guarantees c[j] > rem \u21d2 every later candidate is also too big, so `break` prunes harder with identical semantics. --------------------------------------------------------------------- TIME COMPLEXITY : O(2^n) worst case. MEMORY COMPLEXITY: O(n). =====================================================================",
+     "py": "from collections import Counter\nfreq = list(Counter(candidates).items())\nout, cur = [], []\n    if rem == 0:\n        out.append(cur[:])\n        return\n    if idx == len(freq):\n        return",
+     "cpp": "for (int take = i; take < static_cast<int>(a_->size()); ++take) {\n    if (take > i && (*a_)[take] == (*a_)[take - 1]) continue;\n    cur_.push_back((*a_)[take]);\n    dfs(take + 1, rem - (*a_)[take]);\n    cur_.pop_back();",
+     "time": "O(2^n) worst case.",
+     "space": "O(n).",
+     "why": "Follows directly from the traversal count: O(2^n) worst case. time, O(n). space."
+    }
+   ],
+   "diagram": " candidates = [10,1,2,7,6,1,5], target = 8\n\n  KEY: dedupe the INPUT first -> [1,1,2,5,6,7,10]\n  at each level: skip i > 0 and candidates[i]==candidates[i-1]\n\n  dfs(i=0, rem=8), path=[]:\n    i=0 c=1 -> dfs(1, 7)\n      i=1 c=1 == c[0] -> SKIP (same value as previous)\n      i=2 c=2 -> dfs(3, 5)\n        i=3 c=5 -> dfs(4, 0) HIT [1,2,5]\n        i=4 c=6 > 5 break\n      i=3 c=5 -> dfs(4, 2) 6>2 break\n    i=1 c=1 == c[0] -> SKIP\n    i=2 c=2 -> ...\n    i=3 c=5 -> ...\n    i=5 c=7 -> dfs(6, 1) 10>1 break\n    i=6 c=10 > 8 break\n\n  the two skips:\n   i > 0 and c[i] == c[i-1]  -> skip duplicates AT a level\n   recurse with i + 1          -> element used at most once",
+   "cpp_vs_py": "In Combination Sum I (unlimited use, unsorted) we `continue` because a big candidate doesn't rule out smaller ones later. Here sorting guarantees c[j] > rem \u21d2 every later candidate is also too big, so `break` prunes harder with identical semantics. --------------------------------------------------------------------- TIME COMPLEXITY : O(2^n) worst case.\n\n=====================================================================",
+   "cpp_alts": [
+    "Sort then dedupe the vector in place before searching -- makes the per-level skip correct.",
+    "`break` when `c[i] > rem` after sorting removes whole subtrees."
+   ],
+   "py_alts": [
+    "`cands = sorted(set(candidates))` does dedupe and sort in one step, which is both correct and faster than a manual pass.",
+    "`i > 0 and cands[i] == cands[i-1]` is the canonical skip; using `i == start` is a common wrong variant."
+   ],
+   "trap": "Skipping with `i == start` instead of `i > 0`. That check compares against the position where the current combination began, not against the previous element, so duplicate values in the input still generate duplicate combinations.",
+   "invariant": "With the input sorted and deduped and the rule \"skip c[i] if it equals c[i-1] and i > 0\", every multiset of candidates has exactly one representation: the increasing-index selection of its distinct positions. Combined with recursing at i+1, no element is reused and no combination repeats.",
+   "questions": [
+    {
+     "q": "Why must the input be sorted before the per-level skip works?",
+     "a": "The skip compares adjacent elements, which only detects duplicates if equal values are adjacent. Sorting guarantees that, and it also enables the `c[i] > rem` early break. Sorting first is a precondition, not an optimisation."
+    },
+    {
+     "q": "What is the difference from problem 39 exactly?",
+     "a": "Two changes: recurse with `i + 1` (single use) instead of `i` (reuse), and add the duplicate skip. Applying only the first to problem 39's repeated candidates would lose valid solutions; applying only the second leaves 39 unable to express repeats."
+    },
+    {
+     "q": "Can you solve it without sorting?",
+     "a": "Yes, using a `Counter` over candidates and choosing values in a fixed order with a count limit -- that also avoids duplicates structurally. It costs a hash map instead of a sort but has the same $O(n \\log n)$-ish bound after sorting."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0046_permutations",
+   "one_liner": "One position at a time, choosing any unused value.",
+   "core_objective": "Return all permutations of a collection of distinct integers.",
+   "bounds": "1 <= nums.length <= 6, so at most 720 permutations -- output-bound, and every approach is fast. Values are distinct, so a bitmap suffices; duplicates would need a set.",
+   "approaches": [
+    {
+     "name": "\u00b7 Swap-based DFS (best)",
+     "aha": "dfs(pos): pos == n \u2192 record. For j in pos..n-1: swap(pos,j), recurse, swap back.",
+     "py": "out = []\nn = len(nums)\n    if pos == n:\n        out.append(nums[:])\n        return\n    for j in range(pos, n):\n        nums[pos], nums[j] = nums[j], nums[pos]\n        dfs(pos + 1)",
+     "cpp": "for (size_t i = 0; i < a_->size(); ++i) { if (used_[i]) continue;\n    used_[i] = true;\n    cur_.push_back((*a_)[i]);\n    dfs();\n    cur_.pop_back();                          // backtrack\n    used_[i] = false;",
+     "time": "?",
+     "space": "?",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 used[] bitmap + running permutation",
+     "aha": "Mark used[i], append nums[i], recurse, pop + unmark. --------------------------------------------------------------------- DEEP DIVE \u00b7 Two state encodings, one search tree Swap version: after fixing position pos the elements left of pos are exactly the used ones \u2014 state lives in the array (zero extra memory, no copies). used[] version copies the permutation at each leaf but is easier to read. Both enumerate n! leaves. --------------------------------------------------------------------- TIME COMPLEXITY : O(n \u00b7 n!) MEMORY COMPLEXITY: O(n). =====================================================================",
+     "py": "out, cur = [], []\nused = [False] * len(nums)\n    if len(cur) == len(nums):\n        out.append(cur[:])\n        return\n    for i in range(len(nums)):\n        if used[i]:\n            continue",
+     "cpp": "for (size_t i = 0; i < a_->size(); ++i) { if (used_[i]) continue;\n    used_[i] = true;\n    cur_.push_back((*a_)[i]);\n    dfs();\n    cur_.pop_back();                          // backtrack\n    used_[i] = false;",
+     "time": "O(n \u00b7 n!)",
+     "space": "O(n).",
+     "why": "constant passes over the bits of the value; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,2,3]\n\n  path=[1]\n    path=[1,2]\n      path=[1,2,3] -> EMIT [1,2,3]\n      path=[1,3]\n        path=[1,3,2] -> EMIT [1,3,2]\n    path=[1,3]\n      path=[1,3,2] -> EMIT [1,3,2]  (dup? no, different prefix)\n      path=[1,3,1]? -> 1 already used, skipped\n  path=[2]\n    [2,1] -> [2,1,3] EMIT ; [2,3] -> [2,3,1] EMIT\n  path=[3]\n    [3,1] -> [3,1,2] EMIT ; [3,2] -> [3,2,1] EMIT\n\n  ANSWER all 6 permutations\n\n  invariant: path holds distinct elements drawn from nums; when\n  len(path) == n the path IS a permutation. Every permutation\n  appears once because each has a unique choice sequence.",
+   "cpp_vs_py": "Swap version: after fixing position pos the elements left of pos are exactly the used ones \u2014 state lives in the array (zero extra memory, no copies). used[] version copies the permutation at each leaf but is easier to read. Both enumerate n! leaves. --------------------------------------------------------------------- TIME COMPLEXITY : O(n \u00b7 n!)\n\n=====================================================================",
+   "cpp_alts": [
+    "`next_permutation` from `<algorithm>` generates all permutations iteratively in $O(n \\cdot n!)$ with $O(1)$ extra space.",
+    "The swap-based DFS (`do { emit } while (next_permutation(...))`) is usually the strongest C++ answer."
+   ],
+   "py_alts": [
+    "`itertools.permutations(nums)` is a C-level lazy iterator -- the shortest and fastest answer.",
+    "A `used` boolean list is faster than swapping or a set when values are distinct ints."
+   ],
+   "trap": "Emitting a copy of `path` at every node instead of only at depth n. That produces partial permutations too, and the count is wrong by a large factor.",
+   "invariant": "`path` contains distinct values all drawn from nums, and `used` marks exactly the positions represented in it. Appending an unused value preserves distinctness, so every depth-n path is a valid permutation, and every permutation is reachable by appending its elements in order.",
+   "questions": [
+    {
+     "q": "Why is every permutation generated exactly once?",
+     "a": "Each permutation corresponds to exactly one ordering of choices, and the recursion tries each unused element at each level. Two different choice sequences produce different paths, so no permutation can be produced twice and none is missed."
+    },
+    {
+     "q": "What changes if the input has duplicates?",
+     "a": "The `used`-by-position approach still works and naturally produces duplicate outputs, which you must then dedupe (e.g. insert into a set or skip equal values at the same depth). Skipping equal values at one level is the cheaper fix and is what problem 90 does."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n \\cdot n!)$ time -- there are n! leaves and copying each costs $O(n)$. Space is $O(n)$ for the recursion and the path, plus $O(n \\cdot n!)$ for the output, which dominates everything."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0051_n_queens",
+   "one_liner": "One column per row; three conflict sets prune instantly.",
+   "core_objective": "Return all board configurations with n queens that attack no other queen.",
+   "bounds": "1 <= n <= 9. n = 2 and n = 3 have no solutions, so the output is empty. The search tree has n! leaves before pruning.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "cols, pos_diag, neg_diag = set(), set(), set()\nres = []; board = [[\".\" for _ in range(n)] for _ in range(n)]\n    if r == n:\n        res.append([\"\".join(row) for row in board]); return\n    for c in range(n):\n        if c in cols or (r + c) in pos_diag or (r - c) in neg_diag: continue\n        cols.add(c); pos_diag.add(r+c); neg_diag.add(r-c); board[r][c] = \"Q\"\n        bt(r + 1)",
+     "cpp": "for(int c=0;c<n_val;c++){\n    if(cols_s.count(c)||pd_s.count(r+c)||nd_s.count(r-c)) continue;\n    cols_s.insert(c); pd_s.insert(r+c); nd_s.insert(r-c); queens_s.push_back(c);\n    bt(r+1);\n    cols_s.erase(c); pd_s.erase(r+c); nd_s.erase(r-c); queens_s.pop_back();",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "res = []; queens = []\n    if r == n:\n        board = []\n        for qc in queens:\n            row = \".\" * qc + \"Q\" + \".\" * (n - qc - 1); board.append(row)\n        res.append(board); return\n    available = (~(cols | pos_d | neg_d)) & ((1 << n) - 1)\n    while available:",
+     "cpp": "bool check(vector<int>& q) {          // O(n!) with no pruning\n    int n = q.size();\n    for (int i = 0; i < n; ++i)\n        for (int j = 0; j < n; ++j)\n            if (q[i] == j || abs(q[i] - j) == i - j)\n                return false;\n    return true;\n}\n// then enumerate every permutation of columns",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " n = 4 -> two solutions\n\n  rows 0..3, one queen per row. Place in row i:\n    cols   : set of occupied columns\n    d1     : set of occupied (row - col)   diagonals\n    d2     : set of occupied (row + col)   diagonals\n\n  dfs(row):\n    for c in range(n):\n      if c in cols or (row-c) in d1 or (row+c) in d2:\n        continue\n      place, recurse, unplace\n\n  trace row 0: c=0 ok -> row 1: c=0 taken, c=1 diag? row-c=0 ->\n    d1 has 0 -> skip; c=2 row-c=-1 d1? no, row+c=3 d2? no\n    -> place at (1,2) -> row 2: c=1 -> row 3: c=3 ->\n    SOLUTION [[0,2],[1,4?]]... emits board 0 0 0 0 / 0 1 0 1\n\n  the three conflict tests are exhaustive because a queen\n  attacks along a row (impossible, one per row), a column,\n  and two diagonals. Sets make each test O(1).",
+   "cpp_vs_py": "Backtracking is dominated by the cost of copying the current path at each node. Python's `path + ch` allocates and copies at every node, giving $O(n \\cdot \text{output})$ where $O(\text{output})$ suffices; mutating one list with append and pop fixes that. C++ has exactly the same trap with `std::string`, and the same fix with `push_back` and `pop_back`.",
+   "cpp_alts": [
+    "`bitset<n>` per row and diagonal-gather operations make the conflict test a single mask AND -- the fastest known formulation.",
+    "Keeping `board[r] = c` per row makes emitting the board trivial; `vector<int> queen(n)` is simpler."
+   ],
+   "py_alts": [
+    "Three Python `set`s give O(1) tests; three bitmasks on integers are faster in CPython because small-int bit ops are single operations.",
+    "Precomputing all diagonal indices avoids recomputing `row - c` and `row + c` at every node."
+   ],
+   "trap": "Using only the column check and forgetting one of the diagonals, or using absolute differences instead of the difference and sum. Absolute difference alone catches one diagonal family and misses the other.",
+   "invariant": "After placing queens in rows 0..row-1, the three sets contain exactly the columns, the row-minus-column values, and the row-plus-column values of the placed queens. Therefore the membership tests are exactly the three attack directions, and any candidate passing all three is conflict-free.",
+   "questions": [
+    {
+     "q": "Why is one queen per row guaranteed by the algorithm?",
+     "a": "Because the search places exactly one queen per row by construction -- it recurses row by row. A valid solution can also be rotated, so the first row always has a queen; that is why only row-wise placement is complete."
+    },
+    {
+     "q": "What is the pruning power of the set tests?",
+     "a": "They cut the n! search to roughly $O(n! / n^{n/2})$ explored nodes for large n, because each new queen eliminates a growing fraction of the remaining columns. That is what makes n = 9 tractable while a naive row-column scan is not."
+    },
+    {
+     "q": "How would bitsets improve this?",
+     "a": "Represent occupied columns, diagonals, and anti-diagonals as bitmasks; the test becomes three AND operations on machine words. For n up to 32 that is a handful of instructions versus three hash lookups, and it also makes the horizontal reflection symmetry cheap to exploit."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0078_subsets",
+   "one_liner": "Every node of the tree is a subset, so emit as you go.",
+   "core_objective": "Return all subsets of a set of distinct integers, in any order.",
+   "bounds": "0 <= nums.length <= 10, so at most 1024 subsets. An empty input yields one subset, the empty set.",
+   "approaches": [
+    {
+     "name": "\u00b7 Backtracking include/exclude (best)",
+     "aha": "dfs(i): i == n \u2192 record. Else dfs(i+1) (exclude) and dfs(i+1) with nums[i] appended (include).",
+     "py": "out, cur = [], []\n    if i == len(nums):\n        out.append(cur[:])\n        return\n    dfs(i + 1)\n    cur.append(nums[i])\n    dfs(i + 1)\n    cur.pop()",
+     "cpp": "for (int mask = 0; mask < (1 << nums.size()); ++mask) { std::vector<int> cur;\n    for (size_t j = 0; j < nums.size(); ++j)\n        if (mask & (1 << j)) cur.push_back(nums[j]);\n    out.push_back(cur);",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "\u00b7 Bitmask enumeration",
+     "aha": "mask in 0..2^n-1: pick nums[j] iff bit j set. --------------------------------------------------------------------- DEEP DIVE \u00b7 What \"backtracking\" literally does here The append/pop pair is the backtrack: append explores the include-branch, pop restores the shared list so the exclude sibling starts from an identical prefix. Total leaves 2^n, each copied once \u2192 O(n\u00b72^n). --------------------------------------------------------------------- TIME COMPLEXITY : O(n \u00b7 2^n) MEMORY COMPLEXITY: O(n) recursion depth. =====================================================================",
+     "py": "out = []\nfor mask in range(1 << len(nums)):\n    out.append([nums[j] for j in range(len(nums)) if mask & (1 << j)])\nreturn out",
+     "cpp": "for (int mask = 0; mask < (1 << nums.size()); ++mask) { std::vector<int> cur;\n    for (size_t j = 0; j < nums.size(); ++j)\n        if (mask & (1 << j)) cur.push_back(nums[j]);\n    out.push_back(cur);",
+     "time": "O(n \u00b7 2^n)",
+     "space": "O(n) recursion depth.",
+     "why": "constant passes over the bits of the value; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,2,3]   -> 8 subsets\n\n  path=[]        EMIT []\n   path=[1]      EMIT [1]\n    path=[1,2]   EMIT [1,2]\n     path=[1,2,3] EMIT [1,2,3]\n    path=[1,3]   EMIT [1,3]\n   path=[2]      EMIT [2]\n    path=[2,3]   EMIT [2,3]\n  path=[3]        EMIT [3]\n\n  2^3 = 8 emissions, matching the node count of a binary tree\n  of depth 3 (1 + 2 + 4 + 8 = 15 nodes, 8 leaves) -- here\n  every NODE is a solution, so 8 of the 15 nodes emit.\n\n  include/exclude formulation:\n   dfs(i, cur):\n     if i == n: emit(cur); return\n     dfs(i+1, cur)            # exclude nums[i]\n     dfs(i+1, cur + [nums[i]]) # include nums[i]\n\n  BITMASK alternative: for m in 0..2^n-1, bit j of m says\n   whether nums[j] is in subset m -- no recursion at all.",
+   "cpp_vs_py": "The append/pop pair is the backtrack: append explores the include-branch, pop restores the shared list so the exclude sibling starts from an identical prefix. Total leaves 2^n, each copied once \u2192 O(n\u00b72^n). --------------------------------------------------------------------- TIME COMPLEXITY : O(n \u00b7 2^n)\n\n=====================================================================",
+   "cpp_alts": [
+    "The bitmask loop `for (int m = 0; m < (1<<n); ++m)` is branch-free and trivially correct for n <= 20.",
+    "Reserving the result to `1 << n` avoids repeated reallocation."
+   ],
+   "py_alts": [
+    "`[list(c) for r in range(n+1) for c in combinations(nums, r)]` is C-level and gives all subsets sorted by size.",
+    "`itertools.chain.from_iterable` over `combinations(nums, r)` avoids materialising intermediate lists."
+   ],
+   "trap": "Emitting only at the leaves. That gives the subsets in a different form and, if the recursion is include/exclude, only emits at depth n -- losing every smaller subset unless the branch is handled separately.",
+   "invariant": "`path` is always a subset of nums containing only indices greater than the current recursion depth, so no index is used twice. Every subset is generated exactly once because each subset has a unique include/exclude signature, which corresponds to a unique root-to-node path.",
+   "questions": [
+    {
+     "q": "Why does the count match 2^n?",
+     "a": "Each of the n elements independently is either in or out, giving $2^n$ combinations. The recursion explores exactly that decision tree, emitting once per complete signature, so the count is right by construction rather than by filtering."
+    },
+    {
+     "q": "When is the bitmask version preferable?",
+     "a": "When n is small (say <= 20) and you want no recursion at all: iterate m from 0 to $2^n - 1$ and read bit j to decide membership. It is branch-free and impossible to get wrong, at the cost of an $O(2^n)$ shift per element."
+    },
+    {
+     "q": "How does this relate to permutation problems?",
+     "a": "Subsets are the include/exclude case (2 branches per level) whereas permutations are the pick-any-unused case (n branches). That difference in branching factor is why subsets have $2^n$ nodes and permutations $n!$, and it is the structural insight the category is built on."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0079_word_search",
+   "one_liner": "Mark in place, search the four neighbours, unmark.",
+   "core_objective": "Return whether any word in the list exists in the grid using adjacent horizontal or vertical moves without revisiting a cell.",
+   "bounds": "1 <= board.length, board[0].length <= 1e4 with up to 30 words of length up to 1e3. Words may reuse a board letter, so there is no frequency precheck.",
+   "approaches": [
+    {
+     "name": "\u00b7 In-place sentinel marking (best)",
+     "aha": "Overwrite the matched cell with a sentinel that can never equal a letter, restore it after the 4-neighbour recursion.",
+     "py": "m, n = len(board), len(board[0])\n    if k == len(word):\n    if not (0 <= i < m and 0 <= j < n) or board[i][j] != word[k]:\n    save = board[i][j]\n    board[i][j] = \"\\0\"\n    found = (dfs(i + 1, j, k + 1) or dfs(i - 1, j, k + 1) or\n             dfs(i, j + 1, k + 1) or dfs(i, j - 1, k + 1))\n    board[i][j] = save",
+     "cpp": "    std::vector<std::vector<char>> board = {",
+     "time": "?",
+     "space": "?",
+     "why": "the output array doubles as the state store; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 visited[][] grid",
+     "aha": "Same search with an explicit bool matrix. --------------------------------------------------------------------- DEEP DIVE \u00b7 The sentinel state machine '\\0' can never match an input letter, so \"used\" is encoded in the board itself \u2014 no allocation, no restore on the success path (early return unwinds without restoring, which is safe because we already found the answer). Worst case (all cells match the first char): O(m\u00b7n\u00b73^L). --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n\u00b73^L) worst. MEMORY COMPLEXITY: O(L) recursion depth. =====================================================================",
+     "py": "m, n = len(board), len(board[0])\nvis = [[False] * n for _ in range(m)]\n    if k == len(word):\n    if not (0 <= i < m and 0 <= j < n) or vis[i][j] or board[i][j] != word[k]:\n    vis[i][j] = True\n    found = (dfs(i + 1, j, k + 1) or dfs(i - 1, j, k + 1) or\n             dfs(i, j + 1, k + 1) or dfs(i, j - 1, k + 1))\n    vis[i][j] = False",
+     "cpp": "bool dfs(vector<vector<char>>& g, int r, int c,\n              const string& w, int k,\n              vector<vector<char>>& used) {\n    if (r < 0 || r >= g.size() || c < 0 || c >= g[0].size()\n        || used[r][c] || g[r][c] != w[k]) return false;\n    if (k == w.size() - 1) return true;\n    used[r][c] = 1;\n    bool ok = dfs(g, r+1, c, w, k+1, used)\n           || dfs(g, r-1, c, w, k+1, used)\n           || dfs(g, r, c+1, w, k+1, used)\n           || dfs(g, r, c-1, w, k+1, used);\n    used[r][c] = 0;\n    return ok;\n}",
+     "time": "O(m\u00b7n\u00b73^L) worst.",
+     "space": "O(L) recursion depth.",
+     "why": "Follows directly from the traversal count: O(m\u00b7n\u00b73^L) worst. time, O(L) recursion depth. space."
+    }
+   ],
+   "diagram": " board = [\"ABE\",\"SFCS\",\"ADEE\"]  word = \"ABCCED\"\n\n  dfs(r, c, k):   k = index into the word\n    if out of bounds or board[r][c] != word[k]: return False\n    if k == len(word) - 1: return True          # last char matched\n    tmp = board[r][c]; board[r][c] = '#'        # MARK\n    found = (dfs(r+1,c,k+1) or dfs(r-1,c,k+1)\n             or dfs(r,c+1,k+1) or dfs(r,c-1,k+1))\n    board[r][c] = tmp                          # UNMARK  <- load bearing\n    return found\n\n  why mark: without it, 'AAA' can walk a straight line forever\n  by stepping back onto the previous cell.\n  why unmark: a sibling branch needs the ORIGINAL character;\n  leaving '#' makes the whole search fail.",
+   "cpp_vs_py": "'\\0' can never match an input letter, so \"used\" is encoded in the board itself \u2014 no allocation, no restore on the success path (early return unwinds without restoring, which is safe because we already found the answer). Worst case (all cells match the first char): O(m\u00b7n\u00b73^L). --------------------------------------------------------------------- TIME COMPLEXITY : O(m\u00b7n\u00b73^L) worst.\n\n=====================================================================",
+   "cpp_alts": [
+    "Mark with a sentinel character such as '\\0' rather than '#' to be collision-proof against board contents.",
+    "A `used` bool grid costs $O(RC)$ extra space but avoids mutating the input, which matters if the caller reuses it."
+   ],
+   "py_alts": [
+    "Passing the four neighbours as a literal tuple of (dr, dc) offsets avoids four near-duplicate recursive calls.",
+    "A `used` 2-D list is clean but allocates; in-place marking with restore is faster and is what the problem's mutation tolerance invites."
+   ],
+   "trap": "Forgetting to restore the cell after the recursive call. Every later path that needs that cell sees '#' and fails, so the answer is wrong even though the code looks symmetric at a glance.",
+   "invariant": "On entry to `dfs(r, c, k)`, the cells holding word[0..k-1] along the current path are all marked '#', so no unmark check is needed inside the recursion -- the marks themselves enforce the no-revisit rule. Restoring on the way out re-establishes the invariant for sibling branches.",
+   "questions": [
+    {
+     "q": "What is the time complexity, and why is it not simply O(RC * L)?",
+     "a": "A loose bound is $O(RC \\cdot 4^L)$ from the branching, but the marking prunes hard: each path visits distinct cells, so the search is bounded by the number of simple paths, which is $O(3^L)$ per start because the previous cell is already marked and cannot be re-entered."
+    },
+    {
+     "q": "Why is in-place marking better than a visited array here?",
+     "a": "It uses O(1) extra space and one array write instead of a bounds-checked 2-D lookup. The cost is that you must restore, which is one extra write per node -- a good trade at these sizes."
+    },
+    {
+     "q": "When would a Trie be the right structure?",
+     "a": "When you must find ALL words in a large dictionary, not test a few. Then you share the walk across words instead of restarting from each cell per word, which is exactly problem 212."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0090_subsets_ii",
+   "one_liner": "Sort, then skip equal values at the same recursion level.",
+   "core_objective": "Return all unique subsets of a collection that may contain duplicates.",
+   "bounds": "1 <= nums.length <= 10 so at most 1024 raw subsets; uniqueness must be enforced, not filtered afterwards.",
+   "approaches": [
+    {
+     "name": "\u00b7 Backtracking with skip-duplicates (best)",
+     "aha": "dfs(i) records cur, then for j in i..n: skip j if c[j]==c[j-1] (j>i), append c[j], recurse(j+1), pop.",
+     "py": "nums.sort()\nout, cur = [], []\n    out.append(cur[:])\n    for j in range(i, len(nums)):\n        if j > i and nums[j] == nums[j - 1]:\n            continue\n        cur.append(nums[j])\n        dfs(j + 1)",
+     "cpp": "for (size_t j = i; j < nums_->size(); ++j) {\n    if (j > i && (*nums_)[j] == (*nums_)[j - 1]) continue;  // skip dup\n    cur_.push_back((*nums_)[j]);\n    dfs(j + 1);\n    cur_.pop_back();",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "\u00b7 Set of sorted tuples",
+     "aha": "Generate every subset via bitmask, sort tuples, dedupe with a set. --------------------------------------------------------------------- DEEP DIVE \u00b7 Why skipping the SECOND copy is enough Two duplicate values v produce identical subtrees only when used at the SAME level; the first v's subtree already contains every subset using v (any number of later copies). Skipping equal neighbors after a choice kills exactly the redundant subtrees \u2014 nothing is lost. --------------------------------------------------------------------- TIME COMPLEXITY : O(2^n) worst case (all distinct). MEMORY COMPLEXITY: O(n). =====================================================================",
+     "py": "nums.sort()\nseen = set()\nfor mask in range(1 << len(nums)):\n    cur = tuple(nums[j] for j in range(len(nums)) if mask & (1 << j))\n    seen.add(cur)\nreturn [list(t) for t in seen]",
+     "cpp": "for (int mask = 0; mask < (1 << nums.size()); ++mask) { std::vector<int> cur;\n    for (size_t j = 0; j < nums.size(); ++j)\n        if (mask & (1 << j)) cur.push_back(nums[j]);\n    if (std::find(out.begin(), out.end(), cur) == out.end())\n        out.push_back(cur);                  // dedupe by linear scan",
+     "time": "O(2^n) worst case (all distinct).",
+     "space": "O(n).",
+     "why": "each element is probed once; pairs cancel or are recorded; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,2,2]\n  raw subsets: 8  -> unique: 4\n\n  sorted: [1,2,2]\n  dfs(start=0, cur=[]):\n    EMIT []\n    i=0 c=1 -> dfs(1,[1])\n      i=1 c=2 -> dfs(2,[1,2])\n        i=2 c=2 -> dfs(3,[1,2,2]) EMIT [1,2,2]\n      i=2 i>0 and c[2]==c[1] -> SKIP   <- avoids [1,2,2] twice\n    i=1 c=2 -> dfs(2,[2])\n      i=2 i>0 and c[2]==c[1] -> SKIP   <- avoids [2,2] from\n                                          starting at index 1\n    i=2 i>0 and c[2]==c[1] -> SKIP\n\n  the rule: at a given recursion level, once you have taken\n  c[i], you may not also take c[i+1] if they are equal. Taking\n  the LATER equal element instead gives a canonical choice.",
+   "cpp_vs_py": "Two duplicate values v produce identical subtrees only when used at the SAME level; the first v's subtree already contains every subset using v (any number of later copies). Skipping equal neighbors after a choice kills exactly the redundant subtrees \u2014 nothing is lost. --------------------------------------------------------------------- TIME COMPLEXITY : O(2^n) worst case (all distinct).\n\n=====================================================================",
+   "cpp_alts": [
+    "Sort then the same skip; `sort` plus `unique` on the input would lose multiplicity and is wrong.",
+    "`vector<bool> used(100)` as an alternative dedupe via set insertion works but costs a hash per leaf."
+   ],
+   "py_alts": [
+    "`set(map(tuple, ...))` at the end dedupes but is $O(2^n \\cdot n)$ and loses order.",
+    "The skip rule is strictly better: it avoids generating the duplicates at all."
+   ],
+   "trap": "Deduplicating the INPUT with `set(nums)`. That loses multiplicity, so `[1,2,2]` becomes `[1,2]` and the answer misses `[1,2,2]` entirely.",
+   "invariant": "With the array sorted, the skip `i > start and nums[i] == nums[i-1]` ensures that within each recursion level, equal values are offered only at their first occurrence. Every distinct multiset therefore has exactly one index sequence, so no duplicate subset is generated and none is lost.",
+   "questions": [
+    {
+     "q": "Why `i > start` rather than `i > 0`?",
+     "a": "Because the skip should apply only among siblings at the same level. Using `i > 0` would also forbid legitimately choosing a second equal element deeper in the recursion, which is required for subsets like [1,2,2]. `start` marks where the current level began."
+    },
+    {
+     "q": "Why does the skip work only on sorted input?",
+     "a": "It compares adjacent elements, so equal values must be adjacent. Sorting guarantees adjacency and is therefore a correctness precondition, not merely a speedup."
+    },
+    {
+     "q": "What is the worst-case number of generated subsets?",
+     "a": "Exactly the number of distinct subsets, which is at most $2^n$ and equals $\\prod_i (c_i + 1)$ for value multiplicities $c_i$. With the skip in place you generate each exactly once, so there is no wasted work."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0131_palindrome_partitioning",
+   "one_liner": "Precompute the palindrome table, then DFS over cuts.",
+   "core_objective": "Return all partitions of a string such that every part is a palindrome.",
+   "bounds": "1 <= s.length <= 2000 with lowercase letters, so the answer can be up to $2^{n-1}$ -- output-bound. A palindrome table is $O(n^2)$ time and space.",
+   "approaches": [
+    {
+     "name": "\u00b7 DFS + direct palindrome probe (best for short input)",
+     "aha": "dfs(start): start == n \u2192 record. For end in start..n: if the slice is a palindrome, take it, recurse(end+1).",
+     "py": "out, cur = [], []\n    return s[l:r + 1] == s[l:r + 1][::-1]\n    if start == len(s):\n        out.append(cur[:])\n        return\n    for end in range(start, len(s)):\n        if not is_pal(start, end):\n            continue",
+     "cpp": "for (int end = start; end < static_cast<int>(s_.size()); ++end) {\n    if (!pal_[start][end]) continue;   // O(1) table query\n    cur_.push_back(s_.substr(start, end - start + 1));\n    dfs(end + 1);\n    cur_.pop_back();",
+     "time": "?",
+     "space": "?",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 Precomputed palindrome table",
+     "aha": "isPal[i][j] via DP in O(n\u00b2), then O(1) queries in the same DFS. --------------------------------------------------------------------- DEEP DIVE \u00b7 Table vs probe trade-off The probe costs O(n) per cut probe \u2014 fine for small strings, but a 2^n-shaped search tree makes the table worthwhile past n \u2248 20. DP identity: s[i]==s[j] and (j-i < 2 or isPal[i+1][j-1]). --------------------------------------------------------------------- TIME COMPLEXITY : A1 O(n\u00b72^n) worst; A2 O(2^n) + O(n\u00b2) build. MEMORY COMPLEXITY: O(n\u00b2) for the table in A2. =====================================================================",
+     "py": "n = len(s)\npal = [[False] * n for _ in range(n)]\nfor i in range(n - 1, -1, -1):\n    for j in range(i, n):\n        pal[i][j] = s[i] == s[j] and (j - i < 2 or pal[i + 1][j - 1])\nout, cur = [], []\n    if start == n:\n        out.append(cur[:])",
+     "cpp": "for (int end = start; end < static_cast<int>(s_.size()); ++end) {\n    if (!pal_[start][end]) continue;   // O(1) table query\n    cur_.push_back(s_.substr(start, end - start + 1));\n    dfs(end + 1);\n    cur_.pop_back();",
+     "time": "A1 O(n\u00b72^n) worst; A2 O(2^n) + O(n\u00b2) build.",
+     "space": "O(n\u00b2) for the table in A2.",
+     "why": "Follows directly from the traversal count: A1 O(n\u00b72^n) worst; A2 O(2^n) + O(n\u00b2) build. time, O(n\u00b2) for the table in A2. space."
+    }
+   ],
+   "diagram": " s = \"aab\"  -> [[\"a\",\"a\",\"b\"], [\"aa\",\"b\"]]\n\n  isPal[i][j] = s[i]==s[j] and (j-i<2 or isPal[i+1][j-1])\n\n   a  a  b\n  a T  F  F\n  a .  T  F\n  b .  .  T\n\n  dfs(start):\n    if start == n: emit(path); return\n    for end in range(start, n):\n      if isPal[start][end]:\n        path.push(s[start..end])\n        dfs(end+1)\n        path.pop()\n\n   start=0: end=0 'a' pal -> dfs(1)\n        start=1: end=1 'a' pal -> dfs(2)\n              end=2 'ab' not pal\n              dfs(2): end=2 'b' pal -> dfs(3) EMIT [a,a,b]\n        end=2 'aab' not pal\n   start=0: end=1 'aa' pal -> dfs(2)\n        end=2 'b' pal -> dfs(3) EMIT [aa,b]\n\n  O(n^2) table beats testing each candidate substring inline,\n  which is O(n^3) in total.",
+   "cpp_vs_py": "The probe costs O(n) per cut probe \u2014 fine for small strings, but a 2^n-shaped search tree makes the table worthwhile past n \u2248 20. DP identity: s[i]==s[j] and (j-i < 2 or isPal[i+1][j-1]). --------------------------------------------------------------------- TIME COMPLEXITY : A1 O(n\u00b72^n) worst; A2 O(2^n) + O(n\u00b2) build.\n\n=====================================================================",
+   "cpp_alts": [
+    "A `vector<vector<bool>>` table is compact; a 2-D char array is faster.",
+    "Fill the table by increasing substring length so the recurrence's dependency is already computed."
+   ],
+   "py_alts": [
+    "A list-of-lists of bools beats a dict of tuples.",
+    "For n = 2000 the table is 4e6 entries -- Python lists of bools cost ~32 MB, so a bytearray per row is leaner."
+   ],
+   "trap": "Testing palindromes by reversing each candidate substring inline. That is $O(n^3)$ overall and will not pass at n = 2000.",
+   "invariant": "`isPal[i][j]` is true iff s[i..j] is a palindrome, established by the recurrence for j-i < 2 and the inner interval otherwise. Therefore `dfs(start)` explores exactly the partitions whose first part starts at `start` and whose remaining parts partition the suffix, so every valid partition appears exactly once.",
+   "questions": [
+    {
+     "q": "Why precompute the palindrome table?",
+     "a": "Because the same substring is tested repeatedly across different partitions. Precomputing makes each test O(1), giving $O(n^2)$ for the table and $O(2^n)$ for the enumeration (output-bound). Inline testing repeats work and pushes the total to $O(n^3)$."
+    },
+    {
+     "q": "What is the actual complexity?",
+     "a": "$O(n^2)$ for the table plus the number of partial partitions explored, which is bounded by the output size. The theoretical worst case is $O(n \\cdot 2^n)$ because there can be $2^{n-1}$ partitions."
+    },
+    {
+     "q": "When is the problem output-bound rather than time-bound?",
+     "a": "When s is all the same character, e.g. \"aaaa...\", because then every substring is a palindrome and every set of cut positions yields a valid partition -- giving exactly $2^{n-1}$ outputs. Any algorithm must spend that much just to write them down."
+    }
+   ]
+  },
+  {
+   "key": "10_backtracking/0395_longest_substring_with_at_least_k_repeating_characters",
+   "one_liner": "Split on a bad character, or slide a window by distinct count.",
+   "core_objective": "Return the length of the longest substring in which every character appears at least k times.",
+   "bounds": "1 <= s.length <= 1e4, k >= 1, and lowercase letters only. If no valid substring exists the answer is 0, which is the common failure output.",
+   "approaches": [
+    {
+     "name": "\u00b7 Divide & conquer on blocker chars (best)",
+     "aha": "Count in s; all counts \u2265 k \u2192 whole string valid. Else split at each blocker and take the max over pieces.",
+     "py": "if not s or len(s) < k:\ncnt = Counter(s)\nfor ch, c in cnt.items():\n    if c < k:\n        return max(self.longestSubstring(piece, k)\n                   for piece in s.split(ch))\nreturn len(s)",
+     "cpp": "for (int distinct = 1; distinct <= 26; ++distinct) { std::array<int, 26> cnt{};\n    int uniq = 0, okCnt = 0;                  // unique & all\u2265k chars\n    for (int l = 0, r = 0; r < n; ++r) { if (cnt[s[r] - 'a']++ == 0) ++uniq;\n        if (cnt[s[r] - 'a'] == k) ++okCnt;\n        while (uniq > distinct) {             // too many letters\n            int c = s[l++] - 'a';\n            if (cnt[c]-- == k) --okCnt;\n            if (cnt[c] == 0) --uniq;",
+     "time": "?",
+     "space": "?",
+     "why": "the recursion splits the work; the bound is the sum over levels; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 Sliding window per distinct-count",
+     "aha": "For c in 1..26: longest window with \u2264 c distinct letters where every letter occurs \u2265 k times \u2014 the O(26n) two-pointer classic. --------------------------------------------------------------------- DEEP DIVE \u00b7 Why splitting on blockers is exact If 'x' occurs 2 < k times, any valid substring excludes x and lies entirely within one gap between x's. Gaps are independent, so recursion over gaps is complete and correct. A2's twist: \"every char \u2265 k\" alone isn't a monotone window predicate, but fixing the distinct count IS \u2014 hence the 26 sweeps. --------------------------------------------------------------------- TIME COMPLEXITY : A1 O(n\u00b2) worst; A2 O(26n). MEMORY COMPLEXITY: O(n) / O(1) counters. =====================================================================",
+     "py": "n, best = len(s), 0\nfor distinct in range(1, 27):\n    cnt = [0] * 26\n    uniq = ok_cnt = 0\n    l = 0\n    for r in range(n):\n        idx = ord(s[r]) - 97\n        if cnt[idx] == 0:",
+     "cpp": "for (int distinct = 1; distinct <= 26; ++distinct) { std::array<int, 26> cnt{};\n    int uniq = 0, okCnt = 0;                  // unique & all\u2265k chars\n    for (int l = 0, r = 0; r < n; ++r) { if (cnt[s[r] - 'a']++ == 0) ++uniq;\n        if (cnt[s[r] - 'a'] == k) ++okCnt;\n        while (uniq > distinct) {             // too many letters\n            int c = s[l++] - 'a';\n            if (cnt[c]-- == k) --okCnt;\n            if (cnt[c] == 0) --uniq;",
+     "time": "A1 O(n\u00b2) worst; A2 O(26n).",
+     "space": "O(n) / O(1) counters.",
+     "why": "Follows directly from the traversal count: A1 O(n\u00b2) worst; A2 O(26n). time, O(n) / O(1) counters. space."
+    }
+   ],
+   "diagram": " s = \"aaabbcccc\", k = 3  -> answer 10? check:\n   'aaa' a:3 ok  'bb'  b:2 < 3  -> b is a BLOCKER\n   'cccc' c:4 ok  a:3 ok\n   whole string: a4 b2 c4 -> b < 3 -> invalid\n   split at b: \"aaa\" (3) and \"cccc\" (4) -> max 4\n   ANSWER 4\n\n  DIVIDE AND CONQUER:\n   if already valid(s): return len(s)      -- shortcut\n   find the leftmost bad char c\n   left  = recurse(s[:i])\n   right = recurse(s[i+1:])\n   return max(left, right)\n\n  SLIDING WINDOW variant:\n   track `distinct` (count of chars with count >= k)\n   shrink while distinct > target for target in 1..26\n   the answer is the max over all targets",
+   "cpp_vs_py": "If 'x' occurs 2 < k times, any valid substring excludes x and lies entirely within one gap between x's. Gaps are independent, so recursion over gaps is complete and correct. A2's twist: \"every char \u2265 k\" alone isn't a monotone window predicate, but fixing the distinct count IS \u2014 hence the 26 sweeps. --------------------------------------------------------------------- TIME COMPLEXITY : A1 O(n\u00b2) worst; A2 O(26n).\n\n=====================================================================",
+   "cpp_alts": [
+    "Frequency arrays indexed by char avoid any hashing in both the split and the window version.",
+    "The divide and conquer can use `string::find_first_of` for the split points, but an explicit scan is clearer."
+   ],
+   "py_alts": [
+    "`Counter` or a 26-list for frequencies; a list is faster in CPython.",
+    "Iterating `target` from 1 to 26 with a reused window avoids re-implementing divide and conquer entirely."
+   ],
+   "trap": "Assuming the whole string is valid, or forgetting the early `if valid(s): return len(s)` shortcut which the divide-and-conquer needs to avoid infinite splitting.",
+   "invariant": "In the window variant, for a fixed `target`, the window is shrunk until at most `target` characters appear at least k times. Adding a character can only increase that count and removing one can only decrease it, so the shrink loop is monotone and each pointer advances at most n times, giving $O(n)$ per target and $O(26n)$ overall.",
+   "questions": [
+    {
+     "q": "Why does the divide and conquer need the validity shortcut?",
+     "a": "Because if the string is valid we must return its full length rather than split. Without the check, a fully valid string still gets split at its first bad character -- and there is none, so the code would either index out of range or recurse forever."
+    },
+    {
+     "q": "What is the complexity of the sliding window variant?",
+     "a": "$O(\\sigma n)$ where sigma is the alphabet size (26), since you try each target count of qualifying characters. That is linear for a fixed alphabet and avoids recursion entirely, which is why it is often the better interview answer."
+    },
+    {
+     "q": "Why is splitting on a bad character correct?",
+     "a": "A character with fewer than k occurrences in the current string has fewer than k in any substring containing it, so no valid substring can include that position. Every valid substring therefore lies entirely to the left or entirely to the right of it, so the two sides can be solved independently."
+    }
+   ]
+  }
+ ]
+}

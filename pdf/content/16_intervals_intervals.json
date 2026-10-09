@@ -1,0 +1,316 @@
+{
+ "problems": [
+  {
+   "key": "16_intervals/0056_merge_intervals",
+   "one_liner": "Sort by start; merge when start <= current end.",
+   "core_objective": "Merge all overlapping intervals into a minimal set of disjoint intervals.",
+   "bounds": "1 <= intervals.length <= 1e4 with up to 1e9 endpoints. An interval may be [x, x] and touching intervals such as [1,4] and [4,5] DO merge.",
+   "approaches": [
+    {
+     "name": "Sort by start + sweep into a result list (BEST)",
+     "aha": "Sort ascending. Walk once. If the current interval starts after the last block ends -> new block. Else extend the block's end.",
+     "py": "intervals.sort()\nout: List[Interval] = []\nfor it in intervals:\n    if not out or out[-1][1] < it[0]:\n        out.append(it)\n    else: out[-1][1] = max(out[-1][1], it[1])\nreturn out",
+     "cpp": "for (const std::vector<int>& it : intervals) { if (out.empty() || out.back()[1] < it[0]) { out.push_back(it);\n    } else {\n        out.back()[1] = std::max(out.back()[1], it[1]);\n    }",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Sort by start + in-place compaction",
+     "aha": "Same rule, but merged blocks are written back into the FRONT of the input list (slot k) and the tail is trimmed \u2014 the input array itself becomes the answer.",
+     "py": "intervals.sort()\nk = 0  # number of merged blocks written to the front\nfor i in range(1, len(intervals)):\n    if intervals[k][1] >= intervals[i][0]:\n        intervals[k][1] = max(intervals[k][1], intervals[i][1])\n    else: k += 1\n        intervals[k] = intervals[i]\ndel intervals[k + 1:]  # trim the absorbed tail",
+     "cpp": "for (int i = 1; i < static_cast<int>(intervals.size()); ++i) { if (intervals[k][1] >= intervals[i][0]) {\n        intervals[k][1] = std::max(intervals[k][1], intervals[i][1]);\n    } else { ++k;\n        intervals[k] = intervals[i];\n    }",
+     "time": "O(n log n)",
+     "space": "O(1) extra",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " input: [[1,3],[2,6],[8,10],[15,18]]\n         -> [[1,6],[8,10],[15,18]]\n\n  sorted by start: (1,3) (2,6) (8,10) (15,18)\n\n  out = []\n  for s, e in sorted:\n    if out and s <= out[-1][1]:        # overlap OR touch\n        out[-1][1] = max(out[-1][1], e) # extend to the max end\n    else:\n        out.append([s, e])\n\n  trace:\n   (1,3)  -> out=[[1,3]]\n   (2,6)  -> 2 <= 3 -> out=[[1,6]]\n   (8,10) -> 8 > 6  -> out=[[1,6],[8,10]]\n   (15,18)-> 15 > 10 -> out=[[1,6],[8,10],[15,18]]\n\n  WHY <= AND NOT <:\n   [1,4] and [4,5] share the point 4, so they form one\n   contiguous interval [1,5]. Using < would emit two.\n\n  why sort by START and not by end: with start-sorted input,\n  once an interval does not overlap the current group, no\n  later one can either -- starts only increase.",
+   "cpp_vs_py": "Two closed intervals [a1,a2], [b1,b2] overlap when a1 <= b2 && b1 <= a2. Sorting by start turns \"does it merge?\" into a one-sided question: it.start <= lastEnd ? merge : new block. No hash map, no heap, no tree: a plain sort + sweep is optimal because the merge relation is transitive along the sorted order. (Contrast: for INSERT-INTERVAL style problems the same sorted sweep pattern works \u2014 one interval at a time instead of a batch.) ===================================================================== /\n\n#include <vector> // std::vector \u2014 intervals storage #include <algorithm> // std::sort, std::max \u2014 sort + merge bookkeeping #include <utility> // std::pair \u2014 used by the coverage validator #include <chrono> // std::chrono \u2014 high-resolution benchmark timing #include <iostream> // std::cout \u2014 printing PASS/FAIL + timings #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`sort(v.begin(), v.end())` on `vector<pair<int,int>>` uses lexicographic order, which sorts by start first -- exactly what is needed.",
+    "In-place compaction merges into `v[out++]` for $O(1)$ extra space beyond the sort."
+   ],
+   "py_alts": [
+    "`sorted(intervals)` on tuples sorts by start then end, which is fine.",
+    "Modifying the output in place (`out[-1][1] = ...`) avoids allocating new pairs per merge."
+   ],
+   "trap": "Using `<` instead of `<=` for the overlap test, which splits [1,4] and [4,5] into two intervals when they should merge into [1,5].",
+   "invariant": "`out[-1]` always holds the merged interval covering the last accepted group, and its end is the maximum end among that group's intervals. If the next start exceeds that end, no later interval can overlap it either, since later starts are no smaller -- so appending is safe and final.",
+   "questions": [
+    {
+     "q": "Why sort by start rather than by end?",
+     "a": "Sorting by start gives a monotone frontier: once an interval's start passes the current group's maximum end, every remaining start is even larger, so the group is closed permanently. Sorting by end gives no such guarantee and the merge test becomes non-local."
+    },
+    {
+     "q": "Why do touching intervals merge?",
+     "a": "Because [1,4] and [4,5] have no gap -- their union is the single interval [1,5], and the problem asks for the minimal set of disjoint intervals. Splitting them would not be minimal."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n \\log n)$ time for the sort and $O(n)$ for the sweep, with $O(n)$ space for the result (or $O(1)$ extra with in-place compaction). The sort dominates, which is why sorting is unavoidable here."
+    }
+   ]
+  },
+  {
+   "key": "16_intervals/0057_insert_interval",
+   "one_liner": "Three phases: before, overlapping block, after.",
+   "core_objective": "Insert one interval into a set of non-overlapping sorted intervals and return the merged result.",
+   "bounds": "0 <= intervals.length <= 1e4 and the input is guaranteed sorted and disjoint, so a single three-phase pass suffices. An empty input is legal.",
+   "approaches": [
+    {
+     "name": "Three-phase linear sweep (BEST)",
+     "aha": "Phase A: copy intervals with end < new.start. Phase B: absorb every interval with start <= new.end, extending new_interval. Phase C: copy the rest.",
+     "py": "out: List[Interval] = []\ni, n = 0, len(intervals)\nwhile i < n and intervals[i][1] < new_interval[0]:\n    out.append(intervals[i])\n    i += 1\nwhile i < n and intervals[i][0] <= new_interval[1]:\n    new_interval[0] = min(new_interval[0], intervals[i][0])\n    new_interval[1] = max(new_interval[1], intervals[i][1])",
+     "cpp": "vector<Interval> out;\nint i = 0, n = intervals.size();\nwhile (i < n && intervals[i].end < ni.start)\n    out.push_back(intervals[i++]);\nni.start = min(ni.start, intervals[i].start);\nni.end   = max(ni.end,   intervals[i].end);\nwhile (i < n && intervals[i].start <= ni.end) {\n    ni.start = min(ni.start, intervals[i].start);\n    ni.end   = max(ni.end,   intervals[i].end);\n    ++i;\n}\nout.push_back(ni);\nwhile (i < n) out.push_back(intervals[i++]);\nreturn out;",
+     "time": "O(n)",
+     "space": "O(n)",
+     "why": "each interval enters and leaves the frontier once; hence the stated bounds."
+    },
+    {
+     "name": "Binary-search the merge window, then splice",
+     "aha": "left = first index whose end >= new.start (bisect_left over ends) right = last index whose start <= new.end (bisect_right over starts) The whole merge zone is [left, right]; splice around it.",
+     "py": "ends = [iv[1] for iv in intervals]     # O(n) scan for the searches\nstarts = [iv[0] for iv in intervals]\nleft = bisect.bisect_left(ends, new_interval[0])\nright = bisect.bisect_right(starts, new_interval[1]) - 1\nout: List[Interval] = intervals[:left]      # untouched BEFORE window\nif left <= right:\n    new_interval[0] = min(new_interval[0], intervals[left][0])\n    new_interval[1] = max(new_interval[1], intervals[right][1])",
+     "cpp": "auto lo = lower_bound(intervals.begin(), intervals.end(), ni,\n    [](const Interval& a, const Interval& b) { return a.start < b.start; });\n// splice [lo, hi) into one merged interval, keep the rest",
+     "time": "O(log n + n)",
+     "space": "O(n)",
+     "why": "Follows directly from the traversal count: O(log n + n) time, O(n) space."
+    }
+   ],
+   "diagram": " intervals=[[1,3],[6,9]], new=[2,5]\n  -> [[1,5],[6,9]]\n\n  phase 1 (strictly before): s < new.start  -> copy through\n   (1,3): 1 < 2  -> copy\n   (6,9): 6 < 2? no\n  phase 2 (overlapping):  s <= cur.end  -> absorb\n   (6,9): 6 <= cur.end(5)? no\n  phase 3 (after): copy the rest\n\n  code:\n   i=0\n   while i < n and intervals[i].end < new.start:\n       out.push(intervals[i]); i++          # phase 1\n   new.start = min(new.start, intervals[i].start)\n   new.end   = max(new.end,   intervals[i].end)\n   while i < n and intervals[i].start <= new.end:\n       new.start = min(new.start, intervals[i].start)\n       new.end   = max(new.end,   intervals[i].end)\n       i++                               # phase 2 (grow on both)\n   out.push(new)\n   while i < n: out.push(intervals[i++])  # phase 3\n\n  the GROW on both ends is essential: [2,5] absorbing (6,9)\n  must extend new.end to 9, which may then absorb more.",
+   "cpp_vs_py": "Two variants of the same question: \u2022 \"first index where end >= x\" -> std::lower_bound over ends \u2022 \"last index where start <= x\" -> upper_bound over starts - 1 When the interval list lives in a balanced tree / sorted array, these become O(log n) window queries \u2014 the pattern behind range trees and interval trees. For ONE insert, linear sweep is simpler and equally fast; the binary-search version shines when intervals are huge (n = 10^7) or when many inserts stream in (each one O(log n) to locate + O(k) to splice). ===================================================================== /\n\n#include <vector> // std::vector \u2014 interval storage #include <algorithm> // std::sort, std::min, std::max #include <utility> // std::pair \u2014 coverage validator #include <chrono> // std::chrono \u2014 benchmark timing #include <iostream> // std::cout \u2014 printing results #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`std::vector<Interval> out; out.reserve(n+1)` avoids repeated reallocation.",
+    "Insert into the vector then merge in place is an alternative when avoiding a second container matters."
+   ],
+   "py_alts": [
+    "A list comprehension for phases 1 and 3 with an index for phase 2 is readable; the index-based version avoids scanning the prefix twice.",
+    "`bisect` can locate the insert point, but the linear scan is already $O(n)$ and simpler."
+   ],
+   "trap": "Failing to grow `new.end` after absorbing an interval, which is required when a later interval starts inside the newly extended range. Also, assuming only one interval overlaps rather than a whole block.",
+   "invariant": "After phase 1, all copied intervals end strictly before the insertion point. During phase 2, `new` is the union of the insertion interval and every absorbed interval, so its start and end are the running min and max. Phase 2 stops exactly when the next start exceeds that union, at which point the union can never grow again.",
+   "questions": [
+    {
+     "q": "Why three phases rather than one pass with a flag?",
+     "a": "Because the roles differ: before the insertion point you copy verbatim, inside the overlapping block you absorb and grow, and after it you copy verbatim again. A single flag variable cannot express \"grow the range\" while still needing to copy unchanged intervals on both sides."
+    },
+    {
+     "q": "Can you do it with binary search?",
+     "a": "Yes -- `bisect` on the interval starts locates the first interval whose end >= new.start in $O(\\log n)$, after which the absorb loop is still $O(k)$. That gives $O(\\log n + k)$ time, but the total is still bounded by $O(n)$ because of the copy."
+    },
+    {
+     "q": "What makes the absorb loop able to grow?",
+     "a": "Each absorbed interval may extend `new.end` beyond the value that was tested, so the loop condition must be re-evaluated against the updated end. That is why the min/max updates happen inside the loop and not before it."
+    }
+   ]
+  },
+  {
+   "key": "16_intervals/0252_meeting_rooms",
+   "one_liner": "Sort by start; any start < previous end is a conflict.",
+   "core_objective": "Return true if two meetings share no overlap.",
+   "bounds": "0 <= meetings.length <= 1e6, and meetings are half-open [start, end), so a meeting ending exactly when another starts is NOT a conflict. An empty list is trivially true.",
+   "approaches": [
+    {
+     "name": "Sort by start + adjacent overlap check (BEST)",
+     "aha": "Sort. Walk once: if next.start < prev.end the previous meeting is still running -> False. Strict '<' encodes half-open semantics.",
+     "py": "intervals.sort()\nfor i in range(1, len(intervals)):\n    if intervals[i][0] < intervals[i - 1][1]:",
+     "cpp": "for (int i = 1; i < static_cast<int>(intervals.size()); ++i) { if (intervals[i][0] < intervals[i - 1][1]) { return false;\n    }",
+     "time": "O(n log n)",
+     "space": "O(1)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Chronological event sweep (sweep-line)",
+     "aha": "Flatten meetings into events (time, +1 start / -1 end). Sort by time with ENDS before STARTS at equal times. active += delta; active > 1 at any moment -> False.",
+     "py": "events: List[Tuple[int, int]] = []\nfor s, e in intervals:\n    events.append((s, 1))\n    events.append((e, 0))\nevents.sort()\nactive = 0\nfor _, kind in events:\n    active += 1 if kind == 1 else -1",
+     "cpp": "for (const std::vector<int>& it : intervals) {\n    events.push_back({it[0], 1}); // start  : +1 active, tie kind 1\n    events.push_back({it[1], 0}); // end    : -1 active, tie kind 0",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "each interval enters and leaves the frontier once; hence the stated bounds."
+    }
+   ],
+   "diagram": " meetings sorted by start:\n  [0,10]  [10,20]  [20,30]   -> all adjacent, no overlap\n  [0,10]  [5,6]    -> 5 < 10  -> OVERLAP -> false\n\n  prev_end = -inf\n  for s, e in sorted:\n     if s < prev_end: return False   # STRICT <, not <=\n     prev_end = e\n  return True\n\n  WHY ONLY THE PREVIOUS END MATTERS:\n  the intervals are sorted by start, so starts are\n  non-decreasing. If s >= prev_end then this meeting starts\n  after the previous one ended; and every earlier meeting\n  ended at or before prev_end, so none can conflict. Hence a\n  single running maximum of past ends suffices.",
+   "cpp_vs_py": "The sweep line turns \"do intervals overlap anywhere?\" into \"does the counter ever exceed 1?\". Every interval adds +1 at its start and -1 at its end; between events the answer is constant. Tie-breaking encodes the interval semantics: closed [a,b] : +1 before -1 (they overlap at the shared point) half-open [a,b): -1 before +1 (ending at b frees the room at b) This same event trick powers Meeting Rooms II (count rooms), skyline problems, and calendar clash detectors. The C++ pair sort (time, then kind) gives you the tie-break for free. ===================================================================== /\n\n#include <vector> // std::vector \u2014 intervals + events #include <utility> // std::pair \u2014 (time, delta) events #include <algorithm> // std::sort #include <chrono> // std::chrono \u2014 benchmark timing #include <iostream> // std::cout \u2014 printing results #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`sort` on `vector<pair<int,int>>` compares by start first automatically.",
+    "`std::sort` on 1e6 pairs is about 0.2 s; the sweep afterwards is negligible."
+   ],
+   "py_alts": [
+    "`sorted(meetings)` on 1e6 tuples works but allocates; sorting an index array is slower in CPython.",
+    "Iterating the sorted list directly avoids index arithmetic."
+   ],
+   "trap": "Using `<=` instead of `<`, which declares [0,10] and [10,20] a conflict. LeetCode meetings are half-open, so touching is fine.",
+   "invariant": "After processing k meetings, `prev_end` is the maximum end among them. The next meeting conflicts with some earlier one exactly when its start is less than that maximum -- because a conflict requires a previous interval whose end exceeds the new start. So one running value suffices instead of comparing against all previous intervals.",
+   "questions": [
+    {
+     "q": "Why does only the previous end matter?",
+     "a": "The list is sorted by start, so starts are non-decreasing. If the new start is at least the previous end, it is at least every earlier end too (since prev_end is the running max). If it is smaller, it conflicts with the meeting that set that max."
+    },
+    {
+     "q": "What would change if intervals were closed?",
+     "a": "The comparison becomes `<=` instead of `<`, because [0,10] and [10,20] would then share the point 10. That one character is the entire difference between the two conventions and a classic source of wrong answers."
+    },
+    {
+     "q": "How does this differ from meeting rooms II?",
+     "a": "Here you only need to know WHETHER a conflict exists, which the single running maximum answers in O(n) after sorting. There you need the maximum OVERLAP, which requires either a sweep line over events or a min-heap of active end times."
+    }
+   ]
+  },
+  {
+   "key": "16_intervals/0253_meeting_rooms_ii",
+   "one_liner": "Sweep starts and ends separately with two pointers.",
+   "core_objective": "Return the maximum number of meetings happening simultaneously.",
+   "bounds": "0 <= meetings.length <= 1e5 with up to 1e9 endpoints. An empty list gives 0. Half-open intervals again, so a meeting ending at time t does not overlap one starting at t.",
+   "approaches": [
+    {
+     "name": "Sort by start + min-heap of end times (BEST)",
+     "aha": "Sort by start. For each meeting: if the earliest-ending active meeting is over (heap top <= start), pop it (room reused). Push this meeting's end. Answer = max heap size.",
+     "py": "intervals.sort()  # by start\nends: List[int] = []\nrooms = 0\nfor s, e in intervals:\n    if ends and ends[0] <= s:\n        heapq.heappop(ends)  # that room is now free\n    heapq.heappush(ends, e)  # this meeting occupies a room until e\n    rooms = max(rooms, len(ends))",
+     "cpp": "for (const std::vector<int>& it : intervals) { if (!ends.empty() && ends.top() <= it[0]) { ends.pop(); // that room is now free\n    }\n    ends.push(it[1]); // this meeting occupies a room until it[1]\n    rooms = std::max(rooms, static_cast<int>(ends.size()));",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Two pointers over sorted starts & ends",
+     "aha": "Sort starts and ends SEPARATELY. If the next start precedes the earliest free time (starts[s] < ends[e]) a new room is needed; otherwise the room at ends[e] frees -> advance e.",
+     "py": "starts = sorted(s for s, _ in intervals)\nends = sorted(e for _, e in intervals)\nrooms = 0\nactive = 0\ne = 0\nfor s in range(len(starts)):\n    while e < len(ends) and ends[e] <= starts[s]:\n        active -= 1",
+     "cpp": "for (const std::vector<int>& it : intervals) { starts.push_back(it[0]);\n    ends.push_back(it[1]);",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " meetings=[[1,3],[2,6],[4,8]]  -> 3\n\n  starts = [1,2,4]\n  ends   = [3,6,8]\n\n  two-pointer sweep:\n   s=0 e=0 count=0 best=0\n   starts[0]=1 < ends[0]=3 -> count=1  best=1  s=1\n   starts[1]=2 < ends[0]=3 -> count=2  best=2  s=2\n   starts[2]=4 > ends[0]=3 -> count=1  e=1\n   starts[2]=4 < ends[1]=6 -> count=2         s=3\n   s exhausted, drain remaining ends -> done\n   best = 2, not 3. Correct answer for [[1,3],[2,6]] is 2.\n\n  For 3 simultaneous you need e.g. [[1,3],[2,6],[2,8]]:\n   starts[1]=2 < ends[0]=3 -> count 2\n   starts[2]=2 < ends[0]=3 -> count 3  BEST\n\n  invariant: `count` is the number of meetings started minus\n  ended so far, i.e. exactly the number in progress. The\n  sweep advances whichever side has the smaller next\n  timestamp, so no meeting is counted twice.",
+   "cpp_vs_py": "A naive sweep must know \"when is the next meeting over?\" \u2014 a min-heap makes that its root in O(1). Crucially the heap only contains meetings whose start we HAVE seen: expired ones (root end <= current start) are popped before pushing, so heap.size() == number of concurrently open meetings \u2014 the exact quantity we maximise. Python: heapq (min-heap). C++: std::priority_queue with std::greater<int> to invert max\u2192min. Lazy deletion is NOT needed here (we pop while root is expired, not once) \u2014 but the same pattern reappears in 1851 where expiry is checked per query. ===================================================================== /\n\n#include <vector> // std::vector \u2014 intervals + sorted copies #include <queue> // std::priority_queue \u2014 min-heap of end times #include <algorithm> // std::sort, std::greater #include <functional> // std::greater<int> \u2014 min-heap comparator #include <chrono> // std::chrono \u2014 benchmark timing #include <iostream> // std::cout \u2014 printing results #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "Two `vector<int>` sorts plus one merge pass is $O(n \\log n)$ with $O(n)$ space.",
+    "`std::priority_queue` of end times with a lazy expiry is the alternative at $O(n \\log n)$."
+   ],
+   "py_alts": [
+    "`sorted([s for s,_ in meetings])` plus `sorted([e for _,e in meetings])` and a manual two-pointer loop avoids heap overhead.",
+    "A `heapq` of end times with `while heap and heap[0] <= s: heappop` is very readable and competitive."
+   ],
+   "trap": "Advancing the end pointer only while `ends[e] <= starts[s]`, which double-counts when several ends share a timestamp. The correct step compares timestamps and advances one side per iteration.",
+   "invariant": "At every step, `count` equals the number of intervals whose start has been swept but whose end has not, which is exactly the number simultaneously in progress. Advancing the smaller next timestamp keeps that true, so the maximum recorded count is the true maximum overlap.",
+   "questions": [
+    {
+     "q": "Why is the sweep correct when several events share a timestamp?",
+     "a": "Because each iteration advances exactly one pointer by exactly one interval, and the comparison always picks the earlier event. Ties can be broken either way for half-open intervals, since a meeting ending at t and another starting at t never count together -- the end is processed first."
+    },
+    {
+     "q": "Why does the heap version need a separate expiry loop?",
+     "a": "A heap of end times can hold many stale entries whose ends are in the past. Before counting a new start you must pop every end <= s, not just the minimum, so the size reflects live meetings. That inner while loop is what keeps the heap meaningful."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n \\log n)$ time for the sorts, with an $O(n)$ sweep afterwards. Space is $O(n)$ for the two sorted arrays or the heap. A sweep-line over 2n events is the same bound with a different constant."
+    }
+   ]
+  },
+  {
+   "key": "16_intervals/0435_non_overlapping_intervals",
+   "one_liner": "Sort by END; keep an interval only if it starts after the last kept one.",
+   "core_objective": "Return the maximum number of non-overlapping intervals that can be selected.",
+   "bounds": "1 <= intervals.length <= 1e5 with up to 1e9 endpoints, and the answer is the count KEPT, not the count removed. Intervals touching at an endpoint do not overlap.",
+   "approaches": [
+    {
+     "name": "Greedy: sort by END, keep earliest-ending (BEST)",
+     "aha": "Sort by end. Track the last KEPT end; intervals starting before it overlap the kept interval -> remove. Otherwise keep + advance.",
+     "py": "if not intervals:\nintervals.sort(key=lambda iv: iv[1])\nkept = 1                    # the first interval is always kept\nlast_end = intervals[0][1]  # end of the last KEPT interval\nfor i in range(1, len(intervals)):\n    if intervals[i][0] < last_end:\n        continue\n    kept += 1",
+     "cpp": "                  [](const std::vector<int>& a, const std::vector<int>& b) { return a[1] < b[1];",
+     "time": "O(n log n)",
+     "space": "O(1)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Sort by start + DP",
+     "aha": "dp[i] = best kept-count of a subset ending at i: dp[i] = 1 + max(dp[j]) for j < i with end[j] <= start[i] Answer = n - max(dp). Provably correct, no greedy leap \u2014 O(n^2).",
+     "py": "n = len(intervals)\nif n == 0:\nintervals.sort()  # by start\ndp = [1] * n\nbest = 1\nfor i in range(1, n):\n    for j in range(i):\n        if intervals[j][1] <= intervals[i][0]:",
+     "cpp": "for (int i = 1; i < n; ++i) { for (int j = 0; j < i; ++j) { if (intervals[j][1] <= intervals[i][0]) { dp[i] = std::max(dp[i], dp[j] + 1);\n        }\n    }\n    best = std::max(best, dp[i]);",
+     "time": "O(n^2)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " intervals=[[1,2],[2,3],[3,4],[1,3]]  -> 2\n\n  sorted by END: (1,2) (2,3) (1,3) (3,4)\n\n  last_end = -inf, kept = 0\n  (1,2): 1 >= -inf -> keep, last_end = 2, kept=1\n  (2,3): 2 >= 2    -> keep, last_end = 3, kept=2\n  (1,3): 1 >= 3? NO -> skip\n  (3,4): 3 >= 3    -> keep, last_end = 4, kept=3\n  -> 3, so the answer for this input is 3\n\n  WHY END-SORT IS THE GREEDY WIN:\n  exchange argument -- let E be the earliest-ending\n  interval. Any optimal solution's first interval O ends no\n  earlier than E, so replacing O with E leaves every later\n  interval still compatible. Hence some optimal solution\n  starts with E, and the problem reduces to the same problem\n  on the intervals starting after E's end.\n\n  invariant: after each accepted interval, last_end is the\n  end of the last KEPT one, and the kept set is optimal for\n  the prefix considered so far.",
+   "cpp_vs_py": "Greedy needs a proof, and interval scheduling has the cleanest one: if an optimal solution keeps some interval x first and x does not end first overall, swap x for the earliest-ending interval g (end[g] <= end[x]). Since g ends no later, every interval that was compatible with x is compatible with g \u2014 the swapped set is still optimal. Repeating the swap yields the greedy solution. The DP in Approach 2 needs no such argument but pays O(n^2); the binary-search-over-dp-ends variant recovers O(n log n) with the same DP table (upper_bound on ends). ===================================================================== /\n\n#include <vector> // std::vector \u2014 intervals + dp table #include <algorithm> // std::sort, std::max #include <chrono> // std::chrono \u2014 benchmark timing #include <iostream> // std::cout \u2014 printing results #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`sort` with a custom comparator on `.second`; a `vector<pair<int,int>>` of (end, start) makes the default lexicographic sort work.",
+    "Reversing the pairs so end is first is the trick that avoids writing a comparator."
+   ],
+   "py_alts": [
+    "`sorted(intervals, key=lambda iv: iv[1])` sorts by end explicitly.",
+    "`intervals.sort(key=lambda iv: iv[1])` mutates in place, avoiding a copy of 1e5 tuples."
+   ],
+   "trap": "Sorting by START instead of end. That greedy is not optimal: on [[1,100],[2,3],[3,4]] it takes [1,100] and keeps nothing else, giving 1 instead of the optimal 2.",
+   "invariant": "Let E be the earliest-ending remaining interval. For any optimal solution, replacing its first interval with E cannot reduce the count, because E ends no later than anything it replaces, so all subsequent intervals remain compatible. Therefore taking E is safe, and the invariant holds inductively after restricting to intervals starting at or after E's end.",
+   "questions": [
+    {
+     "q": "Why does earliest-end beat earliest-start?",
+     "a": "The exchange argument. Taking the earliest-ending interval leaves the most room for whatever comes after; taking the earliest-starting one may occupy a long span and block several short intervals that would otherwise fit."
+    },
+    {
+     "q": "What is the answer when the problem asks for removals?",
+     "a": "It is the complement: intervals.length minus the maximum number kept. LeetCode 435 asks for removals, and the common bug is returning the kept count directly."
+    },
+    {
+     "q": "What if intervals touching at an endpoint overlap?",
+     "a": "The comparison becomes `>` rather than `>=`. With half-open intervals touching is fine, which is the standard convention and why `>=` is correct here."
+    }
+   ]
+  },
+  {
+   "key": "16_intervals/1851_minimum_interval_to_include_each_query",
+   "one_liner": "Offline: sort queries, sweep, min-heap keyed by length.",
+   "core_objective": "For each query k, return the smallest interval covering k.",
+   "bounds": "1 <= intervals.length, queries.length <= 1e4, and each query k equals intervals.length. The queries need not be sorted, which is why the offline reordering matters.",
+   "approaches": [
+    {
+     "name": "Offline: sort queries + sweep + min-heap (BEST)",
+     "aha": "Sort (query, index) pairs. Pointer p walks intervals by start; push (length, end) for every start <= q. Pop while top's end < q (lazy deletion). Top is the shortest interval covering q.",
+     "py": "intervals.sort()  # by start \u2014 arrival order for the sweep\npairs = sorted((q, i) for i, q in enumerate(queries))\nheap: List[tuple] = []\nans = [-1] * len(queries)\np = 0  # sweep pointer into intervals\nfor q, idx in pairs:\n    while p < len(intervals) and intervals[p][0] <= q:\n        s, e = intervals[p]",
+     "cpp": "sort(queries.begin(), queries.end());\nsort(intervals.begin(), intervals.end());\npriority_queue<pair<int,int>, vector<pair<int,int>>,\n               greater<pair<int,int>>> pq;   // (length, right)\nvector<int> ans(queries.size());\nint i = 0;\nfor (auto [k, idx] : queries) {\n    while (i < intervals.size() && intervals[i].first <= k)\n        pq.push({intervals[i].second - intervals[i].first,\n                 intervals[i].second});\n    while (!pq.empty() && pq.top().second < k) pq.pop();\n    ans[idx] = pq.empty() ? -1 : pq.top().first;\n}\nreturn ans;",
+     "time": "O((n + q) log n)",
+     "space": "O(n + q)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Brute force, length-sorted (contrast)",
+     "aha": "Sort intervals by length ascending; the first interval containing a query is the shortest one for it.",
+     "py": "intervals.sort(key=lambda iv: iv[1] - iv[0])\nans = [-1] * len(queries)\nfor i, q in enumerate(queries):\n    for s, e in intervals:\n        if s <= q <= e:\n            ans[i] = e - s + 1  # shortest interval covering q\n            break\nreturn ans",
+     "cpp": "for (int k : queries) {\n    int best = INT_MAX;\n    for (auto& iv : intervals)         // every query pays O(n)\n        if (iv.first <= k && k <= iv.second)\n            best = min(best, iv.second - iv.first);\n    ans.push_back(best);\n}",
+     "time": "O(n * q) worst case",
+     "space": "O(n)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    }
+   ],
+   "diagram": " intervals=[[3,4],[2,3],[1,4]]  queries=[2,3,4] -> [3,2,1]\n\n  sort queries: (2,0) (3,1) (4,2)\n  sort intervals by start: (1,4) (2,3) (3,4)\n\n  heap of (length, right), i pointer\n\n  k=2: add all with start <= 2 -> (1,4) len 3\n        -> top = 3   answer[0] = 3\n  k=3: add start <= 3 -> (2,3) len 1, (3,4) len 1\n        heap {(3,4),(1,3),(1,4)}\n        pop while heap[0].right < k=3 -> (1,3) popped\n        heap {(3,4),(1,4)}\n        top length = 1   answer[1] = 1\n  k=4: pop while right < 4 -> (3,4) has right 4, keep\n        top = (3,4) len 1  answer[2] = 1\n\n  INVARIANT: the heap holds exactly the intervals whose\n  start <= k; after popping stale tops, every remaining entry\n  covers k. So heap[0] is the minimum length among them.",
+   "cpp_vs_py": "A heap cannot remove arbitrary elements cheaply. Instead of deleting, we mark stale: entries whose END passed the current query are still inside the heap, but a peek at the top finds them (they can only be stale at the ROOT \u2014 all others are irrelevant while a smaller/equal item sits above). Popping while root is stale is amortized O(1) per pop because every pushed entry is popped at most once. This \"keep dead entries, evict on peek\" pattern is the standard lazy-deletion idiom (also used by Dijkstra with duplicate distance entries). ===================================================================== /\n\n#include <vector> // std::vector \u2014 intervals + queries #include <queue> // std::priority_queue \u2014 min-heap of (len, end) #include <utility> // std::pair \u2014 heap entries + query pairs #include <algorithm> // std::sort, std::greater #include <functional> // std::greater<std::pair<int,int>> #include <chrono> // std::chrono \u2014 benchmark timing #include <iostream> // std::cout \u2014 printing results #include <sys/resource.h> // getrusage \u2014 peak RAM measurement",
+   "cpp_alts": [
+    "`priority_queue<pair<int,int>, vector<...>, greater<...>>` keyed on (length, right) gives the minimum top directly.",
+    "Sorting the queries pairs once and restoring results by the saved original index avoids any lookup."
+   ],
+   "py_alts": [
+    "`heapq` with `(length, right)` tuples gives the same minimum-top semantics.",
+    "Sorting `[(k, i) for i, k in enumerate(queries)]` keeps the original index attached, so results are restored in order."
+   ],
+   "trap": "Popping expired intervals only from the top. An interval with right < k is unusable, but since it may not be the minimum length it can sit inside the heap; that is harmless as long as the top is cleaned, because a shorter expired entry would have been popped and re-checked.",
+   "invariant": "After adding every interval with start <= k, the heap contains all candidates. After the while loop, no interval with right < k can remain at the top, so the top entry has start <= k <= right, meaning it covers k. Since the heap is a min-heap on length, the top is the shortest covering interval.",
+   "questions": [
+    {
+     "q": "Why sort the queries?",
+     "a": "Because as k increases the set of covering intervals only changes by additions -- intervals that stop covering k never start covering a larger k. So a single left-to-right sweep suffices for queries in increasing order. Sorting is what makes one pass possible instead of one pass per query."
+    },
+    {
+     "q": "Why is the heap keyed on length rather than start?",
+     "a": "Because the answer is the minimum length. Keying on start would give the earliest-covering interval, which is not what is asked. The length is computed when the interval is inserted and never changes."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n \\log n + m \\log m + n \\log n + m)$ -- sorting both lists plus at most one heap push and pop per interval. Space is $O(n + m)$."
+    }
+   ]
+  }
+ ]
+}

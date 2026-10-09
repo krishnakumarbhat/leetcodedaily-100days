@@ -1,0 +1,420 @@
+{
+ "problems": [
+  {
+   "key": "15_greedy/0045_jump_game_ii",
+   "one_liner": "BFS over reachable positions; count the layers.",
+   "core_objective": "Return the minimum number of jumps to reach the last index.",
+   "bounds": "1 <= n <= 1e4 and 0 <= nums[i] <= 1000, so a greedy single pass is safe. n = 1 returns 0 because you are already there.",
+   "approaches": [
+    {
+     "name": "BFS-layered greedy (BEST)",
+     "aha": "curEnd = current layer's right edge; far = furthest any cell in the layer can reach. When i reaches curEnd, one jump is consumed and curEnd = far.",
+     "py": "jumps = 0   # layers (jumps) consumed so far\ncur_end = 0 # right edge of the current jump layer\nfar = 0     # furthest cell the current layer can reach\nfor i in range(len(nums) - 1):\n    far = max(far, i + nums[i])  # widen next frontier from here\n    if i == cur_end:             # current layer fully swept\n        jumps += 1               # must take exactly one more jump\n        cur_end = far            # its frontier = next layer",
+     "cpp": "for (int i = 0; i < static_cast<int>(nums.size()) - 1; ++i) {\n    if (i + nums[i] > far) far = i + nums[i]; // widen next frontier\n    if (i == curEnd) {\n        ++jumps;      // current layer exhausted \u2192 must take a jump\n        curEnd = far; // its frontier becomes the next layer\n    }",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "every node is enqueued and dequeued once; hence the stated bounds."
+    },
+    {
+     "name": "Reverse greedy (leftmost reachable, O(n\u00b2))",
+     "aha": "Work backwards: repeatedly find the LEFTMOST index that can jump onto the current target. Landing leftmost leaves the most future options open \u2192 provably optimal, but re-scans per jump.",
+     "py": "jumps = 0\npos = len(nums) - 1  # target cell to reach from the left\nwhile pos > 0:\n    for i in range(pos):\n        if i + nums[i] >= pos:\n            pos = i\n            jumps += 1\n            break   # restart the search from the new target",
+     "cpp": "while (pos > 0) { for (int i = 0; i < pos; ++i) { if (i + nums[i] >= pos) {\n            pos = i;    // new target = the takeoff cell\n            ++jumps;\n            break;      // restart search from the new position\n        }\n    }",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "one pass; the greedy argument bounds the choice; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums=[2,2,1,1,1,4]  -> 2\n  index: 0 1 2 3 4 5\n  jump : 2 2 1 1 1 -\n\n  layers = the number of BFS levels:\n   level 0: {0}\n   level 1: {1, 2}          (from index 0, jump 2)\n   level 2: {3, 4, 5}        (max reach = 2+2 = 4)\n   level 3: beyond 5 -> stop\n\n  THE FOLD: track only three scalars per layer\n   jumps, current_end, farthest\n   loop i over 0..n-2:\n     farthest = max(farthest, i + nums[i])\n     if i == current_end:      # layer exhausted\n        jumps += 1\n        current_end = farthest  # start the next layer\n     if current_end >= n-1: break\n\n  invariant: current_end is the last index reachable with\n  exactly `jumps` jumps, and farthest accumulates the reach\n  of that layer's indices only.",
+   "cpp_vs_py": "Exchange argument: every cell c in layer k satisfies c \u2264 r, so c + nums[c] \u2264 maxReach. The greedy frontier [r, maxReach] CONTAINS the frontier any other choice would create \u2192 any path a rival follows, we can follow too \u2192 greedy needs no more jumps than any rival. Interval-frontier monotonicity (same as Jump Game I) is the mathematical backbone. ---------------------------------------------------------------------\n\nExchange argument: in layer k, every cell c in [l, r] is \u2264 r, and its reach c + nums[c] \u2264 maxReach (the greedy pick). So the greedy next-layer frontier [r, maxReach] CONTAINS the frontier any other choice would produce \u2192 any path the rival continues from, we can continue from too. Greedy layer count \u2264 rival layer count, and since both are valid (\u2265 optimal), greedy is optimal. This is the same interval-frontier monotonicity as Jump Game I, upgraded to COUNTING layers. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 benchmark output #include <vector> // std::vector \u2014 input array #include <string> // std::string \u2014 PASS/FAIL messages #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RSS measurement",
+   "cpp_alts": [
+    "Three ints replace the queue entirely -- this is BFS with the frontier collapsed to a boundary.",
+    "An explicit BFS with a queue and per-level size is the same algorithm in more code."
+   ],
+   "py_alts": [
+    "The three-scalar version is the fastest Python formulation; a deque BFS is clearer but allocates.",
+    "`for i, reach in enumerate(nums)` with an early break is idiomatic."
+   ],
+   "trap": "Checking reachability (`canJump`) and conflating it with the minimum-jump count. The greedy furthest-reach variant of Jump Game I proves reachability in one pass, but counting jumps needs the layer boundary.",
+   "invariant": "After each layer boundary crossing, `jumps` is the minimum number of jumps needed to reach `current_end`. Farthest is computed only from indices up to current_end, so it measures exactly the reach of the current layer -- never of a later one. Hence incrementing jumps at a boundary never overestimates.",
+   "questions": [
+    {
+     "q": "Why is this BFS?",
+     "a": "Each jump is an edge of cost 1, so the minimum number of jumps is the shortest path length in an unweighted graph. BFS explores in layers of equal jump count, and the layer boundary is exactly where the answer increments."
+    },
+    {
+     "q": "What is the common greedy variant and why does it fail here?",
+     "a": "Jump Game I's greedy -- track the farthest reachable and return true at the end -- proves reachability but gives no count. Trying to count by incrementing whenever the index equals current_end does work, but only because the boundary is a layer; a naive \"jump when farthest increases\" overcounts."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time, one pass, O(1) space. At n = 1e4 this is trivial; the challenge is purely the correctness argument, not the performance."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/0053_maximum_subarray",
+   "one_liner": "Kadane: keep the best sum ending here and the best overall.",
+   "core_objective": "Return the largest sum obtainable from a contiguous non-empty subarray.",
+   "bounds": "1 <= nums.length <= 1e5 with -1e4 <= nums[i] <= 1e4, so sums can reach 1e9 and fit in int, but Python needs no care. An all-negative array must return the largest single element.",
+   "approaches": [
+    {
+     "name": "Kadane's algorithm (BEST)",
+     "aha": "Invariant: `ending` = best sum ending exactly at current index; `best` = champion over all end positions. ending = max(nums[i], ending + nums[i])",
+     "py": "ending = nums[0]\nbest = nums[0]\nfor i in range(1, len(nums)):\n    ending = max(nums[i], ending + nums[i])  # extend-or-restart\n    best = max(best, ending)                 # track global champion\nreturn best",
+     "cpp": "for (int i = 1; i < static_cast<int>(nums.size()); ++i) {\n    ending = nums[i] > ending + nums[i] ? nums[i] : ending + nums[i];\n    if (ending > best) best = ending;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "one pass, two running scalars; hence the stated bounds."
+    },
+    {
+     "name": "Prefix sums + minimum prefix",
+     "aha": "sum(l..r) = prefix[r] - prefix[l-1]; maximize by pairing each prefix with the SMALLEST prefix before it.",
+     "py": "pref = 0       # running prefix sum\nmin_pref = 0   # smallest prefix strictly before current index\nbest = nums[0]\nfor x in nums:\n    pref += x                    # grow the prefix by one element\n    best = max(best, pref - min_pref)  # max vertical drop ending here\n    min_pref = min(min_pref, pref)     # tighten the floor for later\nreturn best",
+     "cpp": "for (int x : nums) {\n    pref += x;                              // grow the prefix\n    int drop = pref - minPref;              // best subarray ending here\n    if (drop > best) best = drop;           // new champion\n    if (pref < minPref) minPref = pref;     // tighter min for later",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "two linear passes; the suffix is carried in a scalar; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums=[-2,1,-3,4,-1,2,1,-5,4]  -> 6  (4,-1,2,1)\n\n  cur = best = nums[0] = -2\n  x= 1: cur = max(1, -2+1=-1) = 1   best = 1\n  x=-3: cur = max(-3, 1-3=-2) = -2 best = 1\n  x= 4: cur = max(4, -2+4=2) = 4    best = 4\n  x=-1: cur = max(-1, 4-1=3) = 3    best = 4\n  x= 2: cur = max(2, 3+2=5) = 5    best = 5\n  x= 1: cur = max(1, 5+1=6) = 6    best = 6\n  x=-5: cur = max(-5, 6-5=1) = 1   best = 6\n  x= 4: cur = max(4, 1+4=5) = 5    best = 6\n\n  the max(cur, x) is the whole trick: a negative running sum\n  is worse than starting fresh, so we discard it. That is why\n  all-negative input yields the single largest element rather\n  than a sum of them.\n\n  invariant: cur is the maximum sum of a subarray ENDING at\n  the current index, so it can only come from x alone or from\n  cur + x. best is the max over all cur seen so far.",
+   "cpp_vs_py": "Safe here: optimal substructure. The decision \"extend or restart\" at i depends only on the best suffix at i-1 \u2014 the future can never invalidate it (exchange argument: any optimal subarray is built by repeatedly taking the max-extension). Greedy FAILS on e.g. 0/1 knapsack precisely because a local pick can block a better global combination. ---------------------------------------------------------------------\n\nGreedy is safe here because the subproblem has the OPTIMAL SUBSTRUCTURE property: the best subarray ending at i is built solely from the best subarray ending at i-1 plus the local decision \"extend or restart\". There is no hidden global coupling: future elements cannot invalidate the best-extension candidate from the past. Contrast: problems where greedy FAILS (e.g. 0/1 knapsack, coin change) lack this \u2014 a local choice can block a better global combination. Kadane's invariant (best suffix at i-1 is all that matters for i) is what makes the exchange argument airtight. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 benchmark output #include <vector> // std::vector \u2014 input array / answers #include <string> // std::string \u2014 PASS/FAIL messages #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RSS measurement",
+   "cpp_alts": [
+    "Three scalars; `std::max` compiles to cmov so there is no branch.",
+    "`int` suffices: 1e5 * 1e4 = 1e9 is just inside 2^31-1, so `long long` is defensive rather than necessary."
+   ],
+   "py_alts": [
+    "`cur = max(x, cur + x)` is one C-level call; a conditional expression is slightly faster.",
+    "Iterating the list directly avoids range/len indexing overhead."
+   ],
+   "trap": "Initialising `cur` and `best` to 0. On an all-negative array that returns 0, but the problem requires a NON-EMPTY subarray, so the answer is the largest single element. Both must start at `nums[0]`.",
+   "invariant": "Any subarray ending at index i either is the single element nums[i] or extends a subarray ending at i-1. Therefore the maximum such sum is max(nums[i], cur + nums[i]), and maintaining cur plus a running max of all cur values is exactly the optimum.",
+   "questions": [
+    {
+     "q": "Why the max(cur, x) form rather than just cur += x?",
+     "a": "Because if the running sum is negative, extending it makes any future subarray worse than starting fresh at the current element. Discarding the negative prefix is exactly what makes all-negative inputs return their maximum element."
+    },
+    {
+     "q": "How does the prefix-sum version differ?",
+     "a": "The prefix-sum method computes the running minimum of the prefix sums, and the best subarray is max(prefix[j] - min(prefix[i] for i < j)). Same result, but it needs the running minimum tracked explicitly rather than being implicit in the recurrence."
+    },
+    {
+     "q": "What about maximum product, problem 152?",
+     "a": "Same shape but you must track the minimum product as well, because a negative factor flips the ordering. Kadane for sums needs one running value; Kadane for products needs two."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/0055_jump_game",
+   "one_liner": "Track the farthest reachable; a reachable end means yes.",
+   "core_objective": "Decide whether the last index is reachable taking 1 to nums[i] jumps forward.",
+   "bounds": "1 <= n <= 1e5 with 0 <= nums[i] <= 1e4, so a single pass suffices. n = 1 is trivially reachable with 0 jumps.",
+   "approaches": [
+    {
+     "name": "Greedy furthest-reach (BEST)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(1) ---------------------------------------------------------------------",
+     "py": "reach = 0  # furthest index reachable so far (frontier)\nfor i in range(len(nums)):\n    if i > reach:\n        return False                 # index i is unreachable \u2192 stuck\n    reach = max(reach, i + nums[i])  # grow frontier from here\n    if reach >= len(nums) - 1:\n        return True                  # last index covered",
+     "cpp": "for (int i = 0; i < static_cast<int>(nums.size()); ++i) {\n    if (i > reach) return false;       // cannot even land on i\n    if (i + nums[i] > reach) {\n        reach = i + nums[i];           // frontier grows rightwards\n    }\n    if (reach >= static_cast<int>(nums.size()) - 1) {\n        return true;                   // last index covered \u2014 done\n    }",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "one pass; the greedy argument bounds the choice; hence the stated bounds."
+    },
+    {
+     "name": "DP frontier O(n\u00b2) (why greedy is better)",
+     "aha": "reachable[i] = True and stamp every cell i+1 .. i+nums[i]. The reachable set is always ONE interval [0, reach] \u2014 the DP table is n redundant booleans where a single int suffices.",
+     "py": "reachable = [False] * len(nums)\nreachable[0] = True  # start cell is trivially reachable\nfor i in range(len(nums)):\n    if not reachable[i]:\n        continue                     # dead cell: nothing propagates\n    for j in range(i + 1, min(i + nums[i], len(nums) - 1) + 1):\n        reachable[j] = True\nreturn reachable[-1]",
+     "cpp": "for (int i = 0; i < static_cast<int>(nums.size()); ++i) {\n    if (!reachable[i]) continue;       // dead cell \u2014 no propagation\n    int limit = i + nums[i];\n    if (limit >= static_cast<int>(nums.size())) limit = nums.size() - 1;\n    for (int j = i + 1; j <= limit; ++j) { reachable[j] = true;\n    }",
+     "time": "O(n\u00b2)",
+     "space": "O(n)",
+     "why": "one pass; the greedy argument bounds the choice; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums=[2,3,1,1,4]  -> true\n  reach = 0\n  i=0: reach = max(0, 0+2) = 2\n  i=1: reach = max(2, 1+3) = 4   -> reach >= n-1=4 TRUE\n\n  invariant: after processing index i, `reach` is the\n  furthest index reachable using jumps that START at indices\n  0..i. Since every position in 0..reach is itself reachable,\n  the reachable set is always a PREFIX.\n\n  nums=[3,2,1,0,4] -> false\n  reach = 3 after i=0; i=1 reach = max(3,1+2)=3;\n  i=2 reach = max(3,2+1)=3; i=3 nums[3]=0 -> reach=3\n  i=3 < n-1=4 and nums[3]=0 -> can never advance -> false\n\n  the early-exit: once reach >= n-1 you can stop, because\n  every index up to reach is already reachable.",
+   "cpp_vs_py": "Induction: greedy position after k moves \u2265 optimal position after k moves. Since our current index is \u2265 theirs, our jump options cover all of theirs, so we can imitate any winning path. This monotone-domination property is the fingerprint of a correct greedy: local \"go furthest\" is never worse than any rival. ---------------------------------------------------------------------\n\nExchange argument: let O be an optimal (winning) path reaching the end, and let G be our greedy path. Claim: after k moves, the greedy position is \u2265 the optimal position for EVERY k. Induction: greedy position g_k \u2265 o_k, and our jump can reach g_k + nums[g_k] \u2265 o_k + nums[o_k] \u2265 o_{k+1}. So greedily we are always at least as far as any rival \u2014 hence we can always imitate and beat O. This monotone-domination structure is the signature of a safe greedy. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 benchmark output #include <vector> // std::vector \u2014 input array #include <string> // std::string \u2014 PASS/FAIL messages #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RSS measurement",
+   "cpp_alts": [
+    "One `int` and a loop; the compiler emits cmov for the max.",
+    "Early `return true` when reach >= n-1 avoids the tail of the loop."
+   ],
+   "py_alts": [
+    "`if i > reach: return False` inside the loop is the standard dead-end check.",
+    "A `break` once reach >= n-1 is faster than scanning the rest."
+   ],
+   "trap": "Updating reach with `i + nums[i]` for an index i that is itself unreachable. Once `i > reach` the position cannot be landed on, so its outgoing jumps must not extend the frontier -- the loop must return false at that point.",
+   "invariant": "The reachable set is always the prefix [0, reach]. Initially {0}. Adding i + nums[i] for a reachable i extends that prefix because every index between the old reach and the new one is covered by some jump from within the reachable region. So the prefix form is preserved and the answer is reach >= n-1.",
+   "questions": [
+    {
+     "q": "Why is the reachable set always a prefix?",
+     "a": "Because jumps only move forward and you can always choose to jump less than the maximum. So from any reachable index you can land on every intermediate index too, which makes the reachable set an initial segment rather than an arbitrary subset."
+    },
+    {
+     "q": "What if nums[i] could be 0 in the middle?",
+     "a": "A zero means you must land exactly on i, contributing nothing. That can create a dead end only if i is the current frontier, which the `i > reach` check catches. It cannot create a gap in the prefix."
+    },
+    {
+     "q": "How does this become the minimum-jump problem?",
+     "a": "Track the layer boundaries instead of just the reach. Increment a jump counter each time the current index equals the current layer's end, which counts the BFS depth of the reachable region -- that is problem 45."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/0134_gas_station",
+   "one_liner": "If the total is non-negative, a valid start exists; find the minimum prefix.",
+   "core_objective": "Return the starting gas-station index from which the circuit can be completed, or -1 if none exists.",
+   "bounds": "1 <= n <= 1e4 with 0 <= gas[i], cost[i] <= 1e4, so totals reach 1e8 and fit in int. n = 1 always works.",
+   "approaches": [
+    {
+     "name": "Total sum + single-pass candidate (BEST)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(1) ---------------------------------------------------------------------",
+     "py": "total = 0   # \u03a3 net \u2014 is the WHOLE circle feasible?\ntank = 0    # running fuel from the current candidate start\nstart = 0   # current best candidate\nfor i in range(len(gas)):\n    net = gas[i] - cost[i]\n    total += net     # global balance\n    tank += net      # local balance since `start`\n    if tank < 0:",
+     "cpp": "for (int i = 0; i < static_cast<int>(gas.size()); ++i) { int net = gas[i] - cost[i];\n    total += net;   // accumulate the global balance\n    tank += net;    // accumulate the local balance\n    if (tank < 0) { start = i + 1;\n        tank = 0;   // new candidate begins with an empty tank\n    }",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    },
+    {
+     "name": "Brute force O(n\u00b2)",
+     "aha": "Try every start and simulate n stops; the quadratic retry wastes the prefix-dead insight.",
+     "py": "n = len(gas)\nfor start in range(n):\n    tank = 0\n    ok = True\n    for step in range(n):\n        i = (start + step) % n   # wrap around the circle\n        tank += gas[i] - cost[i]\n        if tank < 0:             # died mid-trip \u2192 try next start",
+     "cpp": "for (int start = 0; start < n; ++start) { int tank = 0;\n    bool ok = true;\n    for (int step = 0; step < n; ++step) {\n        int i = (start + step) % n; // wrap around modulo n\n        tank += gas[i] - cost[i];\n        if (tank < 0) { ok = false; break; } // died mid-trip\n    }\n    if (ok) return start; // this start survived all n stops",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    }
+   ],
+   "diagram": " gas=[1,2,3,4,5], cost=[3,4,5,1,2]  -> start 3\n  diff = [-2,-2,-2,3,3], total = 0\n\n  start=0, tank=0\n  i=0: tank += -2 = -2  < 0 -> tank=0, start=1\n  i=1: tank += -2 = -2  < 0 -> tank=0, start=2\n  i=2: tank += -2 = -2  < 0 -> tank=0, start=3\n  i=3: tank +=  3 =  3  >= 0\n  i=4: tank +=  3 =  6  >= 0\n  total = 0 >= 0 so start 3 is valid.\n\n  WHY THE SKIP IS CORRECT: if the tank goes negative between\n  s and i, then no index in (s, i] can be a valid start --\n  the prefix sum from s reaches its minimum at i, so starting\n  anywhere inside would be strictly worse. Those indices are\n  eliminated in one step.\n\n  necessity: total < 0 is impossible (the circuit consumes\n  more fuel than exists). total >= 0 is sufficient by the\n  skip argument.",
+   "cpp_vs_py": "Let P < 0 be the net-sum of [start, j]. For any s in that window the tank at j when starting at s is (P \u2212 prefix[start..s)) \u2264 P < 0 \u2014 every inner candidate dies at or before j. The remaining tail [j+1..] is identical for all candidates, so the whole window is dead \u2192 resetting to j+1 loses nothing. The total \u2265 0 guarantee ensures a live window always survives to the end. ---------------------------------------------------------------------\n\nLet P = prefix sum of net over [start, j], and P < 0 at j. For ANY s in [start, j), the tank at j when starting at s equals (prefix sum of [s, j)) = P - (prefix of [start, s)). Since the remaining walk [j+1 ...] adds the same tail to every candidate, the candidate whose carried-in value is LARGEST does best \u2014 that is s = start itself. If even start dies (P < 0), every s in the window dies too. Greedy reset = throwing away a provably-dead window; the total \u2265 0 check guarantees a live window remains. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 benchmark output #include <vector> // std::vector \u2014 gas / cost arrays #include <string> // std::string \u2014 PASS/FAIL messages #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RSS measurement",
+   "cpp_alts": [
+    "A single pass with two ints; `long long` is defensive since totals reach 1e8 but int suffices.",
+    "Early `return -1` when the running total goes negative avoids the rest of the loop."
+   ],
+   "py_alts": [
+    "`if tank < 0: start = i + 1; tank = 0` is the whole reset logic.",
+    "A running `total` check plus the start scan can be merged into one pass, which it already is."
+   ],
+   "trap": "Forgetting the global total check. A negative total means no start works regardless of the candidate the loop settles on, so returning that candidate is wrong.",
+   "invariant": "`start` is always an index from which the circuit has been successfully completed from `start` to the current index i (the tank never went negative in that segment). When the tank drops below zero at i, all indices in [start, i] are proven invalid, so `start = i + 1` preserves the invariant. At the end, total >= 0 guarantees the wrap-around segment from start back around also succeeds.",
+   "questions": [
+    {
+     "q": "Why is total >= 0 sufficient?",
+     "a": "The skip argument shows the loop eliminates only genuinely invalid starts. If total >= 0, then after removing the valid segment [start, n-1], the wrap-around segment [0, start-1] must also be non-negative in cumulative sum -- otherwise total would be negative. So no further elimination is needed."
+    },
+    {
+     "q": "Why can all indices in (start, i] be eliminated at once?",
+     "a": "The cumulative sum from start to i is negative, so i is where the running minimum lies. Starting at any k strictly inside makes the tank at i equal to that negative sum plus a positive-or-zero contribution, which is still negative. So none of them can work."
+    },
+    {
+     "q": "What if the circuit were not circular?",
+     "a": "The problem becomes trivial: you only need the prefix sums to be non-negative, so the answer is the first index where the running sum never dips below zero again. The circular wrap-around is exactly what makes gas station non-obvious."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/0678_valid_parenthesis_string",
+   "one_liner": "Two passes: balance can never go negative, then reversed.",
+   "core_objective": "Decide whether a string of '(' and ')' is valid by inserting at most one pair anywhere.",
+   "bounds": "0 <= s.length <= 5e3, and an empty string is valid. The count of opens minus closings must be in {-1, 0, 1}.",
+   "approaches": [
+    {
+     "name": "Two-pass counter sweep (BEST, intuitive)",
+     "aha": "Left\u2192right with '*' as '(' : ')' must never be unmatched. Right\u2192left with '*' as ')' : '(' must never be unmatched.",
+     "py": "lo = 0  # minimum possible open-count (stars as ')'/empty)\nhi = 0  # maximum possible open-count (stars as '(')\nfor c in s:\n    if c == '(':\n        lo, hi = lo + 1, hi + 1   # both bounds grow\n    elif c == ')':\n        lo, hi = lo - 1, hi - 1   # both bounds shrink\n    else:",
+     "cpp": "for (char c : s) {\n    if (c == '(' || c == '*') ++balance; // star can open\n    else --balance;                       // ')' consumes one open\n    if (balance < 0) return false;        // unmatched ')' \u2014 dead",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "one O(1) counter update per element; hence the stated bounds."
+    },
+    {
+     "name": "Min/max open-count interval (single pass)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(1) The two passes of Approach 1 are exactly the two extremes of this one interval walked separately. --------------------------------------------------------------------- DEEP DIVE \u2014 why 2 numbers replace 3^m assignments Naive: enumerate 3^m star assignments. Greedy insight: balances form a contiguous interval because +1/\u22121/0 moves of a random walk fill every integer between min and max \u2014 no holes. Tracking [lo, hi] is an EXACT compression of the state set. Exchange argument: if any assignment works, the extreme assignments (stars-as-open / stars-as-close) survive every prefix, so the interval never dies. --------------------------------------------------------------------- REAL LIFE \u2022 Regex / shell glob linting: validating patterns with wildcards before compiling them. \u2022 Compiler syntax analysis: bracket matching with optional tokens in grammar productions. \u2022 Text editors: live-validating unbalanced snippets while typing. =====================================================================",
+     "py": "balance = 0\nfor c in s:\n    balance += 1 if c in \"(*\" else -1  # star can open\n    if balance < 0:\n        return False                   # unmatched ')' \u2192 dead\nbalance = 0\nfor c in reversed(s):\n    balance += 1 if c in \")*\" else -1  # star can close",
+     "cpp": "for (char c : s) {\n    if (c == '(') { ++lo; ++hi; }        // both bounds grow\n    else if (c == ')') { --lo; --hi; }   // both bounds shrink\n    else { --lo; ++hi; }                 // '*' widens the interval\n    if (hi < 0) return false;            // even the max died\n    if (lo < 0) lo = 0;                  // clamp: surplus closed",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    }
+   ],
+   "diagram": " s = \"))((\"  -> valid (insert one pair: ( ))(( )) no)\n  insert at index 2:  \"))\" + \"(\" + \"((\" -> ()(() ...\n  simpler: \"))<\" becomes \")>)((\" -> insert '(' at 0 and ')' at 4:\n          \"(\" + \"))((\" + \")\" = \"())(()\"  hmm\n  correct: needed opens = 2, needed closes = 2 -> one pair\n          insufficient! but the answer is TRUE.\n\n  correct count for \"))((\": opens=2, closes=2. Inserting ONE\n  pair gives 3 of one and 2 of the other -> counts are\n  (2,3) or (3,2), never equal. So one insert canNOT fix the\n  counts... yet the answer is true. Rechecking: insert '(' at\n  position 0 -> \"(())((\" ; then ')' still needed.\n\n  the actual valid form:  \"())()\" needs 1 pair inserted into\n  \"))((\"? ( ) ) ( ( -> insert '(' before first ')' and ')'\n  after last '('  =  \"(())(()\"  -> that has 4 opens 2 closes.\n\n  Resolution: for \"))((\" the answer IS true -- insert one\n  '(' at index 0 giving \"(()((\" is not it either.\n  Correct: needed = |opens - closes|. Here |2-2| = 0, so\n  zero pairs are needed by count; the only issue is ordering.\n  First pass (forward): balance never negative?\n   ) -> balance -1  NEGATIVE -> needs one '(' inserted at 0\n   ) -> balance -2  still negative\n   ( -> -1\n   ( -> 0\n  Second pass (reverse) counts ')' as open:\n   ( -> -1 ... also negative -> needs one ')' inserted\n  max needed = max(1, 1) = 1 <= 1 -> TRUE. The single pair\n  is '(' at the front and ')' at the back -- ONE pair supplies\n  BOTH because they are the two characters of a pair.",
+   "cpp_vs_py": "Naive: enumerate 3^m star assignments. Greedy insight: balances form a contiguous interval because +1/\u22121/0 moves of a random walk fill every integer between min and max \u2014 no holes. Tracking [lo, hi] is an EXACT compression of the state set. Exchange argument: if any assignment works, the extreme assignments (stars-as-open / stars-as-close) survive every prefix, so the interval never dies. ---------------------------------------------------------------------\n\nNaive: 3^m assignments (m = #stars). Greedy insight: balances are a contiguous interval because the +1/\u22121/0 moves of a random walk fill every integer between min and max \u2014 no \"holes\" can appear. Hence tracking 2 numbers replaces tracking 3^m states: the compressed representation is exact. This is the same exchange argument that makes the two-pass greedy exact: if SOME assignment works, the extreme assignments (all-as-open / all-as-close greedies) survive every prefix. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 benchmark output #include <vector> // std::vector \u2014 test batch container #include <string> // std::string \u2014 the input sequence #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RSS measurement",
+   "cpp_alts": [
+    "Two `int` counters, two passes -- no allocation.",
+    "`std::count` for the totals plus one pass is an alternative formulation."
+   ],
+   "py_alts": [
+    "`s.count('(')` and a single pass suffice for some variants; the two-pass version is unambiguous.",
+    "A one-liner: `needed = max(-min_prefix, max_suffix_deficit)` over the two directions."
+   ],
+   "trap": "Checking only that the counts are balanced, or only one direction. \"))((\" has equal counts but is invalid, and \")(\" needs a '(' at the front even though the counts differ by zero... more precisely \"((\" needs a ')' at the end while the forward scan looks fine.",
+   "invariant": "The forward scan's `low` is the most negative prefix balance; inserting exactly `-low` opens at the front fixes every prefix. The backward scan's `low` similarly measures the opens that need closes inserted. Both must be at most 1, and one inserted pair contributes one open and one close, so the requirement is max(forward deficit, backward deficit) <= 1.",
+   "questions": [
+    {
+     "q": "Why are two passes needed?",
+     "a": "A string can be broken in two independent ways: too many closers early (fixed by adding an open at the front) and too many opens late (fixed by adding a close at the end). One direction of scanning catches only one of them, and a single inserted pair supplies one of each character."
+    },
+    {
+     "q": "How do you compute the required inserts in one expression?",
+     "a": "Forward: let L be the minimum prefix balance of #open minus #close. You need -L opens at the front if L < 0. Backward: let R be the minimum balance of #close minus #open over reversed prefixes. You need -R closes at the end if R < 0. The answer is true iff max(-L, -R, 0) <= 1."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time and $O(1)$ space -- two counters over two passes, no allocation in either language. That is a rare problem where the optimal solution uses no extra memory at all."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/0763_partition_labels",
+   "one_liner": "Record each char's last index, then sweep.",
+   "core_objective": "Return the number of contiguous substrings such that each contains no repeated characters.",
+   "bounds": "0 <= s.length <= 1e4 over lowercase letters, so 26 is the alphabet size and the last-index array is tiny. An empty string has 0 partitions.",
+   "approaches": [
+    {
+     "name": "Last-index map + sweep (BEST)",
+     "aha": "Time Complexity : O(n) Space Complexity : O(1) (26 letters \u2192 constant-size last table.) ---------------------------------------------------------------------",
+     "py": "last = [-1] * 26\nfor i, ch in enumerate(s):\n    last[ord(ch) - 97] = i   # overwrite \u2192 ends at final spot\nparts: List[int] = []\nseg_start = 0  # left edge of the current part\nseg_end = 0    # furthest extent the current part must reach\nfor i, ch in enumerate(s):\n    seg_end = max(seg_end, last[ord(ch) - 97])  # must cover char's end",
+     "cpp": "        for (int i = 0; i < static_cast<int>(s.size()); ++i) { last[s[i] - 'a'] = i;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "each interval enters and leaves the frontier once; hence the stated bounds."
+    },
+    {
+     "name": "Merge per-character intervals",
+     "aha": "Every character spans [first[c], last[c]]; sort the \u226426 intervals and merge overlapping ones (like \"Merge Intervals\"); emit merged lengths. Time O(n + k log k), k \u2264 26 \u2192 O(n) effective. --------------------------------------------------------------------- DEEP DIVE \u2014 why the earliest safe cut is provably maximal Exchange argument: let O be any valid partition with first cut o. If o < e (= our first cut) then some char in [0, o] still occurs after o (else e \u2264 o) \u2192 O's first part leaks \u2192 invalid. Every valid first cut is \u2265 e, so cutting at e loses nothing; induction on the remainder makes greedy optimal for all cuts. --------------------------------------------------------------------- REAL LIFE \u2022 Playlist splitting: group songs so an artist appears in one block (per-artist last index). \u2022 Log sharding: partition a log stream by key groups. \u2022 Database shard planning: split hot keys so each key lives in one shard. =====================================================================",
+     "py": "first = [-1] * 26  # earliest occurrence per character\nlast = [-1] * 26   # final occurrence per character\nfor i, ch in enumerate(s):\n    c = ord(ch) - 97\n    if first[c] == -1:\n        first[c] = i\n    last[c] = i\nintervals = sorted((first[c], last[c])",
+     "cpp": "for (int i = 0; i < static_cast<int>(s.size()); ++i) { int c = s[i] - 'a';\n    if (first[c] == -1) first[c] = i; // first sighting\n    last[c] = i;                      // keep overwriting \u2192 final",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " s = \"ababcbacadefegdehijhklij\"  -> 3\n\n  last = {a:7, b:5, c:3, d:9, e:11, f:8, g:13, h:12,\n         i:16, j:15, k:14, l:...}\n\n  sweep from left:\n   start=0, end=0\n   i=0 'a' -> end = max(0, 7) = 7\n   i=1 'b' -> end = max(7, 5) = 7\n   i=2 'a' -> 7\n   i=3 'b' -> 7\n   i=4 'c' -> max(7,3)=7\n   i=5 'a' -> 7\n   i=6 'c' -> 7\n   i=7 'd' -> max(7,9) = 9   end exceeded i=7 -> CLOSE\n        partition 1 = s[0..7], length 8\n   restart at 8: 'e' -> max(8,11) = 11\n   i=8 'f' -> 11, i=9 'g' -> 13\n   i=10 'e' -> 13, i=11 'd' -> 13, i=12 'f' -> 13,\n   i=13 'g' -> 13   -> CLOSE at 13, length 6\n   restart at 14: 'h' i k l j i h -> close at 19\n   total partitions = 3",
+   "cpp_vs_py": "Exchange argument: let O be any valid partition with first cut o. If o < e (= our first cut) then some char in [0, o] still occurs after o (else e \u2264 o) \u2192 O's first part leaks \u2192 invalid. Every valid first cut is \u2265 e, so cutting at e loses nothing; induction on the remainder makes greedy optimal for all cuts. ---------------------------------------------------------------------\n\nGreedy exchange: let G cut at index e = segEnd (earliest safe), let O be any optimal partition with first cut at o. Claim o \u2265 e: if o < e then some character in [0, o] has a later occurrence after o (since e is the earliest point where ALL characters in [0, e] have appeared) \u2192 O's first part leaks \u2192 O invalid. Hence every valid first cut is \u2265 e, so cutting at e never loses parts. By induction on the remainder, greedy emits the maximal count. ===================================================================== /\n\n#include <iostream> // std::cout \u2014 benchmark output #include <vector> // std::vector \u2014 result lengths #include <string> // std::string \u2014 the input #include <chrono> // std::chrono \u2014 high-resolution timing #include <sys/resource.h> // getrusage \u2014 peak RSS measurement",
+   "cpp_alts": [
+    "`array<int,26> last` of 104 bytes, always in L1.",
+    "`vector<int> last(26, -1)` plus a pass over the string; two linear passes, no hashing."
+   ],
+   "py_alts": [
+    "A list of 26 ints indexed by `ord(c) - 97` avoids dict hashing entirely.",
+    "`s.count(c, i)` is an alternative but is $O(n^2)$."
+   ],
+   "trap": "Closing the partition as soon as `i == end` using a stale end, or resetting `end` without restarting at i+1. The partition boundary must be exactly the max last-index seen in the current segment, and the new segment starts at i+1.",
+   "invariant": "`end` is the maximum last-occurrence index among all characters seen so far in the current segment. While i <= end, some character in the segment reappears after i, so the segment cannot be closed yet. When i reaches end, every character in the segment occurs only within it, making it a valid partition and the maximum possible one.",
+   "questions": [
+    {
+     "q": "Why is each produced partition maximal?",
+     "a": "Because the segment cannot be cut anywhere inside it -- some character straddles each internal boundary. So there is exactly one valid partition of each length starting at 0, and the answer counts them, not all possible partitions."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n)$ time -- two passes, one to build last-occurrence indices and one to sweep -- and $O(1)$ space for the fixed 26-entry table. The alphabet size is what makes it constant rather than O(n) space."
+    },
+    {
+     "q": "How would this change with a large alphabet?",
+     "a": "The table becomes O(sigma) space instead of O(1). A hash map would still give O(n) time, but the array is faster and the choice between them is exactly the constant-factor-versus-space trade-off."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/0846_hand_of_straights",
+   "one_liner": "Take the smallest card; its run must extend to a larger card.",
+   "core_objective": "Decide whether the hand can be partitioned into groups of k consecutive cards.",
+   "bounds": "1 <= hand.length <= 1e4 with 1 <= card[i] <= 1e4, and hand.length must be divisible by k or the answer is immediately false. Duplicate values are common and must be handled.",
+   "approaches": [
+    {
+     "name": "\u00b7 Sorted counter + greedy runs (best)",
+     "aha": "Count cards; repeatedly take the smallest value v and consume v..v+groupSize-1; any gap fails.",
+     "py": "if len(hand) % groupSize:\ncnt = Counter(hand)\nfor first in sorted(cnt):\n    if cnt[first] == 0:\n        continue\n    need = cnt[first]\n    for v in range(first, first + groupSize):\n        if cnt[v] < need:",
+     "cpp": "while (!cnt.empty()) {\n    int first = cnt.begin()->first;             // smallest remaining\n    for (int k = 0; k < groupSize; ++k) { int v = first + k;\n        auto it = cnt.find(v);\n        if (it == cnt.end()) return false;      // run can't close\n        if (--it->second == 0) cnt.erase(it);\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "one O(1) counter update per element; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 Sort + pointer scan",
+     "aha": "Sort, walk runs skipping already-used cards. --------------------------------------------------------------------- DEEP DIVE \u00b7 Forced decisions = provably optimal Smallest remaining x can't be mid-run (x-1 consumed or absent), so it must open a run, and that run is fully determined. No branch to choose, no suboptimal alternative \u2014 greedy is optimal by construction. Counter dict keys are sorted on demand, making \"smallest remaining\" O(log n) amortized. --------------------------------------------------------------------- TIME COMPLEXITY : O(n log n) MEMORY COMPLEXITY: O(n) =====================================================================",
+     "py": "if len(hand) % groupSize:\nhand.sort()\nused = [False] * len(hand)\nfor i in range(len(hand)):\n    if used[i]:\n        continue\n    prev, placed = hand[i], 1\n    used[i] = True",
+     "cpp": "for (size_t i = 0; i < hand.size(); ++i) { if (used[i]) continue;\n    int prev = hand[i], placed = 1;\n    used[i] = true;\n    for (size_t j = i + 1; j < hand.size() && placed < groupSize; ++j)\n        if (!used[j] && hand[j] == prev + 1) {  // next consecutive\n            used[j] = true;\n            prev = hand[j];\n            ++placed;",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " hand=[1,2,3,3,4,4,5], k=3  -> true\n  sorted: 1 2 3 3 4 4 5\n\n  counts: 1:1  2:1  3:2  4:2  5:1\n  x=1: need a run 1,2,3 -> take 1 each\n       counts: 1:0 2:0 3:1 4:2 5:1\n  x=3 (smallest remaining): run 3,4,5 -> take 1 each\n       counts: 3:0 4:1 5:0\n  x=4: run 4,5,6 -> count[6] == 0 -> FALSE\n\n  so [1,2,3,3,4,4,5] k=3 is FALSE.\n  true example: hand=[1,2,3,3,4,4,5,6] k=3\n   x=1: 1,2,3\n   x=3: 3,4,5\n   x=4: 4,5,6\n   -> TRUE\n\n  invariant: x is the SMALLEST remaining card, so any group\n  containing it MUST start at x. That forces the run\n  x..x+k-1, and consuming those is never wrong -- there is\n  no alternative grouping for x.",
+   "cpp_vs_py": "Smallest remaining x can't be mid-run (x-1 consumed or absent), so it must open a run, and that run is fully determined. No branch to choose, no suboptimal alternative \u2014 greedy is optimal by construction. Counter dict keys are sorted on demand, making \"smallest remaining\" O(log n) amortized. --------------------------------------------------------------------- TIME COMPLEXITY : O(n log n)\n\n=====================================================================",
+   "cpp_alts": [
+    "A 1e4-entry count array is 40 KB, so a counting sort plus index walk avoids hashing.",
+    "`std::map<int,int>` with iterator advance handles the run extraction in one pass."
+   ],
+   "py_alts": [
+    "`Counter(hand)` plus iterating `sorted(counts)` gives the same forced-choice logic.",
+    "Skip zero-count keys quickly by breaking once the key exceeds max(card) - k + 1."
+   ],
+   "trap": "Taking any run rather than the one starting at the smallest card. That can consume a card needed by a later forced group and wrongly return false.",
+   "invariant": "When x is the smallest card with a positive count, every valid partition must place x at the start of some run, since no smaller card remains. Therefore the run x, x+1, ..., x+k-1 is mandatory, and decrementing one of each is the only possible choice. If any is missing the partition is impossible.",
+   "questions": [
+    {
+     "q": "Why must the run start at x?",
+     "a": "Because x is the smallest remaining value. A run containing x could not start before x, since that card is gone, and runs are consecutive -- so x is necessarily the first element of its run."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(n + \\sigma \\log \\sigma)$ time to count and sort the distinct values, then $O(\\sigma \\cdot k)$ for the run consumption, bounded by n overall. Space is $O(\\sigma)$ for the counter."
+    },
+    {
+     "q": "Why is the divisibility check useful?",
+     "a": "It is an O(1) rejection that catches a large class of impossible inputs before any work. Every group has exactly k cards, so hand.length mod k must be 0 for any partition to exist."
+    }
+   ]
+  },
+  {
+   "key": "15_greedy/1899_merge_triplets_to_form_target_triplet",
+   "one_liner": "Per-position minima then one filtered merge.",
+   "core_objective": "Return the maximum possible value of a merged triplet that equals the target, where each triplet is merged element-wise and values must stay below target.",
+   "bounds": "1 <= triplets.length <= 1000 with 1 <= values <= 1000, and a guaranteed solution exists. Zero-valued triplets are legal.",
+   "approaches": [
+    {
+     "name": "\u00b7 Filter then merge",
+     "aha": "Keep triplets with all coordinates \u2264 target; coordinate-wise max; compare to target.",
+     "py": "ok = [t for t in triplets\n      if all(t[i] <= target[i] for i in range(3))]\nacc = [0, 0, 0]\nfor t in ok:\n    for i in range(3):\n        acc[i] = max(acc[i], t[i])\nreturn acc == target",
+     "cpp": "if (t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2]) { a = std::max(a, t[0]);\n    b = std::max(b, t[1]);\n    c = std::max(c, t[2]);",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "\u00b7 Running best (in-place)",
+     "aha": "Track (a,b,c) best-so-far over admissible triplets; identical math, O(1) state. --------------------------------------------------------------------- DEEP DIVE \u00b7 Why \"merge everything admissible\" is optimal Since max(a,b) \u2265 a, merging never destroys a coordinate. If ANY subset reaches the target, the full admissible set reaches it too (it dominates every subset coordinate-wise). And inadmissible triplets can't help \u2014 a coordinate beyond target can never come back down. Nothing to choose \u21d2 greedy trivially optimal. --------------------------------------------------------------------- TIME COMPLEXITY : O(n) MEMORY COMPLEXITY: O(1) =====================================================================",
+     "py": "a = b = c = 0\nfor t in triplets:\n    if t[0] <= target[0] and t[1] <= target[1] and t[2] <= target[2]:\n        a = max(a, t[0])\n        b = max(b, t[1])\n        c = max(c, t[2])\nreturn [a, b, c] == target",
+     "cpp": "if (t[0] <= target[0] && t[1] <= target[1] && t[2] <= target[2]) { a = std::max(a, t[0]);\n    b = std::max(b, t[1]);\n    c = std::max(c, t[2]);",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "the output array doubles as the state store; hence the stated bounds."
+    }
+   ],
+   "diagram": " triplets=[(2,2,3),(1,2,3),(1,1,4)], target=5 -> 5\n  filtered to values strictly BELOW 5 per position:\n   pos0: min(2,1,1) = 1\n   pos1: min(2,2,1) = 1\n   pos2: min(3,3,4) = 4   -> min(3,3,3) = 3\n  so keep only triplets with a[0]==1, b[0]==1, c[0]==3\n  -> (1,2,3) -> 1+2+3 = 6 != 5? the third is (1,1,4)?\n\n  corrected filtering: keep triplets that EQUAL the target in\n  some position, otherwise discard:\n   (2,2,3): c==3 < 5, a,b not 5\n   (1,2,3): c==3 < 5\n   (1,1,4): none equal 5, all < 5\n   all three survive the <5 test; the minima are 1,1,3\n   requiring a==1, b==1, c==3 -> (1,2,3) has b=2\n   -> with (1,1,4): a=1,b=1,c=4 -> sum 6\n   target 5 requires (1,1,3) which does not exist.\n\n  The actual filter keeps triplets that are BELOW target in\n  every position; then the three per-position minima are\n  taken; then we merge and if the sum equals target, that is\n  the answer. Where the sum exceeds target, some position\n  must be lowered -- and the per-position minimums already\n  give the lowest reachable triple.",
+   "cpp_vs_py": "Since max(a,b) \u2265 a, merging never destroys a coordinate. If ANY subset reaches the target, the full admissible set reaches it too (it dominates every subset coordinate-wise). And inadmissible triplets can't help \u2014 a coordinate beyond target can never come back down. Nothing to choose \u21d2 greedy trivially optimal. --------------------------------------------------------------------- TIME COMPLEXITY : O(n)\n\n=====================================================================",
+   "cpp_alts": [
+    "`array<int,3> best = {INT_MAX,INT_MAX,INT_MAX}` and one pass, O(n) time O(1) space.",
+    "Two passes: filter first (also O(1) space), then merge. The filter makes the merge step trivially correct."
+   ],
+   "py_alts": [
+    "A list of three sentinels and comparisons beats `min()` calls in a hot loop.",
+    "A generator with `min(...)` per position is concise; `zip(*triplets)` plus `min` is the shortest form."
+   ],
+   "trap": "Taking the per-position minimum over ALL triplets instead of only those below target. A triplet with a value above target can never participate, so including it lowers a minimum to an unusable value and the merge fails.",
+   "invariant": "Any triplet participating in a solution must have all three values strictly below target, since a merged value equals one of the contributing triplets' values in its position. Among the filtered triplets, the per-position minima form a lower bound that is simultaneously achievable -- so if any merge works, the minima merge works too.",
+   "questions": [
+    {
+     "q": "Why are per-position minima sufficient?",
+     "a": "If some triplet in the filtered set has a[0] > min(a) then replacing it with the minimiser is never worse, since the constraint is only a[0] + b + c == target and lowering one coordinate cannot overshoot. So the minima triple is achievable and is the lowest, making it the best candidate."
+    },
+    {
+     "q": "What if the minima sum exceeds the target?",
+     "a": "Then no merge can equal the target, because the minima triple is a lower bound on every achievable sum. Since the problem guarantees a solution exists, that branch is unreachable for valid input."
+    },
+    {
+     "q": "Why the strict `<` comparison on target?",
+     "a": "A merged value equals one contributing value, and the target requires the SUM to equal target, so any single value equal to target would force the other two to be zero. Using `<` filters the general case; using `<=` is only safe when zeros are allowed and handled."
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,316 @@
+{
+ "problems": [
+  {
+   "key": "12_advanced_graphs/0269_alien_dictionary",
+   "one_liner": "First-appearing difference between words gives an edge.",
+   "core_objective": "Derive the ordering of a new alphabet from a list of words that are sorted under it, and return a valid order.",
+   "bounds": "1 <= dictionary.size <= 100 with up to 2e4 words, and every word is lowercase with up to 20 characters. An invalid dictionary (words out of order, or a prefix after a longer word) must return an empty string.",
+   "approaches": [
+    {
+     "name": "\u00b7 Kahn's algorithm (best)",
+     "aha": "1. Build edges a\u2192b + indegrees; queue zero-indegree letters. 2. Pop \u2192 append; decrement children; leftovers = cycle \u2192 \"\".",
+     "py": "adj = {c: set() for w in words for c in w}\nindeg = {c: 0 for c in adj}\nfor a, b in zip(words, words[1:]):\n    for ca, cb in zip(a, b):\n        if ca != cb:\n            if cb not in adj[ca]:\n                adj[ca].add(cb)\n                indeg[cb] += 1",
+     "cpp": "for (size_t i = 0; i + 1 < words.size(); ++i) { const auto& a = words[i];\n    const auto& b = words[i + 1];\n    size_t j = 0;\n    while (j < a.size() && j < b.size() && a[j] == b[j]) ++j;\n    if (j == b.size() && j < a.size()) return \"\";  // \"abc\" > \"ab\"\n    if (j < a.size() && j < b.size() && !adj[a[j] - 'a'][b[j] - 'a']) { adj[a[j] - 'a'][b[j] - 'a'] = true;\n        ++indeg[b[j] - 'a'];\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "each node enters the queue once; each edge decremented once; hence the stated bounds."
+    },
+    {
+     "name": "\u00b7 DFS with 3-color cycle detection",
+     "aha": "White/gray/black states; gray revisit = cycle; append post-order and reverse. --------------------------------------------------------------------- DEEP DIVE \u00b7 The two failure modes (1) \"abc\" before \"ab\": a prefix that should be first \u2014 returns \"\". (2) A cycle in constraints can never exist in a real alphabet. Any valid topological order is accepted (there may be many); Kahn gives one deterministically, DFS gives another. --------------------------------------------------------------------- TIME COMPLEXITY : O(C) \u2014 total characters over all words. MEMORY COMPLEXITY: O(1) \u2014 \u2264 26 letters. =====================================================================",
+     "py": "adj = {c: set() for w in words for c in w}\nfor a, b in zip(words, words[1:]):\n    for ca, cb in zip(a, b):\n        if ca != cb:\n            adj[ca].add(cb)\n            break\n    else: if len(a) > len(b):\nWHITE, GRAY, BLACK = 0, 1, 2",
+     "cpp": "for (size_t i = 0; i + 1 < words.size(); ++i) { const auto& a = words[i];\n    const auto& b = words[i + 1];\n    size_t j = 0;\n    while (j < a.size() && j < b.size() && a[j] == b[j]) ++j;\n    if (j == b.size() && j < a.size()) return \"\";\n    if (j < a.size() && j < b.size()) adj_[a[j] - 'a'][b[j] - 'a'] = true;",
+     "time": "O(C) \u2014 total characters over all words.",
+     "space": "O(1) \u2014 \u2264 26 letters.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    }
+   ],
+   "diagram": " words = [\"hi\",\"hj\",\"az\",\"kl\"]  -> [a,h,k,z]\n\n  compare consecutive pairs, FIRST differing char only:\n   \"hi\" vs \"hj\":  i<j   -> edge i->j\n   \"hj\" vs \"az\":  h<a   -> edge h->a\n   \"az\" vs \"kl\":  a<k   -> edge a->k\n\n  graph:  i -> j\n          h -> a -> k\n\n  KAHN:\n   indeg: j=1, i=0, a=1(from h), k=1, h=0\n   queue = [i, h]\n   pop i -> order=[i], indeg[j]=0 -> push j\n   pop h -> order=[i,h], indeg[a]=0 -> push a\n   pop j -> order=[i,h,j]\n   pop a -> push k -> pop k\n   ANSWER [i,h,j,a,k]  (equivalent to a,h,k,z... any valid)\n\n  WHY first difference only: later characters are irrelevant\n  to lexicographic order -- the first mismatch decides.",
+   "cpp_vs_py": "(1) \"abc\" before \"ab\": a prefix that should be first \u2014 returns \"\". (2) A cycle in constraints can never exist in a real alphabet. Any valid topological order is accepted (there may be many); Kahn gives one deterministically, DFS gives another. --------------------------------------------------------------------- TIME COMPLEXITY : O(C) \u2014 total characters over all words.\n\n=====================================================================",
+   "cpp_alts": [
+    "`array<int,26>` adjacency with a boolean matrix is simplest and fine at this scale; bitmasks scale further.",
+    "`std::priority_queue` variant gives the lexicographically smallest valid order."
+   ],
+   "py_alts": [
+    "A `set` of pairs or a list-of-sets adjacency is the fastest readable Python form at n <= 100.",
+    "`defaultdict(set)` handles multiple edges between the same pair without double-counting indegree."
+   ],
+   "trap": "Adding an edge for EVERY differing position rather than just the first. That produces constraints the problem never implied and can make a valid dictionary look cyclic.",
+   "invariant": "The edge set contains exactly the pairwise orderings implied by lexicographic comparison, and Kahn consumes nodes of indegree zero. If Kahn emits all 26 letters the collected edges were acyclic and the order is valid; if fewer are emitted, the derived graph has a cycle and the dictionary is inconsistent.",
+   "questions": [
+    {
+     "q": "Why only the first differing character matters?",
+     "a": "Lexicographic comparison is decided by the earliest position where two words differ; everything after is irrelevant. So each adjacent pair contributes at most one constraint, and taking the minimum-cost set of edges is automatic."
+    },
+    {
+     "q": "How do you detect an invalid dictionary?",
+     "a": "After Kahn, if fewer than 26 letters were emitted, the derived graph contains a cycle and no valid order exists, so return the empty string. Separately, if a word is a strict prefix of its successor (e.g. \"abc\" before \"ab\"), the dictionary is invalid regardless of any graph."
+    },
+    {
+     "q": "What is the complexity?",
+     "a": "$O(W \\cdot L + 26^2)$ time for the comparisons and the topological sort, where W is the word count and L the max length. Space is $O(26^2)$ for the adjacency structure."
+    }
+   ]
+  },
+  {
+   "key": "12_advanced_graphs/0332_reconstruct_itinerary",
+   "one_liner": "Hierholzer: traverse edges, reverse at the end.",
+   "core_objective": "Return the lexicographically smallest route that visits every flight exactly once.",
+   "bounds": "1 <= tickets.length <= 1e4 with n <= 10 airports, so the answer is at most 10 cities long while there may be 1e4 edges. The Euler path must start at the departure airport.",
+   "approaches": [
+    {
+     "name": "Hierholzer, recursive DFS (BEST)",
+     "aha": "Build adjacency: airport -> destinations, sorted DESCENDING so that pop() hands back the SMALLEST remaining destination. DFS: keep following smallest unused tickets; append the airport to the route only AFTER all its edges are consumed (post-order). Reverse at the end.",
+     "py": "graph: dict[str, list[str]] = defaultdict(list)\nfor src, dst in sorted(tickets, reverse=True):\n    graph[src].append(dst)\nroute: List[str] = []\n    while graph[airport]:\n        dfs(graph[airport].pop())\n    route.append(airport)\ndfs(\"JFK\")",
+     "cpp": "while (!adj_[airport].empty()) { std::string next = adj_[airport].back();\n    adj_[airport].pop_back();   // ticket consumed \u2014 never reused\n    dfs(next);",
+     "time": "O(E log E) \u2014 sorting each adjacency list",
+     "space": "O(E)       \u2014 adjacency + route.",
+     "why": "every node is visited once and returns O(1) state; hence the stated bounds."
+    },
+    {
+     "name": "Hierholzer, iterative (no recursion)",
+     "aha": "Identical walk with an explicit stack, so deep graphs cannot overflow Python's recursion limit. Dead ends are closed out by appending to the route and popping the stack.",
+     "py": "graph: dict[str, list[str]] = defaultdict(list)\nfor src, dst in sorted(tickets, reverse=True):\n    graph[src].append(dst)\nstack: List[str] = [\"JFK\"]\nroute: List[str] = []\nwhile stack:\n    top = stack[-1]\n    if graph[top]:",
+     "cpp": "        for (const auto& t : tickets) { adj[t[0]].push_back(t[1]);",
+     "time": "O(E log E)",
+     "space": "O(E)",
+     "why": "Follows directly from the traversal count: O(E log E) time, O(E) space."
+    }
+   ],
+   "diagram": " JFK -> MUC -> LHR -> SFO -> SIN\n  JFK -> MUC -> LHR -> NRT -> SFO -> SIN   (parallel MUC->LHR)\n\n  Hierholzer (post-order, reverse on return):\n   visit(JFK):\n     MUC ->\n       LHR ->\n         SFO -> SIN -> (no outgoing)  push SIN\n         push SFO\n       NRT -> SFO (no remaining) -> push SFO\n       push NRT\n     push LHR\n     push MUC\n   push JFK\n   reverse the push order ->\n     JFK, MUC, NRT, SFO, SIN ... (lexicographically smallest)\n\n  key: use a min-HEAP or sorted adjacency so the smallest\n  destination is always taken first; post-order accumulation\n  + reverse yields the lexicographically smallest Euler path.\n  A simple forward greedy (always take the smallest) can\n  dead-end and strand unused edges.",
+   "cpp_vs_py": "Naive DFS walks into a dead end only when every remaining edge is inside cycles; those cycles get appended to the route exactly when the dead end is reached. Reversing the post-order list plugs every cycle back into the walk at the vertex where it was entered \u2014 each edge is traversed exactly once, total O(E). Python detail: the graph is a defaultdict (open addressing dict, linear probing h(k, i) = (hash(k) + i) mod m) \u2014 O(1) lookups per airport. ---------------------------------------------------------------------\n\nAn Eulerian path exists iff every vertex with edges has balanced in/out degree except possibly one start (out = in + 1) and one end (in = out + 1). The problem guarantees this, so naive DFS \"walks into a dead end\" only when the remaining edges form cycles; those cycles are appended to the route at the moment the dead end is reached. Reversing the post-order list interleaves every cycle back into the walk at exactly the vertex where it was entered \u2014 this is the \"edge-splitting\" proof: each vertex's cycle is a sub-tour that plugs into the vertex's slot. Every edge is traversed exactly once, total O(E). C++ note: std::map keeps airports sorted (red-black tree, O(log V) per op) \u2014 that gives us lexicographic adjacency for free. ===================================================================== /\n\n#include <vector> // std::vector \u2014 ticket list / route storage #include <",
+   "cpp_alts": [
+    "`priority_queue<string, vector<string>, greater<string>>` per node gives sorted outgoing edges directly.",
+    "A `map<string, vector<string>>` plus sorting each adjacency once is simpler if the sort happens once."
+   ],
+   "py_alts": [
+    "`defaultdict(list)` with each list sorted in reverse so `pop()` takes the smallest is faster than a heap at n <= 10.",
+    "`heapq` per node is the direct analogue of the C++ min-heap and avoids the reverse-sort trick."
+   ],
+   "trap": "Greedy forward traversal without post-order accumulation. Taking the lexicographically smallest next destination at every step can visit a dead end while unused edges remain, so the naive answer uses only a subset of the flights.",
+   "invariant": "Hierholzer's recursion visits every edge exactly once. Because outgoing edges are consumed in increasing order and the result is built by appending on the way out of each call, the reversed sequence visits every edge once and is the lexicographically smallest such sequence.",
+   "questions": [
+    {
+     "q": "Why does plain greedy fail while Hierholzer works?",
+     "a": "Greedy picks the smallest destination and moves on, which can strand remaining edges behind it -- for example JFK->MUC->LHR then choosing SFO before NRT, dead-ending at SFO. Hierholzer explores the dead end first, records it, and splices it in correctly on the way out."
+    },
+    {
+     "q": "How do you guarantee the lexicographically smallest result?",
+     "a": "Traverse outgoing edges in sorted order and accumulate the post-order, then reverse. Sorting makes the algorithm explore the smallest choices first, and the reversal produces the Euler path that respects that preference order."
+    },
+    {
+     "q": "What guarantees the route exists?",
+     "a": "The problem guarantees it. In general you need the degree conditions: exactly one node with out-degree = in-degree + 1 (the start), one with in-degree = out-degree + 1 (the end), and every other node balanced, with all edges in one weakly connected component."
+    }
+   ]
+  },
+  {
+   "key": "12_advanced_graphs/0743_network_delay_time",
+   "one_liner": "Dijkstra with a min-heap, lazy deletion.",
+   "core_objective": "Return the shortest time for a signal to reach every node, or -1 if any node is unreachable.",
+   "bounds": "1 <= n <= 1e4 with 1e4 edges of weight 1..100, so distances fit in int. Node 1 is the source, so n = 1 means the answer is 0.",
+   "approaches": [
+    {
+     "name": "Dijkstra with a min-heap (BEST)",
+     "aha": "dist[u] = best-known distance from k. Repeat: extract the node with the smallest dist (min-heap, O(log V)), settle it, and relax each outgoing edge (u -> v, w): if dist[u] + w < dist[v], improve dist[v] and push it back. Answer = max(dist[1..n]).",
+     "py": "g: dict[int, List[tuple[int, int]]] = {}\nfor u, v, w in times:\n    g.setdefault(u, []).append((v, w))\nINF = 10**9\ndist = [INF] * (n + 1)   # dist[u] = best-known distance from k\ndist[k] = 0\npq: List[tuple[int, int]] = [(0, k)]\nwhile pq:",
+     "cpp": "        for (const auto& t : times) { g[t[0]].emplace_back(t[1], t[2]);",
+     "time": "O(E log V) \u2014 each edge relaxed once, heap ops",
+     "space": "O(V + E)   \u2014 dist + adjacency + heap.",
+     "why": "one push (and at most one pop) per element; hence the stated bounds."
+    },
+    {
+     "name": "Bellman-Ford (no heap, V-1 relaxation rounds)",
+     "aha": "Repeat V-1 rounds: scan every edge and relax dist[v] = min(...). After round i every node's dist is correct for paths using at most i edges; V-1 rounds cover every simple path. Early-exit when a round changes nothing.",
+     "py": "INF = 10**9\ndist = [INF] * (n + 1)\ndist[k] = 0\nfor _ in range(n - 1):\n    changed = False\n    for u, v, w in times:\n        if dist[u] != INF and dist[u] + w < dist[v]:\n            dist[v] = dist[u] + w",
+     "cpp": "for (int round = 1; round <= n - 1; ++round) { bool changed = false;\n    for (const auto& t : times) { int u = t[0], v = t[1], w = t[2];\n        if (dist[u] != INF && dist[u] + w < dist[v]) { dist[v] = dist[u] + w;\n            changed = true;\n        }\n    }\n    if (!changed) break;",
+     "time": "O(V\u00b7E)",
+     "space": "O(V)",
+     "why": "one push (and at most one pop) per element; hence the stated bounds."
+    }
+   ],
+   "diagram": " times = [[2,1,1],[2,3,1],[2,3,1]]\n\n  dist = [inf]*4 ; dist[0] = 0\n  heap = [(0,0)]\n\n  pop (0,0): relax (2,1) -> (2,1,0) push\n            relax (1,1) -> (1,1,0) push\n  pop (1,1,0): relax (3,2) -> (3,2,1) push\n  pop (2,1,0): node 1 done\n  pop (3,2,1): node 2 done\n\n  max(dist) = 2   (node 3 at distance 2)\n\n  LAZY DELETION: a heap may contain stale entries with an old\n  larger distance. Skip any pop whose distance != dist[node].\n  Without that check you process nodes repeatedly and the\n  result is still correct but the time bound degrades.",
+   "cpp_vs_py": "Invariant: when a node u is POPPED, dist[u] is its true shortest distance. Induction on pop order: u is the un-settled node with the smallest dist; any alternative path k \u2192 \u2026 \u2192 x \u2192 u must pass through an un-settled x with dist[x] \u2265 dist[u], and all remaining edge weights are POSITIVE, so that path costs \u2265 dist[x] + w > dist[u]. No later relaxation can beat it. NEGATIVE EDGES BREAK THIS: a path k \u2192 \u2026 \u2192 x \u2192 (negative edge) \u2192 u can cost LESS than dist[u] even when dist[x] > dist[u] \u2014 the settled-set argument collapses. Bellman-Ford survives negatives by relaxing everything once per round, one edge at a time. ---------------------------------------------------------------------\n\nPROOF SKETCH (heap version): invariant \u2014 when a node u is popped, dist[u] is its TRUE shortest distance. Induction on pop order: u is the un-settled node with smallest dist; any alternative path k \u2192 ... \u2192 x \u2192 u must pass through some un-settled node x first (all settled nodes were already relaxed), and dist[x] >= dist[u], so that path costs >= dist[u] + (positive edges) > dist[u]. Therefore no future relaxation can beat the current dist[u]. NEGATIVE EDGES BREAK IT: with a negative edge, a later path k \u2192 ... \u2192 x \u2192 (negative edge) \u2192 u can cost LESS than dist[u] even when dist[x] > dist[u] \u2014 the settled-node argument collapses. Bellman-Ford handles negatives: relaxing every edge once per round propagates impro",
+   "cpp_alts": [
+    "`priority_queue<pair<int,int>, vector<...>, greater<...>>` is the canonical form.",
+    "Plain Dijkstra with an $O(V^2)$ scan is simpler and fast enough at 1e4 nodes if the graph is sparse."
+   ],
+   "py_alts": [
+    "`heapq` with `(dist, node)` tuples and a `if d != dist[node]: continue` guard is the standard Python form.",
+    "Push `(d + w, v)` directly instead of computing and pushing then comparing, which avoids one stale entry per improvement."
+   ],
+   "trap": "Forgetting the stale-entry check, or using a visited array that marks on push instead of on pop. The latter is incorrect because a node's distance can improve after it is first discovered.",
+   "invariant": "When a node is popped with a distance equal to its current `dist`, that distance is final. The proof is the standard contradiction: any shorter path would have passed through a node that should have been popped earlier with a smaller distance. Therefore each node is finalised at most once with a correct value.",
+   "questions": [
+    {
+     "q": "Why is Dijkstra not applicable here?",
+     "a": "It is applicable -- this problem has non-negative weights, which is exactly Dijkstra's requirement. A DFS or BFS would be wrong: BFS minimises hop count, not total weight, and DFS has no ordering guarantee."
+    },
+    {
+     "q": "What does the stale-entry guard protect?",
+     "a": "The priority queue can hold an old, larger distance for a node whose distance has since improved. Popping it would re-relax its neighbours with a worse value. Skipping pops where the heap distance differs from the current best keeps the correctness argument about finalisation intact."
+    },
+    {
+     "q": "How is unreachability detected?",
+     "a": "After the loop, any node whose distance is still infinity was never reached. Return -1 if any remains; otherwise return the maximum distance, which is the time until the last node receives the signal."
+    }
+   ]
+  },
+  {
+   "key": "12_advanced_graphs/0778_swim_in_rising_water",
+   "one_liner": "Binary search t, then BFS on cells with height <= t.",
+   "core_objective": "Return the least t such that a path exists from the top-left to the bottom-right using only cells of height at most t.",
+   "bounds": "0 <= n <= 1e3 so the grid can hold 1e6 cells, and 0 <= height[i][j] <= n-1. The answer is bounded by max of all heights, which gives the binary-search range.",
+   "approaches": [
+    {
+     "name": "Binary search over t + BFS reachability (BEST)",
+     "aha": "lo = grid[0][0] (start cell must be flooded), hi = max elevation. While lo < hi: probe mid; BFS from (0,0) visiting only cells with elevation <= mid; if the target is reached, hi = mid (feasible, try lower), else lo = mid + 1 (need higher water).",
+     "py": "n = len(grid)\nlo, hi = grid[0][0], max(max(row) for row in grid)\nwhile lo < hi:\n    mid = (lo + hi) // 2\n    if self._reachable(grid, mid):\n        hi = mid          # feasible \u2192 try a LOWER water level\n    else:\n        lo = mid + 1      # infeasible \u2192 water must rise further",
+     "cpp": "while (!q.empty()) { const auto [r, c] = q.front();\n    q.pop();\n    if (r == n - 1 && c == n - 1) return true;   // target reached\n    for (int i = 0; i < 4; ++i) { const int nr = r + DR[i];\n        const int nc = c + DC[i];\n        if (nr < 0 || nr >= n || nc < 0 || nc >= n) continue;\n        if (seen[nr][nc] || grid[nr][nc] > level) continue;\n        seen[nr][nc] = true;",
+     "time": "O(n\u00b2 log H) \u2014 log H probes, each BFS is O(n\u00b2)",
+     "space": "O(n\u00b2)       \u2014 visited matrix per probe.",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    },
+    {
+     "name": "Binary search over t + DSU connectivity",
+     "aha": "Same binary search, but reachability uses union-find: for the probed level, union every underwater cell with its underwater neighbours; (0,0) and (n-1,n-1) are connected iff a path exists.",
+     "py": "n = len(grid)\nlo, hi = grid[0][0], max(max(row) for row in grid)\nwhile lo < hi:\n    mid = (lo + hi) // 2\n    if self._connected(grid, mid):\n        hi = mid\n    else: lo = mid + 1\nreturn lo",
+     "cpp": "for (int r = 0; r < n; ++r) { for (int c = 0; c < n; ++c) {\n        if (grid[r][c] > level) continue;   // dry cell \u2014 skip\n        const int id = r * n + c;\n        if (r + 1 < n && grid[r + 1][c] <= level) dsu.unite(id, id + n);\n        if (c + 1 < n && grid[r][c + 1] <= level) dsu.unite(id, id + 1);\n    }",
+     "time": "O(n\u00b2 log H)",
+     "space": "O(n\u00b2)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    }
+   ],
+   "diagram": " grid: [[0,2],[1,3]]  -> answer 3\n\n  feasibility(t) monotone:\n   t=0: only (0,0) reachable, (1,1) not -> False\n   t=1: (0,0),(1,0) reachable -> False\n   t=2: (0,0),(0,1),(1,0) -> (1,1) is height 3, blocked\n   t=3: all cells -> True\n\n  binary search on [0, maxH] = [0,3]:\n   mid=1 -> False -> lo=2\n   mid=2 -> False -> lo=3\n   ANSWER 3\n\n  ALTERNATIVE: minimax Dijkstra -- dist[r][c] = the minimum\n  possible path maximum; relax with max(dist[u], h[v]).\n  One pass, O(nm log nm), no repeated BFS.",
+   "cpp_vs_py": "P(t) = \"path exists at water level t\" is monotone because water never goes DOWN: reachable at t \u21d2 reachable at t+1. Any monotone predicate on a sorted universe answers with binary search in O(log H) probes \u2014 each probe a graph reachability run. The DSU variant unions flooded cells instead of visiting them one by one; connectivity then costs two find() calls. BFS proves an actual path, DSU proves connectivity \u2014 both answer the same question. ---------------------------------------------------------------------\n\nThe predicate P(t) = \"path exists at water level t\" is monotone because water never goes DOWN: if the set of cells reachable at level t contains the target, it also contains it at level t+1. Any monotone predicate on a sorted universe answers with binary search in O(log H) probes \u2014 here each probe is a graph reachability run. DSU variant: instead of visiting cells one by one, we UNION underwater cells with their underwater neighbours; connectivity then costs two finds. BFS probes the actual path, DSU probes only connectivity \u2014 both answer the same question. ===================================================================== /\n\n#include <vector> // std::vector \u2014 grid + visited matrices #include <queue> // std::queue \u2014 BFS frontier #include <utility> // std::pair \u2014 (row, col) coordinates #include <algorithm> // std::max \u2014 scanning the grid for hi #include <chrono> // std:",
+   "cpp_alts": [
+    "Binary search plus BFS is $O(n^2 \\log n)$ -- 20 BFS passes over 1e6 cells, which is the practical cost.",
+    "Minimax Dijkstra with a priority queue is a single pass and often faster in wall-clock terms despite the log factor."
+   ],
+   "py_alts": [
+    "`deque` BFS with a `bytearray` visited grid avoids a 2-D list of bools.",
+    "An in-place visited marking with a sentinel height is possible but destroys the grid, which you must not modify."
+   ],
+   "trap": "Using a visited array that is not reset between binary-search probes, which makes later probes return stale True results and collapses the search to the first candidate.",
+   "invariant": "`can_reach(t)` is monotone: if the target is reachable with threshold t, it is reachable with any larger threshold because every path that works at t also works at higher thresholds. That monotonicity is what makes binary search valid and guarantees termination with the minimum feasible t.",
+   "questions": [
+    {
+     "q": "What is the search space being binary-searched?",
+     "a": "The grid heights, i.e. 0 to max(height) -- up to 1e3 here. It is NOT the path space, which would be exponential. The insight is that feasibility is monotone in t, so a monotone predicate over a small integer range supports binary search."
+    },
+    {
+     "q": "What are the time and space bounds?",
+     "a": "Binary search performs $O(\\log n)$ probes, each a BFS over $n^2$ cells, so $O(n^2 \\log n)$ time and $O(n^2)$ space for the visited grid. Minimax Dijkstra is $O(n^2 \\log n^2)$ with a heap."
+    },
+    {
+     "q": "Why is minimax Dijkstra the more elegant formulation?",
+     "a": "It removes the outer binary search entirely. The relaxation `dist[v] = min(dist[v], max(dist[u], h[v]))` captures the bottleneck semantics directly, so one search yields the answer. The downside is a larger constant per node from the heap."
+    }
+   ]
+  },
+  {
+   "key": "12_advanced_graphs/0787_cheapest_flights_within_k_stops",
+   "one_liner": "Bellman-Ford with at most k+1 edge layers.",
+   "core_objective": "Return the cheapest price from src to dst using at most k intermediate stops, that is at most k+1 edges.",
+   "bounds": "1 <= n <= 1e3 with up to 1e4 flights, and 0 <= src, dst, k < n. Prices are non-negative, so k = 0 means a direct flight.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "prices=[float(\"inf\")]*n; prices[src]=0\nfor _ in range(k+1):\n    tmp=prices[:]\n    for u,v,w in flights:\n        if prices[u]+w<tmp[v]: tmp[v]=prices[u]+w\n    prices=tmp\nreturn prices[dst] if prices[dst]!=float(\"inf\") else -1",
+     "cpp": "const int INF = 1e9;\nvector<int> dist(n, INF); dist[src] = 0;\nfor (int layer = 0; layer <= k; ++layer) {\n    vector<int> prev = dist;          // SNAPSHOT the layer\n    for (auto& e : flights) {\n        if (prev[e[0]] + e[1] < dist[e[2]])\n            dist[e[2]] = prev[e[0]] + e[1];\n    }\n}\nreturn dist[dst] == INF ? -1 : dist[dst];",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "from collections import defaultdict\ngraph=defaultdict(list)\nfor u,v,w in flights: graph[u].append((v,w))\nheap=[(0,src,0)]  # cost, node, stops\nvisited={}\nwhile heap:\n    cost,u,stops=heapq.heappop(heap)\n    if u==dst: return cost",
+     "cpp": "const int INF = 1e9;\nvector<vector<int>> d(n, vector<int>(k + 2, INF));\nd[src][0] = 0;\nfor (int i = 0; i <= k; ++i)\n    for (auto& e : flights)\n        for (int j = 0; j <= i; ++j)\n            d[e[2]][i+1] = min(d[e[2]][i+1], d[e[0]][j] + e[1]);\nreturn *min_element(d[dst].begin(), d[dst].end()) == INF\n       ? -1 : *min_element(d[dst].begin(), d[dst].end());",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " n=3, k=1, flights=[[0,1,100],[1,2,100],[2,0,100],[1,2,100]]\n  src=0 dst=2 -> answer 200\n\n  Bellman-Ford with LAYERS:\n   LAYER 0 (0 edges):  dist = [0, inf, inf]  only src\n   LAYER 1 (1 edge):   from 0: dist[1]=100\n   LAYER 2 (2 edges):  from 1: dist[2]=200   <- k=1 means\n                        2 edges -> answer 200\n\n  n=3, k=0, same flights -> layer 1 only, dist[2]=inf -> -1\n\n  THE BUG: mutating dist IN PLACE lets one round use a\n  distance improved in the same round, so a 2-layer answer\n  leaks into layer 1. Fix: snapshot the previous layer.\n\n   prev = dist (copy)\n   for u,v,w in flights: if prev[u] + w < dist[v]: dist[v] = prev[u]+w\n\n  layers needed = k + 1, because k stops means k+1 flights.",
+   "cpp_vs_py": "A trip with k intermediate stops uses k+1 flight legs. Bellman- Ford's i-th round computes optimal prices for paths of AT MOST i edges, because each round extends every previously known path by exactly one more edge. The SNAPSHOT copy is the subtle part: if we relaxed in-place, one round could chain two edges (u->v then v->w) and silently count two legs as one \u2014 exceeding the budget. So: k stops \u21d4 k+1 edges \u21d4 k+1 rounds. For the same reason, plain Dijkstra fails here: it settles each node once with the cheapest price, but that price may spend the whole hop budget, blocking a slightly pricier but fewer-hop route to the destination. ===================================================================== /\n\n#include <vector> // std::vector \u2014 graph / dist arrays #include <queue> // std::priority_queue \u2014 the min-heap #include <utility> // std::pair \u2014 nested heap entries #include <functional> // std::greater \u2014 MIN-heap ordering #include <chrono> // std::chrono::steady_clock \u2014 benchmark timing #include <iostream> // std::cout \u2014 benchmark output #include <sys/resource.h> // getrusage \u2014 peak RAM measurement\n\nnamespace { const int INF = 1e9; // sentinel \"unreachable\" price }",
+   "cpp_alts": [
+    "A flat `int` vector of size n with a `prev` copy per layer is the standard C++ form.",
+    "The one-array Bellman-Ford with early exit works for unconstrained shortest path but NOT here, because the layer count is a hard constraint."
+   ],
+   "py_alts": [
+    "A list copy per layer (`prev = dist[:]`) is the clearest way to get the snapshot semantics.",
+    "Keeping only the previous layer's array keeps space at $O(n)$."
+   ],
+   "trap": "Updating `dist` in place inside the layer loop. That allows a path using more than one edge in the same iteration, so a k = 0 query can return a two-flight answer.",
+   "invariant": "After layer L, `dist[v]` is the minimum cost of a path from src to v using at most L edges. Base case L = 0 is `dist[src] = 0` and infinity elsewhere. Each layer relaxes only from the previous layer's values, so a path using L edges is built from a path using L-1 edges plus one flight, preserving the bound exactly.",
+   "questions": [
+    {
+     "q": "Why k stops means k+1 edges?",
+     "a": "With 0 stops you take one flight: src -> dst directly. Each additional stop allows one more intermediate airport, and one more edge. So the edge budget is k+1, which is the number of relaxation layers to run."
+    },
+    {
+     "q": "Why is the in-place update wrong?",
+     "a": "Because a vertex improved during layer L can then be used as a source later in the SAME layer, producing a path longer than the layer budget. Snapshotting `prev = dist` before each layer and reading only from `prev` makes the layer count a genuine bound."
+    },
+    {
+     "q": "How does this relate to Dijkstra?",
+     "a": "Both find shortest paths with non-negative weights, but Dijkstra has no hop constraint -- it optimises over all path lengths. Here the constraint is on the number of edges, so the layer-indexed DP is the natural formulation and Dijkstra would answer the wrong question."
+    }
+   ]
+  },
+  {
+   "key": "12_advanced_graphs/1584_min_cost_to_connect_all_points",
+   "one_liner": "Prim or Kruskal on the complete edge set.",
+   "core_objective": "Return the minimum total weight of edges connecting all points, using Manhattan distance.",
+   "bounds": "1 <= n <= 1e3 with coordinates in [-1e6, 1e6], so a complete graph has about 5e5 edges. n = 1 returns 0 since no edges are needed.",
+   "approaches": [
+    {
+     "name": "v1",
+     "aha": "v1 -- see the kernel below.",
+     "py": "n=len(points); visited=set(); total=0\nheap=[(0,0)]  # (cost, node)\nwhile len(visited)<n:\n    cost,u=heapq.heappop(heap)\n    if u in visited: continue\n    visited.add(u); total+=cost\n    for v in range(n):\n        if v not in visited:",
+     "cpp": "while (!pq.empty()) { const auto [cost, u] = pq.top();\n    pq.pop();\n    if (inMST[u]) continue;\n    inMST[u] = true;      // settle u: its cheapest cut edge is\n    total += cost;        // final (cut property \u2014 see header).\n    for (int v = 0; v < n; ++v) { if (inMST[v]) continue;\n        const int d = manhattan(points[u], points[v]);\n        if (d < minCost[v]) { minCost[v] = d;",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    },
+    {
+     "name": "v2",
+     "aha": "v2 -- see the kernel below.",
+     "py": "n=len(points)\nedges=[]\nfor i in range(n):\n    for j in range(i+1,n):\n        d=abs(points[i][0]-points[j][0])+abs(points[i][1]-points[j][1])\n        edges.append((d,i,j))\nedges.sort(); parent=list(range(n)); total=0; used=0\n    while parent[x]!=x: parent[x]=parent[parent[x]]; x=parent[x]",
+     "cpp": "for (int i = 0; i < n; ++i) { for (int j = i + 1; j < n; ++j) {\n        edges.emplace_back(manhattan(points[i], points[j]), i, j);\n    }",
+     "time": "?",
+     "space": "?",
+     "why": "Follows directly from the traversal count: ? time, ? space."
+    }
+   ],
+   "diagram": " points = [[0,0],[2,0]] -> dist 2\n  points = [[0,0],[1,1]] -> dist 2\n  points = [[0,0],[1,0],[3,0]]\n    edges: (0,1)=1 (1,2)=2 (0,2)=3\n    MST: 1 + 2 = 3\n\n  KRUSKAL:\n   sort all edges by weight: 1, 2, 3\n   take 1 (0-1), take 2 (1-2), take 3 -> both endpoints\n   already joined -> skip\n   total = 3\n\n  PRIM (min-heap):\n   visited = {0}; heap = {(d, node) for neighbours of 0}\n   pop smallest edge to an unvisited node, add weight,\n   mark visited, push its edges\n   stop after n-1 edges taken\n\n  n <= 1e3 so building all n(n-1)/2 edges and sorting is\n  acceptable; for larger n you would need a spatial index.",
+   "cpp_vs_py": "PRIM (cut property): take any cut separating the growing tree from the rest; the CHEAPEST edge across that cut is in some MST, so greedily adding the cheapest crossing edge can never go wrong. The heap makes \"cheapest crossing edge\" an O(log n) pop. KRUSKAL (cycle property): the cheapest edge not creating a cycle is always safe to keep; union-find detects \"would create a cycle\" by checking whether the endpoints already share a root. Both are correct because every edge crossing a cut is a candidate \u2014 the complete graph simply makes n\u00b2 candidates explicit. When to use which: Prim shines on DENSE graphs (like this one, E \u2248 n\u00b2) since it only scans edges of the frontier; Kruskal shines on SPARSE graphs (E \u2248 n) and when edges are given explicitly. ===================================================================== /\n\n#include <vector> // std::vector \u2014 points / edges / DSU internals #include <queue> // std::priority_queue \u2014 the min-heap #include <utility> // std::pair \u2014 (cost, node) heap entries #include <functional> // std::greater \u2014 MIN-heap ordering #include <algorithm> // std::sort \u2014 Kruskal's edge ordering #include <tuple> // std::tuple \u2014 (cost, u, v) edge records #include <chrono> // std::chrono::steady_clock \u2014 benchmark timing #include <iostream> // std::cout \u2014 benchmark output #include <sys/resource.h> // getrusage \u2014 peak RAM measurement\n\nnamespace { const int INF = 1e9; // ",
+   "cpp_alts": [
+    "`std::sort` on 5e5 edges is $O(E \\log E)$ and dominates; Kruskal is simpler than Prim here.",
+    "`priority_queue` Prim avoids materialising the edge list but does the same work per vertex."
+   ],
+   "py_alts": [
+    "Prim with a heap is usually faster in Python than Kruskal, because building and sorting 5e5 tuples is expensive while the heap has only n entries.",
+    "Avoid building the full edge list; compute distances lazily inside the Prim loop."
+   ],
+   "trap": "Counting an edge when both endpoints are already in the same component. In Kruskal that is caught by the union-find check; in Prim you must exclude already-visited vertices when pushing candidate edges.",
+   "invariant": "Kruskal maintains a forest with no cycles, and by the cut property the cheapest edge crossing any cut is safe to take. Prim maintains a single growing tree and always takes the cheapest edge leaving it. Both terminate after exactly n-1 edges, which by the cut property is a minimum spanning tree.",
+   "questions": [
+    {
+     "q": "Why is a minimum spanning tree the right model?",
+     "a": "Any connected solution on n vertices needs at least n-1 edges, and a spanning tree is exactly a connected acyclic solution with n-1 edges. Since all costs are non-negative, an optimal solution never uses extra edges, so the MST weight is the answer."
+    },
+    {
+     "q": "Kruskal or Prim for these constraints?",
+     "a": "Both work. Kruskal is $O(E \\log E) = O(n^2 \\log n)$ with an explicit edge list, which at n = 1e3 is about 5e5 edges -- feasible. Prim with a lazy heap is $O(E \\log n)$ and avoids materialising the list, so it is often preferable in Python."
+    },
+    {
+     "q": "What is the space complexity, and why does it matter here?",
+     "a": "Kruskal needs $O(E) = O(n^2)$ space for the edge list -- 5e5 tuples at n = 1e3, which is the binding constraint in Python. Prim's heap holds at most $O(E)$ entries in the lazy version but typically far fewer, and it never builds the full list."
+    }
+   ]
+  }
+ ]
+}

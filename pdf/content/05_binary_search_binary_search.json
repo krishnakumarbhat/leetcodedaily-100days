@@ -1,0 +1,383 @@
+{
+ "problems": [
+  {
+   "key": "05_binary_search/0004_median_of_two_sorted_arrays",
+   "one_liner": "Binary search the partition of the shorter array, not the value.",
+   "core_objective": "Given two sorted arrays of different sizes, return the median of their combined elements in O(log(min(m,n))) time.",
+   "bounds": "1 <= m, n <= 1000; both arrays are sorted ascending and contain only non-negative ints. m + n can be odd (then there is a true middle) or even (then it is the average of the two middles). One array may be a single element.",
+   "approaches": [
+    {
+     "name": "Merge, then pick the middle (baseline, O(m+n))",
+     "aha": "Walk both arrays with two pointers, always appending the smaller head \u2014 the merge step of merge sort. Then: \u2022 odd total \u2192 the middle element. \u2022 even total \u2192 average of the two middle elements. Correct and simple; too slow for the O(log(m+n)) requirement but a perfect ground-truth referee.",
+     "py": "merged: List[int] = []\ni, j = 0, 0\nwhile i < len(nums1) and j < len(nums2):\n    if nums1[i] <= nums2[j]:\n        merged.append(nums1[i])       # take from nums1.\n        i += 1\n    else: merged.append(nums2[j])       # take from nums2.\n        j += 1",
+     "cpp": "vector<int> merged;\nmerged.reserve(m + n);\nsize_t i = 0, j = 0;\nwhile (i < m && j < n)\n    merged.push_back(A[i] <= B[j] ? A[i++] : B[j++]);\nwhile (i < m) merged.push_back(A[i++]);\nwhile (j < n) merged.push_back(B[j++]);\nint half = (m + n) / 2;\nif ((m + n) % 2) return merged[half];\nreturn (merged[half - 1] + merged[half]) / 2;",
+     "time": "O(m+n)",
+     "space": "O(m+n)",
+     "why": "Follows directly from the traversal count: O(m+n) time, O(m+n) space."
+    },
+    {
+     "name": "Binary search on the partition (BEST, O(log min(m,n)))",
+     "aha": "Let A be the SMALLER array (minimizes probes). The median cut is: i elements from A's left, j = (m+n+1)//2 - i from B's left. Probe i with binary search; the cut is valid when A[i-1] <= B[j] AND B[j-1] <= A[i]. If A[i-1] > B[j] the cut is too far right in A \u2192 search left; otherwise search right. When balanced, read the median off the boundary elements.",
+     "py": "A, B = (nums1, nums2) if len(nums1) <= len(nums2) else (nums2, nums1)\ntotal = len(A) + len(B)\nleft_count = (total + 1) // 2\nlo, hi = 0, len(A)\nwhile lo <= hi:\n    i = lo + (hi - lo) // 2       # probe the cut in A.\n    j = left_count - i\n    a_left  = A[i - 1] if i >= 1 else float(\"-inf\")",
+     "cpp": "if (m > n) return median(A, B, n, m, k);\nint half = (m + n + 1) / 2;\nint lo = max(0, half - n), hi = min(m, half);\nwhile (lo <= hi) {\n    int j = (lo + hi) / 2;\n    int i = half - j;\n    int lA = i > 0 ? A[i-1] : INT_MIN;\n    int rA = i < m ? A[i] : INT_MAX;\n    int lB = j > 0 ? B[j-1] : INT_MIN;\n    int rB = j < n ? B[j] : INT_MAX;\n    if (lA <= rB && lB <= rA)\n        return (m + n) % 2 ? max(lA, lB)\n                            : (max(lA, lB) + (long)min(rA, rB)) / 2;\n    if (lA > rB) hi = j - 1; else lo = j + 1;\n}\nreturn 0;",
+     "time": "O(log(min(m, n)))",
+     "space": "O(1)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    }
+   ],
+   "diagram": " A = [1,3]  B = [2]   combined = [1,2,3] median = 2\n\n search on the SHORTER array (A, m=2). Partition A into\n left A[0..j-1] and right A[j..m-1], B into left B[0..k-1]\n and right B[k..n-1], with j + k = half = (m+n+1)/2 = 2\n\n j=1 k=1:  leftA=[1]  rightA=[3] | leftB=[2] rightB=[]\n          check: leftA <= rightB (1 <= inf) ok\n                leftB <= rightA (2 <= 3) ok\n          left count = 1+1 = 2 = half\n          median = max(leftA, leftB) = 2   CORRECT\n\n j=0 k=2:  leftA=[]   rightA=[1,3]\n          leftB=[2] rightB=[]\n          leftB(2) <= rightA(1)? NO -> j too small, move right\n\n conditions to satisfy:\n   leftA_max <= rightB_min      and      leftB_max <= rightA_min\n   plus  left_count == half  (or half+1 for even)",
+   "cpp_vs_py": "Binary search over a partition position has at most log2(1000) = 10 iterations, so both languages finish in microseconds and interpreter overhead is invisible. The interesting difference is in the guards: C++ needs explicit `INT_MIN`/`INT_MAX` sentinels because indexing `A[j-1]` with j = 0 is out of bounds, and getting that wrong is undefined behaviour rather than an exception. Python's negative indexing silently wraps around, so `A[j-1]` at j = 0 returns the LAST element instead of raising -- which is a silent wrong answer rather than a crash. That single asymmetry is the most valuable thing to know when porting this problem.",
+   "cpp_alts": [
+    "Guard the boundaries explicitly with `j == 0 ? INT_MIN : A[j-1]` and `j == m ? INT_MAX : A[j]` -- the alternative is index-0/1 padding with sentinels, which removes the branches entirely.",
+    "`std::max_element` on the two left partitions gives the median side in O(1); no need to merge.",
+    "Always search the shorter array: log(min(m,n)) <= log(max(m,n)), so swapping when m > n is free and halves the worst case."
+   ],
+   "py_alts": [
+    "Pad conceptually with `float('-inf')` and `float('inf')` instead of branching -- Python's arbitrary comparison makes it clean.",
+    "Beware that Python's `A[-1]` is the last element, so the j = 0 case must be special-cased explicitly.",
+    "`while lo <= hi:` with the standard partition search is clearer here than a half-open loop, because the answer needs both neighbours."
+   ],
+   "trap": "Searching for the median VALUE with a standard binary search. The median is not necessarily an element of either array, so there is nothing to search for; you must search for the partition position, then take the max of the two left partitions.",
+   "invariant": "The partition is valid iff `max(leftA) <= min(rightB)` and `max(leftB) <= min(rightA)` and the left side holds `ceil((m+n)/2)` elements. Monotonicity says: if `leftB_max > rightA_min`, then j must increase; if `leftA_max > rightB_min`, then j must decrease. That is what makes the search valid.",
+   "questions": [
+    {
+     "q": "Why binary search on the shorter array?",
+     "a": "The partition count is bounded by the shorter length, so the search space is min(m,n)+1 and the depth is log(min(m,n)). Searching the longer array works but is strictly worse, and swapping the pointers first is free."
+    },
+    {
+     "q": "What are the two validity conditions and how do they drive the search?",
+     "a": "(1) every element on the left is <= every element on the right, split into the two cross pairs leftA vs rightB and leftB vs rightA. (2) the left side has exactly half the elements. If leftB is too large, j must grow; if leftA is too large, j must shrink. Both conditions are monotone in j, which is what licenses binary search."
+    },
+    {
+     "q": "How do you compute the median once the partition is valid?",
+     "a": "If m+n is odd, it is max(leftA, leftB). If even, it is the average of max(leftA, leftB) and min(rightA, rightB). Getting the odd/even indexing right matters: use half = (m+n+1)//2 so the left side absorbs the extra element."
+    }
+   ],
+   "category_note": "Binary search is not just \"halve the array\" -- it is \"find the boundary where a monotone predicate flips\". Every problem in this category has a hidden monotone predicate: is `nums[mid] <= target` (704), is the window feasible (875), is the timestamp at most t (981), is the half sorted (153). The transferable skill is naming that predicate and its monotonicity, because once the predicate is monotone the proof is mechanical. Three flavours recur: closed lower-bound search on values, boundary search on a rotated array where one half is always sorted, and binary search over a search SPACE of size up to 1e9 -- where the array being searched has nothing to do with the quantity being found."
+  },
+  {
+   "key": "05_binary_search/0033_search_in_rotated_sorted_array",
+   "one_liner": "One half is always sorted -- use it to discard the other.",
+   "core_objective": "Return the index of target in a strictly increasing array that was rotated at an unknown pivot, or -1 if absent.",
+   "bounds": "1 <= nums.length <= 5e4; values are distinct integers, so there are no duplicates and exactly one sorted half per step. n = 1 must work, and a single-element array rotated is itself.",
+   "approaches": [
+    {
+     "name": "Direct BS: find the sorted half, decide, discard",
+     "aha": "Invariant: target, if present, is in [lo, hi]. Per iteration: 1. mid = lo + (hi-lo)//2; hit \u2192 return. 2. If nums[lo] <= nums[mid], the LEFT half is sorted: target in [nums[lo], nums[mid]) \u2192 hi = mid-1, else lo = mid+1. 3. Else the RIGHT half is sorted: target in (nums[mid], nums[hi]] \u2192 lo = mid+1, else hi = mid-1. The `<=` in step 2 is the off-by-one: with a 2-element window [x, y], mid == lo and the left half [x] IS sorted \u2014 test it.",
+     "py": "lo, hi = 0, len(nums) - 1\nwhile lo <= hi:\n    mid = lo + (hi - lo) // 2\n    if nums[mid] == target:\n        return mid                # probe hit \u2014 done.\n    if nums[lo] <= nums[mid]:\n        if nums[lo] <= target < nums[mid]:\n            hi = mid - 1          # target lives in sorted left.",
+     "cpp": "while (lo <= hi) {\n    int mid = lo + (hi - lo) / 2;      // overflow-safe midpoint.\n    if (nums[mid] == target) {\n        return mid;                    // probe hit \u2014 done.\n    }\n    if (nums[lo] <= nums[mid]) {\n        if (nums[lo] <= target && target < nums[mid]) {\n            hi = mid - 1;              // target lives in sorted left.",
+     "time": "O(log n)",
+     "space": "O(1)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    },
+    {
+     "name": "Find the pivot, then plain BS in the right segment",
+     "aha": "The pivot is the minimum element \u2014 the only place the array drops. Locate it with the 0153 trick: while nums[mid] > nums[hi] the pivot is to the right (lo = mid+1), else hi = mid. After the loop lo IS the pivot. Compare target with nums[0] to pick the segment, then run plain 704-style BS inside it.",
+     "py": "n = len(nums)\nlo, hi = 0, n - 1\nwhile lo < hi:\n    mid = lo + (hi - lo) // 2\n    if nums[mid] > nums[hi]:\n        lo = mid + 1              # pivot is to the right.\n    else: hi = mid                  # mid may BE the pivot.\npivot = lo                        # index of the minimum.",
+     "cpp": "while (lo < hi) { int mid = lo + (hi - lo) / 2;\n    if (nums[mid] > nums[hi]) {\n        lo = mid + 1;                  // pivot is to the right.\n    } else {\n        hi = mid;                      // mid may BE the pivot.\n    }",
+     "time": "O(log n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(log n) time, O(1) space."
+    }
+   ],
+   "diagram": " nums = [4,5,6,7,0,1,2], target = 0  -> index 4\n\n mid = 3 (value 7). nums[3]=7 > nums[6]=2 -> RIGHT half sorted.\n   target 0 <= 7 and 0 not in [7,2] (which spans 2..7) -> search LEFT\n   lo=0 hi=2\n mid=1 (value 5). nums[1]=5 > nums[2]=6? no -> LEFT half [4,5] sorted\n   target 0 < 5 -> search RIGHT: lo=2 hi=2\n mid=2 (value 6). 0 < 6 -> search RIGHT: lo=3 > hi=2 -> return -1? \n   WRONG STEP -- corrected: at lo=2 hi=2 mid=2 val=6, 0<6 so\n   lo=3, loop ends. But target IS at index 4.\n\n the correct trace (target=0):\n  lo=0 hi=6 mid=3 val=7, right sorted [7,0,1,2] spans 2..7\n     target 0 < nums[3]=7 -> lo=0 hi=2\n  mid=1 val=5, left sorted [4,5] ; target 0 < 5 -> lo=2 hi=2\n  mid=2 val=6 ; nums[2]=6 > nums[0]=4 so right 'sorted'...\n  with lo==hi==2 just compare: nums[2]==0? no -> -1\n\n KEY: at each step only ONE half is guaranteed sorted, and\n the target must lie in it (or exactly at its boundary) unless\n the sorted half excludes it -- then go the other way.",
+   "cpp_vs_py": "Both do at most log2(50000) = 16 iterations, so this is entirely overhead-dominated. In C++ the two comparisons `(nums[mid] >= nums[lo])` and `(target >= nums[lo])` are register comparisons and the loop is a handful of instructions with one hard-to-predict branch. CPython executes roughly 25 bytecodes per iteration for the same four comparisons and subscripts, and each `nums[mid]` returns a borrowed reference to an existing int with no allocation -- so this is pure dispatch overhead. At 16 iterations the absolute difference is a few microseconds, which is precisely why this problem is a correctness problem rather than a performance one.",
+   "cpp_alts": [
+    "Always compute `mid = lo + (hi - lo) / 2` rather than `(lo + hi) / 2` to avoid overflow, even though the bounds here make it safe.",
+    "Decide the sorted half with `nums[mid] >= nums[lo]`; the mirrored form `nums[mid] <= nums[hi]` is equally valid and equally fast.",
+    "An alternative is to find the pivot with one binary search, then binary search in the guaranteed-sorted segment -- two searches but conceptually simpler."
+   ],
+   "py_alts": [
+    "A `while lo <= hi` loop with `mid = (lo + hi) // 2` is idiomatic; `/` would produce a float and break the indices.",
+    "Python's negative indices do not help here, so `lo` and `hi` must stay genuine in-range bounds.",
+    "For a rotating search, `bisect` is unusable -- the array is not globally sorted."
+   ],
+   "trap": "Assuming BOTH halves are sorted, or assuming the whole array is sorted. Also, testing the sorted half's range with `nums[lo] <= target <= nums[mid]` on the wrong half. The reliable formulation: identify which half is sorted, then check whether the target lies in its value range; if it does, recurse there, otherwise recurse into the other half.",
+   "invariant": "If `nums[lo..mid]` is the sorted half then `nums[mid] >= nums[lo]`, and the target is in `[nums[lo], nums[mid]]` exactly when it is present in that half; otherwise the answer lies in `[mid+1, hi]`. Exactly one half is sorted because the rotation has a single pivot and all values are distinct.",
+   "questions": [
+    {
+     "q": "How do you know which half is sorted?",
+     "a": "Compare `nums[mid]` with `nums[lo]`. If `nums[mid] >= nums[lo]` the left half is sorted (a rotation only breaks monotonicity across the pivot); otherwise the right half is. With distinct values exactly one of the two holds at every step."
+    },
+    {
+     "q": "How do you decide which half to keep?",
+     "a": "Once the sorted half is identified, test whether the target's value falls inside that half's range. If yes, discard the other half; if no, the answer must be in the other half. Because all values are distinct the target cannot be in both, so this decision never loses the answer."
+    },
+    {
+     "q": "What changes when duplicates are allowed (problem 153)?",
+     "a": "Both halves can appear unsorted when `nums[mid] == nums[hi]`. Then you cannot tell which half is sorted, so you must shrink by `hi--` and rely on the fact that the element you dropped equals nums[hi], so it cannot be the unique answer. That branch is what makes 153 harder."
+    }
+   ]
+  },
+  {
+   "key": "05_binary_search/0074_search_a_2d_matrix",
+   "one_liner": "Treat the matrix as one flat sorted array of m*n elements.",
+   "core_objective": "Return true if target appears in the m-by-n integer matrix, whose rows and columns are both sorted ascending, or false otherwise.",
+   "bounds": "m, n >= 1 and m*n <= 1e6, so at most log2(1e6) = 20 iterations. Integer overflow in the mid computation is the classic C++ bug: `rows * cols` up to 1e6 is fine, but `(low + high) / 2` computed as an index into a flattened array needs 64-bit arithmetic if the matrix is large.",
+   "approaches": [
+    {
+     "name": "Flattened-index binary search (BEST, O(log(m\u00b7n)))",
+     "aha": "Binary search over [0, m*n). For each probe `mid`, the matrix coordinates are row = mid // n, col = mid % n \u2014 pure integer arithmetic, no copy of the matrix. Compare, then discard half of the flattened array exactly like 0704.",
+     "py": "m, n = len(matrix), len(matrix[0])\nlo, hi = 0, m * n - 1\nwhile lo <= hi:\n    mid = lo + (hi - lo) // 2      # probe in the FLAT array.\n    r, c = divmod(mid, n)          # r = mid // n, c = mid % n.\n    v = matrix[r][c]               # virtual[mid] = matrix[r][c].\n    if v == target:\n        return True                # exact hit.",
+     "cpp": "while (lo <= hi) {\n    int mid = lo + (hi - lo) / 2;      // probe in the FLAT array.\n    int r = mid / n;                   // how many full rows fit.\n    int c = mid % n;                   // leftover position in row.\n    int v = matrix[r][c];              // virtual[mid] = matrix[r][c].\n    if (v == target) { return true;                   // exact hit.\n    }\n    if (v < target) {",
+     "time": "O(log(m\u00b7n))",
+     "space": "O(1)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    },
+    {
+     "name": "Two-level binary search (O(log m + log n))",
+     "aha": "Phase 1: binary search the FIRST COLUMN to find the unique row that could hold target (last row with first-value <= target). Phase 2: plain 0704 binary search inside that row. Conceptually cleaner (two 1D searches), one extra boundary check; log m + log n steps vs log(m\u00b7n) \u2014 asymptotically identical.",
+     "py": "m, n = len(matrix), len(matrix[0])\nlo, hi = 0, m - 1\nrow = 0\nwhile lo <= hi:\n    mid = lo + (hi - lo) // 2\n    if matrix[mid][0] <= target:\n        row = mid                  # feasible row \u2014 keep going down.\n        lo = mid + 1",
+     "cpp": "while (lo <= hi) { int mid = lo + (hi - lo) / 2;\n    if (matrix[mid][0] <= target) {\n        row = mid;                     // feasible row \u2014 keep going down.\n        lo = mid + 1;\n    } else {\n        hi = mid - 1;                  // first value too big \u2014 go up.\n    }",
+     "time": "O(log m + log n)",
+     "space": "O(1)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    }
+   ],
+   "diagram": " m=3 n=4 matrix = [[1, 3, 5, 7], [10,11,16,20], [23,30,34,60]]\n\n flatten: idx 0..11 -> 1 3 5 7 10 11 16 20 23 30 34 60\n\n lo=0 hi=11 mid=5  -> row 5//4=1 col 5%4=1 -> 11\n   11 > 23? target 13 < 11? no: 13 < 11 false\n   13 > 11 -> lo = 6\n lo=6 hi=11 mid=8  -> row 2 col 0 -> 23 ; 23 > 13 -> hi = 7\n lo=6 hi=7  mid=6  -> row 1 col 2 -> 16 ; 16 > 13 -> hi = 6\n lo=6 hi=6  mid=6  -> 16 != 13 -> lo = 7 > hi -> false\n\\n the mapping mid -> (mid // n, mid % n) is the whole trick:\n no need for a staircase search at all.",
+   "cpp_vs_py": "Twenty iterations means both languages are effectively instant, so the difference is only in the index arithmetic. C++ computes `rows * cols` in a register and uses a 64-bit mid to be safe; the div and mod by `cols` compile to a single hardware division instruction (about 20 cycles on x86) or are strength-reduced by the compiler into a multiply-shift pair. CPython does `mid // cols` and `mid % cols` as two separate boxed operations on Python ints, each of which is a full integer-division routine -- so you pay two divisions per iteration instead of one fused divide-and-remainder.",
+   "cpp_alts": [
+    "`long long mid = lo + (hi - lo) / 2` and `int r = mid / cols, c = mid % cols` -- the compiler fuses the div/mod pair.",
+    "The staircase search (start at top-right, move left or down) is $O(m+n)$ and uses $O(1)$ space; it is the pedagogically important alternative even though it is asymptotically worse.",
+    "Flatten into a single `vector<long long>` once if you search many times -- converts the matrix to a plain binary search."
+   ],
+   "py_alts": [
+    "`mid // cols, mid % cols` is two separate operations; use `divmod(mid, cols)` if you need both and it is measurably no slower.",
+    "The staircase version is arguably more Pythonic and avoids arithmetic entirely: `while 0 <= r < m and 0 <= c < n`.",
+    "`bisect` on a flattened list is the fastest if you are allowed to allocate the flat list."
+   ],
+   "trap": "Using the staircase search's O(m+n) bound when n*m is 1e6 -- that is up to 4000 steps versus 20. The flattened binary search is asymptotically strictly better here and is the intended solution.",
+   "invariant": "The matrix sorted row-major is a sorted 1-D array, so the standard binary search invariant applies to the flattened index space: if target exists, its flat index lies in [lo, hi]. The div/mod mapping is a bijection between flat indices and cells, so no candidate is skipped or duplicated.",
+   "questions": [
+    {
+     "q": "Why does the flattened array count as sorted?",
+     "a": "Row-major order visits every row left to right, and the row-max of row i is <= the row-min of row i+1 because the columns are sorted too. So the concatenation of the rows is globally ascending, which is exactly what binary search needs."
+    },
+    {
+     "q": "How do you recover (row, col) from a flat index?",
+     "a": "`row = mid // cols`, `col = mid % cols`. Integer division and remainder by the column count decompose the flat index; no cell is visited twice and none is skipped, which is the bijection argument."
+    },
+    {
+     "q": "When would the staircase search be preferable?",
+     "a": "If you needed $O(m + n)$ and could not afford to assume both rows and columns are sorted (for example only rows sorted), or if the matrix is streamed and cannot be flattened. Here it is dominated."
+    }
+   ]
+  },
+  {
+   "key": "05_binary_search/0153_find_minimum_in_rotated_sorted_array",
+   "one_liner": "Compare against the right edge; equals means shrink one side.",
+   "core_objective": "Return the minimum element of an ascending array that may have been rotated, allowing duplicates.",
+   "bounds": "1 <= nums.length <= 5e4; -1e4 <= nums[i] <= 1e4. Duplicates ARE allowed, which is the entire difference from problem 33. n = 1 returns that element; an all-equal array must terminate.",
+   "approaches": [
+    {
+     "name": "Binary search: compare mid against the RIGHT edge",
+     "aha": "Invariant: the minimum is inside [lo, hi]. Per iteration: \u2022 nums[mid] > nums[hi] \u2192 the drop is strictly to the right of mid \u2192 lo = mid + 1. \u2022 nums[mid] <= nums[hi] \u2192 mid lies on the right run; the minimum is mid or to its left \u2192 hi = mid. Loop is `lo < hi` because hi = mid keeps the window size >= 1; after the loop lo == hi == the pivot.",
+     "py": "lo, hi = 0, len(nums) - 1\nwhile lo < hi:\n    mid = lo + (hi - lo) // 2      # overflow-safe midpoint.\n    if nums[mid] > nums[hi]:\n        lo = mid + 1\n    else: hi = mid\nreturn nums[lo]                    # lo == hi == pivot index.",
+     "cpp": "while (lo < hi) {\n    int mid = lo + (hi - lo) / 2;      // overflow-safe midpoint.\n    if (nums[mid] > nums[hi]) { lo = mid + 1;\n    } else { hi = mid;\n    }",
+     "time": "O(log n)",
+     "space": "O(1)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    },
+    {
+     "name": "Sort, then take the first (cheating contrast)",
+     "aha": "Sort a copy and read the front. Correct, trivial, O(n log n) \u2014 a reminder of WHY the binary-search version matters: at n = 1e6 the BS does ~20 probes; sorting touches millions of elements.",
+     "py": "sorted_copy = sorted(nums)\nreturn sorted_copy[0]",
+     "cpp": "        for (size_t i = 1; i < nums.size(); ++i) { if (nums[i] < expect) { expect = nums[i]; }",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "the sort dominates; the post-sort scan is linear; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1,3,5,1,1,1]  hmm use [3,1,3,1,1,3]\n\n lo=0 hi=5 mid=2 (val 3)\n   nums[hi]=3 == nums[mid]=3  -> AMBIGUOUS: hi-- (drop a 3)\n   lo=0 hi=4\n mid=2 (3) vs nums[hi]=1 : 3 > 1 -> RIGHT half holds the min\n   lo = 3\n lo=3 hi=4 mid=3 (1) vs nums[hi]=1 : equal -> hi--\n lo=3 hi=3 -> return nums[3] = 1  CORRECT\n\n the three-way decision at each step:\n   nums[mid] <  nums[hi]  -> min is in [lo, mid],   hi = mid\n   nums[mid] >  nums[hi]  -> min is in [mid+1, hi], lo = mid+1\n   nums[mid] == nums[hi]  -> cannot tell, discard hi\n\\n worst case degrades to O(n) with all-equal input:\n   every step is the equal branch, hi decrements n times.",
+   "cpp_vs_py": "This is the one binary-search problem in the set whose worst case is genuinely linear, because the equal branch only shrinks by one element per iteration. On an all-equal array of length 5e4 the C++ loop runs 5e4 times with two loads and two compares per iteration -- still only about 200 microseconds. Python runs the same 5e4 iterations in bytecode, roughly 20x that, which is the difference between 0.2 ms and 4 ms. Worth noting that the algorithm's *asymptotic* worst case is O(n) while its *typical* case is O(log n), and interviews often probe exactly that distinction.",
+   "cpp_alts": [
+    "`lo = mid + 1` in the greater branch is mandatory; `lo = mid` would loop forever when lo == mid.",
+    "Handle n == 1 up front so the loop is never entered with lo == hi ambiguously.",
+    "For a variant without duplicates you can drop the equal branch entirely and get a strict O(log n) guarantee."
+   ],
+   "py_alts": [
+    "`while lo < hi:` with `mid = (lo + hi) // 2` and `hi = mid` in the smaller branch -- this is the half-open formulation that avoids the final check.",
+    "The equal branch is the only one that costs an extra comparison; ordering the branches so equality is tested last keeps the common case cheap.",
+    "`min()` calls per iteration are pure overhead; use explicit comparisons."
+   ],
+   "trap": "Writing `lo = mid` in the `nums[mid] > nums[hi]` branch. If `lo == mid` the loop never progresses, and if the minimum happens to sit at mid the algorithm returns it by luck rather than by proof -- either way it is wrong on some inputs.",
+   "invariant": "The minimum lies in [lo, hi] at every step. When `nums[mid] < nums[hi]`, the segment [lo, mid] is sorted ascending so its minimum is `nums[mid]` itself, and the true minimum cannot be to the right of mid because nums[mid] < everything in [mid, hi]. The other two branches follow symmetrically, and the equal branch only discards a duplicate of `nums[hi]`, which cannot be the unique minimum unless every element equals it -- in which case any remaining element is the answer.",
+   "questions": [
+    {
+     "q": "Why does the duplicate case make the worst case linear?",
+     "a": "When `nums[mid] == nums[hi]` there is no information to narrow the search: the minimum could be on either side. You can only shrink one position per step, so an array of all equal values forces n iterations. Without duplicates this branch never fires and the bound is strict O(log n)."
+    },
+    {
+     "q": "Is discarding `hi` always safe?",
+     "a": "Yes: `nums[hi] == nums[mid]`, so `nums[hi]` has an equal twin at or left of mid. If nums[hi] were the unique minimum then so would nums[mid] be, and the answer would be reproducible from the remaining window. Nothing is lost."
+    },
+    {
+     "q": "What does the half-open formulation change?",
+     "a": "With `while lo < hi` and `hi = mid` in the smaller branch, the loop exits when lo == hi and `nums[lo]` is the answer with no post-loop comparison. It is one fewer line and removes an entire class of off-by-one, at the cost of a slightly subtler mental model."
+    }
+   ]
+  },
+  {
+   "key": "05_binary_search/0704_binary_search",
+   "one_liner": "The loop bounds decide leftmost versus rightmost insertion.",
+   "core_objective": "Return the index of target in a sorted ascending array of distinct integers, or -1 if absent.",
+   "bounds": "1 <= nums.length <= 1e4; -1e4 <= nums[i] <= 1e4; values are distinct, so any hit is unique. An empty array returns -1. The same code with `nums = [1,2,2,2,3]` is the lower-bound variant, so the boundary conditions are the real content.",
+   "approaches": [
+    {
+     "name": "Classic lo <= hi loop (find ANY hit)",
+     "aha": "Invariant: target (if present) lives in [lo, hi]. Probe mid = lo + (hi-lo)//2. On a hit return immediately; otherwise discard the half that cannot contain target. Loop exits with lo > hi \u2014 the window inverted \u21d2 element absent.",
+     "py": "lo, hi = 0, len(nums) - 1\nwhile lo <= hi:\n    mid = lo + (hi - lo) // 2\n    if nums[mid] == target:\n        return mid                # exact hit \u2014 done in one probe.\n    if nums[mid] < target:\n        lo = mid + 1              # discard left half entirely.\n    else:",
+     "cpp": "while (lo <= hi) { int mid = lo + (hi - lo) / 2;\n    if (nums[mid] == target) {\n        return mid;              // exact hit \u2014 done in one probe.\n    }\n    if (nums[mid] < target) {\n        lo = mid + 1;            // discard left half entirely.\n    } else {\n        hi = mid - 1;            // discard right half entirely.",
+     "time": "O(log n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(log n) time, O(1) space."
+    },
+    {
+     "name": "lo < hi loop (lower bound, then verify)",
+     "aha": "Half-open window [lo, hi) shrinking toward the FIRST index whose value >= target (this is std::lower_bound semantics): nums[mid] >= target \u2192 hi = mid (mid may be the answer) nums[mid] < target \u2192 lo = mid+1 (mid is definitely too small) Loop ends with lo == hi; one final check distinguishes an exact hit from \"absent\". This predicate pattern (false\u2026false \u2192 true\u2026true) is the invariant that generalizes to 0033, 0153, 0875, 0981.",
+     "py": "lo, hi = 0, len(nums)\nwhile lo < hi:\n    mid = lo + (hi - lo) // 2\n    if nums[mid] >= target:\n        hi = mid\n    else: lo = mid + 1\nif lo < len(nums) and nums[lo] == target:\n    return lo",
+     "cpp": "while (lo < hi) { int mid = lo + (hi - lo) / 2;\n    if (nums[mid] >= target) { hi = mid;\n    } else { lo = mid + 1;\n    }",
+     "time": "O(log n)",
+     "space": "O(1)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [-1,0,3,5,9,12], target = 9\n\n classic lo<=hi:            lo<hi lower-bound:\n  lo=0 hi=5 mid=2 (3)        lo=0 hi=5 mid=2 (3)\n    3 < 9 -> lo=3             3 <  9 -> lo=3\n  lo=3 hi=5 mid=4 (9)        lo=3 hi=5 mid=4 (9)\n    9 == 9 -> return 4         9 <= 9 -> hi=4\n  DONE                          lo=3 hi=4 mid=3 (5)\n                                5 < 9 -> lo=4\n                              lo==hi=4; check nums[4]==9 -> return 4\n\\n WHY:  lo<=hi allows hi to keep shrinking, so an exact hit\n terminates the search at the found index.\n       lo<hi   keeps nums[hi] as a LIVE candidate, so the loop\n              exits with hi = lower_bound(target).\n       For RIGHTMOST insertion use upper_bound: nums[hi] < t\n       -> lo=hi+1, then verify.",
+   "cpp_vs_py": "Both perform about 14 iterations and finish in microseconds. The genuine difference is in the loop-bound idiom: C++ prefers `lo < hi` with the invariant that `nums[lo..hi]` always contains the answer position as a candidate, which the compiler can use to eliminate bounds checks on `nums[mid]` when the array size is known. Python has no such reasoning, but the `(lo + hi) // 2` computation allocates a new int per iteration for values beyond 256 -- 14 small allocations, which is measurable at this scale only because everything else is so cheap. Python also risks `-1` on an empty array if you do not guard `if not nums: return -1` first, since `hi = len(nums) - 1` becomes -1 and the loop still terminates by luck.",
+   "cpp_alts": [
+    "`std::lower_bound(nums.begin(), nums.end(), t)` is the library lower-bound, O(log n) with better branch prediction.",
+    "`std::binary_search` is the one-liner for the pure existence question, but it gives no index.",
+    "`std::upper_bound` gives the rightmost insertion point -- the only change needed between the two variants."
+   ],
+   "py_alts": [
+    "`bisect.bisect_left(nums, t)` and `bisect_right(nums, t)` are the C-implemented lower and upper bounds -- faster than any Python loop.",
+    "`target in nums` first, then `nums.index(target)`, is $O(n)$ and only wins for tiny arrays where the constant dominates.",
+    "Use `lo < hi` rather than `lo <= hi` for the lower-bound form to avoid the final verification step."
+   ],
+   "trap": "Mixing the two formulations: using `lo <= hi` with `hi = mid` (instead of `mid - 1`) which can loop forever when `lo == mid`. If you use the inclusive loop, the update must be `hi = mid - 1`.",
+   "invariant": "For the `lo <= hi` form: if target exists, its index lies in [lo, hi]. At each step, comparing `nums[mid]` with target either finds it or eliminates `mid` and exactly one side, since the array is sorted. Termination is guaranteed because either lo increases or hi decreases on every non-terminating iteration.",
+   "questions": [
+    {
+     "q": "Why does `lo < hi` compute a lower bound instead of just finding the element?",
+     "a": "Because `hi` is never decremented to `mid` when the condition holds, `nums[hi]` stays a live candidate. The loop exits when `lo == hi`, and the invariant then forces that single position to be the first index where `nums[i] >= target` -- the lower bound. With duplicates that is the leftmost insertion point."
+    },
+    {
+     "q": "What single change turns this into upper_bound?",
+     "a": "Change the continue condition from `nums[mid] < target` to `nums[mid] <= target`. Then equal elements are consumed and the loop exits at the first index where `nums[i] > target`, which is the rightmost insertion point. In C++ that is literally `upper_bound` instead of `lower_bound`."
+    },
+    {
+     "q": "How do you avoid integer overflow in the midpoint?",
+     "a": "Use `lo + (hi - lo) / 2`. In Python this is irrelevant (arbitrary precision), but in C++ `(lo + hi) / 2` overflows once the values exceed about 2^31, and for a negative-midpoint adjustment loop it can also round the wrong way. The safe form costs nothing."
+    }
+   ]
+  },
+  {
+   "key": "05_binary_search/0875_koko_eating_bananas",
+   "one_liner": "Binary search the SPEED; feasibility is monotone.",
+   "core_objective": "Find the minimum eating speed at which Koko finishes all piles within h hours, where each hour she eats one banana from a single pile.",
+   "bounds": "1 <= piles.length <= 1e4; 1 <= piles[i] <= 1e9; 1 <= h <= 1e9. Both search-space endpoints are up to 1e9, which is exactly why a linear sweep over speeds is infeasible. The answer always exists because h can be large enough to eat the largest pile in one hour.",
+   "approaches": [
+    {
+     "name": "Binary search on speed (BEST, O(n log M))",
+     "aha": "lo = 1, hi = max(piles). Probe mid and evaluate canFinish(mid) in O(n) by summing ceil(piles[i]/mid): \u2022 hours <= h \u2192 feasible \u2192 optimum is mid or less (hi = mid). \u2022 hours > h \u2192 too slow \u2192 lo = mid + 1. The `lo < hi` loop collapses onto the smallest feasible speed.",
+     "py": "lo, hi = 1, max(piles)\nwhile lo < hi:\n    mid = lo + (hi - lo) // 2      # probe a speed.\n    hours = sum((p + mid - 1) // mid for p in piles)\n    if hours <= h:\n        hi = mid                   # feasible \u2192 try slower.\n    else: lo = mid + 1               # too slow \u2192 speed up.\nreturn lo                          # smallest feasible speed.",
+     "cpp": "for (size_t i = 0; i < piles.size(); ++i) {\n    hi = std::max(hi, piles[i]);       // upper bound: 1 pile/hour worst case.",
+     "time": "O(n log M)   M = max(piles); log M probes,",
+     "space": "O(1)",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    },
+    {
+     "name": "Linear sweep of speeds (contrast, O(n\u00b7M))",
+     "aha": "Try every k from 1 to max(piles); return the first feasible one. Identical result, but with max(piles) = 1e9 that is a billion sweeps \u2014 the log M probe count is what scales.",
+     "py": "for k in range(1, max(piles) + 1):\n    hours = sum((p + k - 1) // k for p in piles)\n    if hours <= h:\n        return k                   # smallest feasible speed.\nreturn max(piles)                  # unreachable per constraints.",
+     "cpp": "        for (size_t i = 0; i < piles.size(); ++i) { hi = std::max(hi, piles[i]);",
+     "time": "O(n\u00b7M)",
+     "space": "O(1)",
+     "why": "each interval enters and leaves the frontier once; hence the stated bounds."
+    }
+   ],
+   "diagram": " piles = [3,6,7,11], h = 8   -> speed 4\n\n feasibility is MONOTONE in speed:\n   speed 1 -> ceil sums 27 > 8  FAIL\n   speed 2 -> 2+3+4+6=15 > 8  FAIL\n   speed 3 -> 1+2+3+4=10 > 8  FAIL\n   speed 4 -> 1+2+2+3= 8 <= 8 OK  <- smallest feasible\n\\n binary search on [1, max(piles)] = [1, 11]:\n   lo=1 hi=11 mid=6  feasible(6)=1+1+2+2=6<=8 -> hi=6\n   lo=1 hi=6 mid=3  feasible(3)=1+2+3+4=10>8 -> lo=4\n   lo=4 hi=6 mid=5  feasible(5)=1+2+2+3=8<=8 -> hi=5\n   lo=4 hi=5 mid=4  feasible(4)=8<=8 -> hi=4\n   lo==hi==4 -> return 4\n\\n the search space is 1e9 wide but the predicate is monotone,\n so only log2(1e9) ~ 30 probes are needed.",
+   "cpp_vs_py": "The outer loop runs at most 30 iterations, but the inner feasibility check runs once per pile, so the real work is $O(P \\log V)$ with P up to 1e4 and V up to 1e9 -- about 3e5 divisions. That is where the languages diverge. C++ computes `(pile + speed - 1) / speed` as a single 64-bit integer division, roughly 20 to 30 cycles, pipelined across independent piles. Python's `//` on ints is also a C-level division but the surrounding `sum(...)` with a generator expression builds an iterator protocol chain and boxes every quotient -- roughly 8 times slower at this operation count. The C++ version runs in about 1 ms, the Python version in about 10 ms.",
+   "cpp_alts": [
+    "`(pile + speed - 1) / speed` is exact integer ceiling division; using floating point and `ceil` risks an off-by-one at the exact boundary.",
+    "`long long` is required: `pile + speed - 1` can approach 2e9 and the sum of hours can exceed 32 bits.",
+    "Early exit from the feasibility loop as soon as `hours > h` -- turns the worst case into the average case and is the single biggest constant-factor win."
+   ],
+   "py_alts": [
+    "`(pile + speed - 1) // speed` avoids `math.ceil` and the float round-trip entirely.",
+    "`sum(...)` with a generator is fine; for large piles a `for` loop with an early break is measurably faster because it can bail out.",
+    "`lo, hi = 1, max(piles)` is the tightest possible range; starting `hi` at `sum(piles)` is correct but 1e9 probes wide initially, costing more iterations."
+   ],
+   "trap": "Returning the first speed that passes rather than the smallest. With `hi = mid` on success you converge to the minimum, but with `lo = mid` you converge to the maximum feasible speed. Also, using floating-point division and `ceil` makes the exact-boundary case (`pile` an exact multiple of `speed`) fragile.",
+   "invariant": "`lo` is always infeasible-or-the-answer and `hi` is always feasible, so the answer stays inside [lo, hi]. Feasibility is monotone because a faster Koko never takes more hours on any pile, which makes the sum non-increasing in speed -- a monotone predicate is exactly what binary search requires.",
+   "questions": [
+    {
+     "q": "Why is feasibility monotone?",
+     "a": "Each pile contributes ceil(pile / speed) hours, which is non-increasing as speed grows, so their sum is non-increasing too. Once it drops to at most h it stays there. A non-monotone predicate would make binary search unsound, which is why the monotonicity argument is the whole proof."
+    },
+    {
+     "q": "What is the correct search range?",
+     "a": "[1, max(piles)]. The upper bound works because at speed = max(piles) every pile takes exactly one hour, so the total is P, and P <= 1e4 <= h only sometimes -- if h < P you need a higher bound. sum(piles) is always safe. Both are valid; max(piles) is tighter when h is large."
+    },
+    {
+     "q": "Why does the early exit matter so much?",
+     "a": "Feasibility usually fails partway through the pile list, so returning early on the first `hours > h` skips most of the work. Without it you pay P divisions per probe always; with it the average is far fewer. It changes nothing about correctness, only the constant."
+    }
+   ]
+  },
+  {
+   "key": "05_binary_search/0981_time_based_key_value_store",
+   "one_liner": "Per key, a sorted timestamp list; upper-bound then step back.",
+   "core_objective": "Implement a set(key, value, timestamp) store plus get(key, timestamp) returning the value stored at the largest timestamp not exceeding the query, defaulting to the empty string.",
+   "bounds": "Each call has key/value/time of length 3, at most 1e5 calls per test set, so the total timestamp count is bounded and the log factor is small. Timestamps are strictly increasing for a given key, which is what lets the list stay sorted without insertion sort.",
+   "approaches": [
+    {
+     "name": "dict[str, list[(ts,val)]] + bisect (BEST)",
+     "aha": "Python : dict maps the key to a list of (timestamp, value) pairs appended in order. get() uses bisect_right on a parallel list of timestamps \u2014 returns the INSERTION POINT after any equal entries, i.e. the first index with ts > query; the element before it is the answer. If the insertion point is 0, every record is too new. (C++ equivalent: std::map<string, vector<pair<int,string>>> + std::upper_bound \u2014 identical semantics.)",
+     "py": "store = defaultdict(list)\n\ndef set(k, v, ts):\n    store[k].append((ts, v))\n\ndef get(k, ts):\n    lst = store.get(k)\n    if not lst: return ''\n    i = bisect.bisect_right(lst, (ts, chr(0x10FFFF)))\n    return lst[i - 1][1] if i else ''",
+     "cpp": "        if (it == store.end()) { return \"\";",
+     "time": "set O(1) amortized, get O(log n)",
+     "space": "O(records) total across all keys",
+     "why": "the interval halves each iteration: O(log n) probes; hence the stated bounds."
+    },
+    {
+     "name": "Linear scan of the per-key list (contrast)",
+     "aha": "Same storage, but get() walks the list from the END backward and returns the first record with ts <= query. Correct, zero binary search machinery \u2014 but O(n) per get; a hot key queried a million times becomes a billion comparisons.",
+     "py": "store = defaultdict(list)\n\ndef set(k, v, ts):\n    store[k].append((ts, v))\n\ndef get(k, ts):\n    ans = ''\n    for t, v in store.get(k, []):\n        if t <= ts: ans = v\n    return ans",
+     "cpp": "        if (it == store.end()) { return \"\";",
+     "time": "set O(1), get O(n)",
+     "space": "O(records)",
+     "why": "Follows directly from the traversal count: set O(1), get O(n) time, O(records) space."
+    }
+   ],
+   "diagram": " ops: set(a,v1,1) set(a,v2,5) set(b,v3,3)\n       get(a,6) get(a,2) get(b,4) get(c,9)\n\n store = { a: [(1,'v1'), (5,'v2')], b: [(3,'v3')] }\n\n get(a,6): bisect_right(times, 6) = 2 -> index 1 -> 'v2'  OK\n get(a,2): bisect_right(times, 2) = 1 -> index 0 -> 'v1'  OK\n get(b,4): bisect_right([3],   4) = 1 -> index 0 -> 'v3'  OK\n get(c,9): key missing                  -> ''\n\\n why bisect_right and not bisect_left:\n   the answer must include the EXACT timestamp, so we want\n   the first index strictly greater than t, then step back.\n   Using bisect_left would miss an exact match at the last slot.\n\\n invariant: each list is strictly increasing in timestamp,\n so index bisect_right(t)-1 is the unique latest <= t.",
+   "cpp_vs_py": "This is a case where the standard library wins outright. `std::map<string, vector<pair<int,string>>>` plus `lower_bound` is a tree walk of about 17 pointer dereferences per query, and those are cache misses, so the query cost is dominated by memory latency rather than computation. CPython's `dict` lookup hashes the key with SipHash (a strong, slow hash) but then gets a single O(1) array probe, and the per-key list search can be `bisect.bisect_right`, which runs entirely inside CPython's C code with no bytecode at all. So for short lists and few keys, Python is genuinely competitive or faster despite its interpreter, because it avoids the pointer chasing that dominates the C++ tree.",
+   "cpp_alts": [
+    "`std::map` for ordered keys, `std::unordered_map` for O(1) -- unordered wins unless you need ordered iteration.",
+    "`std::vector<std::pair<int,std::string>>` per key with `lower_bound` and a `prev()` call; `upper_bound` then `--` is the same thing.",
+    "`std::string_view` for the key avoids copying the key into the map on every `set`."
+   ],
+   "py_alts": [
+    "`collections.defaultdict(list)` removes the `if key not in store` branch on `set`.",
+    "`bisect_right(times, t) - 1` is the entire query; guard `idx < 0` to return the empty string.",
+    "Store timestamps and values as parallel lists only if you care about tuple allocation; a list of tuples is clearer and the difference is negligible at this scale."
+   ],
+   "trap": "Using `bisect_left` instead of `bisect_right`. If a value was set at exactly the query timestamp, `bisect_left` returns that index but stepping back once lands on the previous element and returns a stale value. `bisect_right` then decrement is the correct pairing.",
+   "invariant": "For each key, timestamps are strictly increasing, so `bisect_right(times, t)` returns the count of timestamps <= t; subtracting one gives the index of the largest such timestamp, which is the answer's timestamp, or -1 if none exists.",
+   "questions": [
+    {
+     "q": "Why is `bisect_right` the right primitive?",
+     "a": "We want the LAST timestamp <= t, which is at index `bisect_right(t) - 1`. `bisect_right` returns the first index of a value greater than t, so subtracting one lands exactly on the greatest value not exceeding t. `bisect_left` would skip a value equal to t."
+    },
+    {
+     "q": "What if two sets use the same timestamp for one key?",
+     "a": "The problem guarantees strictly increasing timestamps per key, so this cannot happen. If it could, you would need to decide whether the later set wins, which would change `set` from append to a replace-if-newer."
+    },
+    {
+     "q": "What is the space complexity across all calls?",
+     "a": "Space is proportional to the total number of sets, since each stores one (timestamp, value) pair. Time per set is O(log m) for the append (amortised O(1) since timestamps only increase) and per get is O(log m) for the binary search plus O(1) for the hash lookup on the key."
+    }
+   ]
+  }
+ ]
+}

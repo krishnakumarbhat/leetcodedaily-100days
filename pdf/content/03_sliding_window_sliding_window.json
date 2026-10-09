@@ -1,0 +1,330 @@
+{
+ "problems": [
+  {
+   "key": "03_sliding_window/0003_longest_substring_without_repeating_characters",
+   "one_liner": "Jumping the left pointer past the last duplicate is O(n).",
+   "core_objective": "Return the length of the longest contiguous substring of s containing no repeated characters.",
+   "bounds": "1 <= s.length <= 5e4; the character set is unspecified, so a 256-entry array is needed rather than 26. The answer is at most the number of distinct characters, which caps how far the window can ever grow.",
+   "approaches": [
+    {
+     "name": "Sliding window + set (shrink step-by-step)",
+     "aha": "Keep the set of characters inside [l, r]. On duplicate, evict s[l] and l++ until the duplicate is gone, then insert s[r].",
+     "py": "last, l, best = {}, 0, 0\nfor r, ch in enumerate(s):\n    if ch in last:\n        l = max(l, last[ch] + 1)   # never move l back\n    last[ch] = r\n    best = max(best, r - l + 1)\nreturn best",
+     "cpp": "int last[256]; fill(last, last + 256, -1);\nint l = 0, best = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    l = max(l, last[s[r]] + 1);\n    last[s[r]] = r;\n    best = max(best, r - l + 1);\n}",
+     "time": "O(n)",
+     "space": "O(min(n, m))",
+     "why": "each element is probed once; pairs cancel or are recorded; hence the stated bounds."
+    },
+    {
+     "name": "Sliding window + last-seen index map (JUMP past dupe)",
+     "aha": "Store each char's most recent index; on duplicate l jumps to last_seen[s[r]] + 1 instead of evicting char-by-char.",
+     "py": "best, l = 0, 0\nwin = set()\nfor r, ch in enumerate(s):\n    while ch in win:\n        win.remove(s[l]); l += 1\n    win.add(ch)\n    best = max(best, r - l + 1)\nreturn best",
+     "cpp": "unordered_set<char> win;\nint l = 0, best = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    while (win.count(s[r])) { win.erase(s[l]); ++l; }\n    win.insert(s[r]);\n    best = max(best, r - l + 1);\n}",
+     "time": "O(n)",
+     "space": "O(min(n, m))",
+     "why": "Follows directly from the traversal count: O(n) time, O(min(n, m)) space."
+    }
+   ],
+   "diagram": " s = \"abcbbad\"  -> answer 3 (\"abc\" or \"bba\"->3)\n\n r=0 'a'  last={}        l=0 win=\"a\"   len 1\n r=1 'b'  last={a:0}      l=0 win=\"ab\"  len 2\n r=2 'c'  last={a:0,b:1}  l=0 win=\"abc\" len 3  best=3\n r=3 'b'  last[b]=1  l=max(0,1+1)=2   win=\"cb\"  len 2\n r=4 'b'  last[b]=3  l=max(2,3+1)=4   win=\"b\"   len 1\n r=5 'a'  last={a:0,b:3} l=max(4,0+1)=4 win=\"ba\"  len 2\n r=6 'd'  l=4                       win=\"bad\" len 3\n\\n max(len) = 3\n\\n each index enters and leaves the window exactly once -> O(n)",
+   "cpp_vs_py": "Both versions do $n$ probes, but the second version does strictly more work in Python. The last-seen map in C++ is a 256-entry `int` array sitting in L1 -- 1 KB, fully resident, and the update `last[ch] = r` is a single store with no allocation and no bounds check if the array is fixed-size. The Python dict, by contrast, hashes the one-character string (a cached Latin-1 object, so the hash is cached too) and stores an interned int value; the `max(l, last[ch] + 1)` allocates a fresh int for `last[ch] + 1` every single iteration. That is $n$ small allocations that C++ never performs, which is the dominant cost in Python.",
+   "cpp_alts": [
+    "A fixed `int last[256]` beats `unordered_map<char,int>` for an ASCII byte alphabet: O(1) array indexing, no hashing, no node allocation.",
+    "Use `unsigned char` for the index to avoid sign extension and out-of-bounds on bytes above 127.",
+    "A 26-entry array plus a lowercase-only precondition is 104 bytes -- guaranteed single cache line."
+   ],
+   "py_alts": [
+    "`last.get(ch, -1)` in one lookup beats `if ch in last: last[ch]` which is two hash lookups.",
+    "Iterating with `enumerate` avoids the explicit index increment and the range/len round trip.",
+    "For a lowercase-alphabet guarantee, a `list` of size 26 indexed by `ord(ch) - 97` beats a dict by a wide margin."
+   ],
+   "trap": "`l = last[ch] + 1` instead of `l = max(l, last[ch] + 1)`. If the conflict lies behind the current window, that assignment moves `l` backwards, and for inputs like `\"abba\"` the window shrinks incorrectly and the reported length is too small.",
+   "invariant": "Before processing `s[r]`, `s[l..r-1]` has no duplicate characters and `last[ch]` is the greatest index < r where `ch` occurred. Setting `l = max(l, last[s[r]] + 1)` therefore yields the smallest valid `l`, which maximises the window length for this `r`.",
+   "questions": [
+    {
+     "q": "Why is `max` needed rather than a plain assignment?",
+     "a": "The previous occurrence of `s[r]` might be at an index smaller than `l - 1`, i.e. outside the window. A plain assignment would drag `l` backwards and shrink a window that is already valid. `max` enforces monotonicity of `l`, which is what keeps the total work linear."
+    },
+    {
+     "q": "What does the last-seen approach buy over the shrinking set?",
+     "a": "One probe instead of up to 26 erase operations per left move, and each index is touched a constant number of times rather than once per possible duplicate. Both are $O(n)$ in theory; the map version has the smaller constant because it never re-reads characters it has already discarded."
+    },
+    {
+     "q": "Can the window length exceed the number of distinct characters?",
+     "a": "No. If the window has d distinct characters then its length is d, so len <= d and also len <= 26 for a lowercase alphabet. That bound is a useful sanity check: any answer above 26 on a lowercase-guaranteed input is a bug."
+    }
+   ],
+   "category_note": "A sliding window is a promise that the answer's defining property is monotone under window extension: for fixed-size validity (no repeats, at most k replacements, anagram) growing a window can only add violations, so the left pointer never needs to retreat. Three variants recur: the last-seen index map, which jumps `left` directly past the conflict in $O(1)$; the shrink-by-one set, which costs $O(26)$ extra per left step; and the counter-of-required-frequency with a formed/match counter. The invariant is always about what the window currently contains, and the performance hinges on how aggressively you can advance `left` rather than how many characters the window holds."
+  },
+  {
+   "key": "03_sliding_window/0076_minimum_window_substring",
+   "one_liner": "Shrink from the left while valid; count formed letters, not characters.",
+   "core_objective": "Return the shortest substring of s that contains every character of t, including multiplicities, or the empty string if none exists.",
+   "bounds": "1 <= s.length, t.length <= 1e5 over the printable ASCII set, so a 128- or 256-slot array is valid and a dict is unnecessary. The empty string is a valid t. Duplicate letters in t must be satisfied: t = 'aab' needs two a's.",
+   "approaches": [
+    {
+     "name": "Sliding window + two dicts (formed/required)",
+     "aha": "Grow r. When the window count of s[r] reaches t's requirement, formed += 1. While formed == required: record the candidate, then shrink l (decrement its count; below the requirement \u2192 1).",
+     "py": "need, window = Counter(t), Counter()\nfor ch in s: window[ch] += 1\nneed_size, formed, l, best = len(need), 0, 0, (1e9, 0, 0)\nfor r, ch in enumerate(s):\n    window[ch] += 1\n    if ch in need and window[ch] == need[ch]: formed += 1\n    while formed == need_size:\n        if r - l + 1 < best[0]: best = (r-l+1, l, r)\n        out = s[l]\n        window[out] -= 1\n        if out in need and window[out] < need[out]: formed -= 1\n        l += 1",
+     "cpp": "unordered_map<char,int> need, win;\nfor (char ch : t) ++need[ch];\nfor (char ch : s) ++win[ch];\nint formed = 0, l = 0, best = INT_MAX, bl = 0, br = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    if (win[s[r]]++ == need[s[r]]) ++formed;\n    while (formed == need.size()) {\n        if (r - l + 1 < best) { best = r-l+1; bl = l; br = r; }\n        if (--win[s[l]] < need[s[l]]) --formed;\n        ++l;\n    }\n}",
+     "time": "O(n + m)",
+     "space": "O(m)",
+     "why": "Follows directly from the traversal count: O(n + m) time, O(m) space."
+    },
+    {
+     "name": "Sliding window + 128-slot count arrays (no hashing)",
+     "aha": "Identical logic, but need[128] / window_count[128] indexed by ASCII code: O(1) worst case, zero hashing, fixed memory. matched mirrors formed; required counts nonzero need slots.",
+     "py": "need = Counter(t)\nfor start in range(len(s) - len(t) + 1):\n    win, formed = Counter(), 0\n    for r in range(start, start + len(t)):\n        win[s[r]] += 1\n        if win[s[r]] == need[s[r]]: formed += 1\n    if formed == len(need): return s[start:start+len(t)]\nreturn ''",
+     "cpp": "unordered_map<char,int> need;\nfor (char ch : t) ++need[ch];\nfor (int i = 0; i + t.size() <= s.size(); ++i) {\n    unordered_map<char,int> win;\n    int formed = 0;\n    for (int j = i; j < i + t.size(); ++j) {\n        if (++win[s[j]] == need[s[j]]) ++formed;\n    }\n    if (formed == (int)need.size()) return s.substr(i, t.size());\n}\nreturn \"\";",
+     "time": "O(n + m)",
+     "space": "O(1)",
+     "why": "one O(1) hash probe per element, no rescans; hence the stated bounds."
+    }
+   ],
+   "diagram": " s = \"ADOBECODEBANC\", t = \"ABC\"  -> \"BANC\"\n\n need  = {A:1, B:1, C:1}   need_size = 3\n win   = {A:1,B:2,C:2,E:2,D:1,O:1}   formed = 0\n\n r: A  win[A]=1 == need[A] -> formed=1\n r: D  win[D]=1, not in need      formed=1\n r: O  ..                          formed=1\n r: B  win[B]=1 == need[B] -> formed=2\n r: E  ..                          formed=2\n r: C  win[C]=1 == need[C] -> formed=3   window \"ADOBEC\" valid\n        record 6 ; shrink: drop A -> win[A]=0 < need -> formed=2, l++\n r: O  ..    (invalid, keep extending)\n r: D  ..\n r: E  ..\n r: B  win[B]=1 == need[B] -> formed=3   window \"CODEBANC\" valid\n        record 7 (worse, skip)\n        drop C -> formed=2, l++\n r: A  win[A]=1 -> formed=3   window \"E BANC\" len 5? record\n        drop O (not needed) -> still valid\n        ... best = \"BANC\" (4) -> return s[bl:br+1]\n\\n critical: 'formed' counts DISTINCT letters satisfied, not letters seen",
+   "cpp_vs_py": "The inner shrink loop is the hot path and it is branch-heavy: every character removal tests membership in `need` and compares against a stored count. C++ with two `unordered_map<char,int>` keeps each map in one or two cache lines for the ASCII range, so the probes are L1 hits after the first few characters; the alternative is a fixed `int need[128], win[128]` pair, 1 KB total, which eliminates hashing entirely and turns `need[ch]` into a pure load. Python's `Counter` and `dict` do the same logical work but each `window[out] -= 1` is a dict update with an int object, and `out in need` is a second hash lookup -- so the shrink loop pays roughly three dict operations per removed character where C++ pays two array loads.",
+   "cpp_alts": [
+    "`array<int,128> need{}, win{}` replaces both maps for the printable-ASCII guarantee, turning hashing into indexing.",
+    "Track a `matched` count against `need.size()` rather than recounting -- that is what keeps the inner loop $O(1)$ per removal.",
+    "`std::string_view` lets you return a view of the original buffer instead of copying the substring."
+   ],
+   "py_alts": [
+    "`Counter` pre-decrement is not supported; `need.get(ch, 0)` is the idiomatic equivalent and avoids the `in` + `[]` double lookup.",
+    "`collections.defaultdict(int)` removes the `get` boilerplate but is measurably slower than `dict.get`.",
+    "For a strictly lowercase alphabet, two 26-element lists are faster than any dict in CPython."
+   ],
+   "trap": "Testing `all(v >= need[k] for k in need)` on every left move. That is $O(26)$ per step and blows the constant. The `formed` counter makes the validity test a single integer comparison, which is what keeps the whole thing linear.",
+   "invariant": "`formed` equals the number of distinct characters of t whose window count has reached its required count, and no window count ever exceeds its requirement for a needed character because you extend before you shrink. So `formed == len(need)` is exactly \"the window covers t\".",
+   "questions": [
+    {
+     "q": "Why track distinct letters satisfied rather than total letters matched?",
+     "a": "Total letters matched is unbounded and does not capture coverage: t = 'AB' with window 'AABB' matches 4 letters but is invalid. `formed` counts how many of the required distinct characters are at or above their requirement, so equality with `len(need)` is precisely the validity predicate."
+    },
+    {
+     "q": "Why does extending before shrinking keep counts from overshooting?",
+     "a": "You add `s[r]` first and only then run the shrink loop, and you shrink exactly one character per iteration. Because the invariant forbids a needed count from exceeding its requirement, the `formed == need_size` test flips exactly once per shrink, which is what makes the loop terminate predictably."
+    },
+    {
+     "q": "What makes this problem harder than the no-repeating variant?",
+     "a": "The required multiset is input-dependent rather than \"all distinct\", so you need two data structures and a counter, and the window can become invalid again after shrinking (unlike the simple case). That extra state is the entire delta."
+    }
+   ]
+  },
+  {
+   "key": "03_sliding_window/0121_best_time_to_buy_and_sell_stock",
+   "one_liner": "Track the running minimum price; the best profit is price minus it.",
+   "core_objective": "Return the maximum profit obtainable from one buy followed by one sell on later days, or 0 if no profit is possible.",
+   "bounds": "1 <= prices.length <= 1e5; 0 <= prices[i] <= 1e4, so the array is non-decreasing only in the degenerate sense and prices are never negative. n = 1 must return 0, and a strictly decreasing series must also return 0 rather than a negative number.",
+   "approaches": [
+    {
+     "name": "Brute force (all buy/sell pairs)",
+     "aha": "For every buy day i, try every later sell day j and take the best difference. Correct but explores every pair.",
+     "py": "lo, best = prices[0], 0\nfor p in prices:\n    lo = min(lo, p)\n    best = max(best, p - lo)\nreturn best",
+     "cpp": "int lo = prices[0], best = 0;\nfor (int p : prices) {\n    lo = min(lo, p);\n    best = max(best, p - lo);\n}",
+     "time": "O(n\u00b2)",
+     "space": "O(1)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    },
+    {
+     "name": "One pass, track the minimum price (BEST)",
+     "aha": "Walk the array once. Keep min_price = cheapest day seen so far (the optimal \"buy\" for any future \"sell\"). At each day, the best profit selling today is prices[i] \u2212 min_price.",
+     "py": "best = 0\nfor i in range(n):\n    for j in range(i + 1, n):\n        best = max(best, prices[j] - prices[i])\nreturn best",
+     "cpp": "int best = 0;\nfor (int i = 0; i < n; ++i)\n  for (int j = i + 1; j < n; ++j)\n    best = max(best, prices[j] - prices[i]);",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(1) space."
+    }
+   ],
+   "diagram": " prices = [7,1,5,3,6,4]   -> 5 (buy 1 sell 6)\n\n p=7  lo=7  best=max(0, 7-7)=0\n p=1  lo=1  best=max(0, 1-1)=0\n p=5  lo=1  best=max(0, 5-1)=4\n p=3  lo=1  best=max(0, 3-1)=2   (no shrink: 2 < 4)\n p=6  lo=1  best=max(0, 6-1)=5   BEST\n p=4  lo=1  best=max(0, 4-1)=3\n\\n invariant: at day r, lo = min(prices[0..r])\n so p - lo is the best profit among all sells on day r.\n\\n the two-pointer loop is O(n^2) because l restarts per r;\n the running-minimum sweep does the same work in one pass.",
+   "cpp_vs_py": "This loop is as tight as C++ gets: one load per iteration, two `min`/`max` which the compiler emits as `cmov`, and a loop-carried dependency of only two registers. There is no memory traffic beyond the streaming load of `prices`, so the loop runs at roughly one element per cycle and is entirely bound by the load port. Python executes roughly 8 bytecodes for the same step and, critically, allocates a new int for each `p - lo` candidate before `max` discards most of them -- so for n = 1e5 you get 1e5 short-lived int allocations, which is the difference between microseconds and milliseconds.",
+   "cpp_alts": [
+    "`lo = min(lo, p); best = max(best, p - lo);` compiles to branchless cmovs, removing the unpredictable branch a naive `if` would create.",
+    "`std::min_element` over the prefix is unnecessary -- the running minimum is already optimal.",
+    "For a second transaction variant, remember the best two profits with two running minima instead of a DP table."
+   ],
+   "py_alts": [
+    "Conditional expressions beat the builtin calls in a hot Python loop because each `min()` is a function dispatch.",
+    "Iterating `for p in prices` rather than indexing avoids the range/len overhead entirely.",
+    "`itertools.accumulate(prices, min)` then a max over `p - lo` is C-speed but allocates an n-element list; faster for very large n."
+   ],
+   "trap": "Updating `lo` after computing the candidate, so day r's profit is measured against itself and can never be positive on a new minimum day. The order must be: lower the floor first, then measure.",
+   "invariant": "After processing `prices[r]`, `lo` equals the minimum price over indices 0..r and `best` equals the maximum profit over all buys strictly before some sell at index <= r. Together they mean `best` is final for every prefix, so no later recomputation is needed.",
+   "questions": [
+    {
+     "q": "Why does a running minimum replace a sliding window here?",
+     "a": "Validity here is not about window content but about a max over pairs (i, j) with i < j. For each sell j the best buy is the prefix minimum, which is a single scalar carried forward. A window would have to re-examine every earlier price for every j, giving $O(n^2)$."
+    },
+    {
+     "q": "What does the strictly-decreasing input return, and why is that correct?",
+     "a": "0. `lo` equals the current price on every step so `p - lo = 0`, and `best` stays at its initial 0. Returning a negative profit would be wrong since doing nothing is allowed."
+    },
+    {
+     "q": "How would you extend this to at most two transactions?",
+     "a": "Carry four scalars: two buys seen so far, one sell, and the best profit. The extra state is why the simple running minimum stops working -- once you may re-enter after selling, the floor is no longer a single prefix minimum."
+    }
+   ],
+   "category_note": "Sliding windows over arrays whose validity predicate is monotone in the window's length. Once a window is valid, every super-window containing it is valid too (at most k replacements, fixed-size anagram); once a window has a duplicate, every super-window has one as well. That monotonicity is what licenses a single left-to-right sweep in which `left` never retreats. The recurring bookkeeping is a small fixed-size frequency array plus a scalar that says how much of the requirement is currently satisfied, so that both the extend step and the shrink step are O(1)."
+  },
+  {
+   "key": "03_sliding_window/0239_sliding_window_maximum",
+   "one_liner": "A deque of indices, monotone decreasing, answers every window.",
+   "core_objective": "For every contiguous window of size k in nums, return the maximum value in that window.",
+   "bounds": "1 <= nums.length <= 1e5; -1e4 <= nums[i] <= 1e4; 1 <= k <= n. The output length is n - k + 1. Windows near the end must not produce output before r >= k - 1.",
+   "approaches": [
+    {
+     "name": "Monotonic deque of indices (BEST)",
+     "aha": "For each i: pop front while it falls outside the window, pop back while values \u2264 nums[i] (dominated), push i, then once the window is full record nums[front].",
+     "py": "dq = collections.deque()\nout = []\nfor i, v in enumerate(nums):\n    while dq and nums[dq[-1]] <= v: dq.pop()   # dominated\n    dq.append(i)\n    if dq[0] <= i - k: dq.popleft()          # expired\n    if i >= k - 1: out.append(nums[dq[0]])\nreturn out",
+     "cpp": "deque<int> dq;\nvector<int> out;\nfor (int i = 0; i < n; ++i) {\n    while (!dq.empty() && nums[dq.back()] <= nums[i]) dq.pop_back();\n    dq.push_back(i);\n    if (dq.front() <= i - k) dq.pop_front();\n    if (i >= k - 1) out.push_back(nums[dq.front()]);\n}",
+     "time": "O(n)",
+     "space": "O(k)",
+     "why": "each index enters and leaves the stack once: amortised O(1); hence the stated bounds."
+    },
+    {
+     "name": "Max-heap with lazy deletion",
+     "aha": "Push (\u2212value, index) pairs (max-heap via negation). The root is the global max; before reading it, lazily pop roots that have slid out of the window (index \u2264 i \u2212 k). Stale roots are removed only when they reach the top.",
+     "py": "hp, out = [], []\nfor i, v in enumerate(nums):\n    heapq.heappush(hp, (-v, i))\n    if hp[0][1] <= i - k: heapq.heappushpop(hp, (-v, i))\n    if i >= k - 1: out.append(-hp[0][0])\nreturn out",
+     "cpp": "priority_queue<pair<int,int>> hp;   // (value, idx)\nvector<int> out;\nfor (int i = 0; i < n; ++i) {\n    hp.push({nums[i], i});\n    if (hp.top().second <= i - k) hp.pop();\n    if (i >= k - 1) out.push_back(hp.top().first);\n}",
+     "time": "O(n log n)",
+     "space": "O(n)",
+     "why": "one push (and at most one pop) per element; hence the stated bounds."
+    }
+   ],
+   "diagram": " nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3\n\n r=0  1  push 0        dq=[0]\n r=1  3  pop 0 (<=3)   push 1     dq=[1]        (1 dominated by 3)\n r=2 -1  push 2        dq=[1,2]\n r=3 -3  push 3        dq=[1,2,3]   out[0]=nums[1]=3   window 0..2\n r=4  5  pop 3,2,1     push 4     dq=[4]        out[1]=5\n r=5  3  push 5        dq=[4,5]     out[2]=5\n r=6  6  pop 5,4       push 6     dq=[6]        out[3]=6\n r=7  7  pop 6          push 7     dq=[7]        out[4]=7\n\\n out = [3, 5, 5, 6, 7]\n\\n two pops per element, max once:\n   FRONT pop = expired (index < r-k+1)\n   BACK  pop = dominated (nums[back] <= nums[r], never\n           the max of any future window containing it)",
+   "cpp_vs_py": "The deque is a linked structure in the general case, but both languages let you implement this one as a flat array with head and tail indices, which turns every push and pop into an integer increment or decrement on two registers. That is the key optimisation: in C++ the deque elements are indices, so the comparison `nums[dq.back()] <= nums[r]` is two loads from the same cache-line-dense array as the input, and the amortised cost is one comparison plus at most two writes per element. CPython's `collections.deque` is a genuinely optimised block-based structure with $O(1)$ end operations and no per-element malloc, so the amortised bound is the same; the overhead is the interpreted `while` conditions and the tuple-free but still boxed index arithmetic. The heap alternative costs $O(n \\log n)$ in both.",
+   "cpp_alts": [
+    "Replace `std::deque<int>` with `vector<int> dq(n); int head = 0, tail = 0;` -- two register indices, no block reallocation, best locality.",
+    "`std::multiset` or `priority_queue` with lazy deletion is the simpler alternative at $O(n \\log k)$ time and $O(k)$ space.",
+    "For very large n, a segmented/two-pass block-maximum method (the van Herk / Gil-Werman algorithm) gets $O(n)$ with $O(1)$ memory and is cache-friendlier than pointer-based deques."
+   ],
+   "py_alts": [
+    "`deque` is the right structure; a Python list with a moving head leaks memory unless you periodically slice, which is $O(n)$.",
+    "`heapq.heappushpop` fuses the push and the stale pop into one C call, which is why the heap variant is competitive in Python.",
+    "For the two-block (prefix/suffix max) approach, list comprehensions run at C speed and often beat an interpreted deque loop."
+   ],
+   "trap": "Popping from the back with `<` instead of `<=`. With `<=` the newer equal element replaces the older one, which keeps the deque smaller and is still correct. With `<` the deque fills with stale equals and the amortised argument weakens. Also: pop the front BEFORE reading `dq[0]`, otherwise you can report an expired index.",
+   "invariant": "The deque holds indices strictly increasing, whose values are strictly decreasing, and all lie within the current window [r-k+1, r]. Therefore `dq[0]` is always the window maximum and any index removed from the back is provably never a future maximum.",
+   "questions": [
+    {
+     "q": "Why is it safe to discard a smaller element when a bigger one arrives behind it?",
+     "a": "If `nums[i] <= nums[r]` with i < r, then every future window containing i also contains r (because r is to its right and windows are contiguous), so i can never be a maximum again. That domination argument is the entire correctness proof of the back-pop."
+    },
+    {
+     "q": "What is the amortised cost of the whole algorithm?",
+     "a": "Each index is pushed once and popped at most once from either end, so across n iterations there are at most 2n pops and n pushes: $O(n)$ total, $O(k)$ space. The per-iteration cost looks like a while loop but is amortised constant."
+    },
+    {
+     "q": "When would the heap be the better answer in an interview?",
+     "a": "When k is large relative to n or when the same structure must serve several different window sizes, or when you want to expose the trade-off. It is $O(n \\log k)$ with the same $O(k)$ space, so it is never asymptotically better here."
+    }
+   ]
+  },
+  {
+   "key": "03_sliding_window/0424_longest_repeating_character_replacement",
+   "one_liner": "Window length minus the max frequency, allowed to exceed k.",
+   "core_objective": "Return the length of the longest substring containing at most k distinct repeating characters, i.e. at most k characters differing from the substring's most common character.",
+   "bounds": "1 <= s.length <= 1e5; 1 <= k <= s.length; s consists of uppercase English letters, so a 26-slot array is exact. When k >= 26 the answer is simply n, which is a useful early exit.",
+   "approaches": [
+    {
+     "name": "Sliding window + running max frequency (BEST)",
+     "aha": "count[26] tracks letter frequencies inside [l, r]. max_freq is the max over ALL history \u2014 it never decreases, which is sound: when len \u2212 max_freq > k, shrink l. max_len = max window seen.",
+     "py": "need = [0] * 26\nl = best = mx = 0\nfor r, ch in enumerate(s):\n    i = ord(ch) - 65\n    need[i] += 1\n    mx = max(mx, need[i])\n    while r - l + 1 - mx > k:\n        need[ord(s[l]) - 65] -= 1; l += 1\n    best = max(best, r - l + 1)\nreturn best",
+     "cpp": "int need[26] = {}, l = 0, best = 0, mx = 0;\nfor (int r = 0; r < s.size(); ++r) {\n    int i = s[r] - 'A';\n    ++need[i]; mx = max(mx, need[i]);\n    while (r - l + 1 - mx > k) { --need[s[l] - 'A']; ++l; }\n    best = max(best, r - l + 1);\n}",
+     "time": "O(n)",
+     "space": "O(26) = O(1)",
+     "why": "Follows directly from the traversal count: O(n) time, O(26) = O(1) space."
+    },
+    {
+     "name": "Brute force (every start, expand while valid)",
+     "aha": "For each start i, expand j while the \u2264 k condition holds using a fresh per-window count. Correct, but restarts all state for every i.",
+     "py": "best = 0\nfor i in range(len(s)):\n    for j in range(i, len(s)):\n        cnt = Counter(s[i:j+1])\n        if j - i + 1 - max(cnt.values()) > k: break\n        best = max(best, j - i + 1)\nreturn best",
+     "cpp": "int best = 0;\nfor (int i = 0; i < s.size(); ++i) {\n    int cnt[26] = {};\n    for (int j = i; j < s.size(); ++j) {\n        int mx = max(++cnt[s[j]-'A'], mx);\n        if (j - i + 1 - mx > k) break;\n        best = max(best, j - i + 1);\n    }\n}",
+     "time": "O(n\u00b2)",
+     "space": "O(26) = O(1)",
+     "why": "nested enumeration dominates: O(n^k) pairs, no pruning; hence the stated bounds."
+    }
+   ],
+   "diagram": " s = \"AABABBA\", k = 1  -> answer 4 (\"ABBA\")\n\n r=0 A  need[A]=1 mx=1   len 1-1=0 <=1 -> best 1\n r=1 A  need[A]=2 mx=2   len 2-2=0 <=1 -> best 2\n r=2 B  need[B]=1 mx=2   len 3-2=1 <=1 -> best 3\n r=3 A  need[A]=3 mx=3   len 4-3=1 <=1 -> best 4  BEST\n r=4 B  need[B]=2 mx=3   len 5-3=2 >1  -> shrink l\n         len 4-3=1 <=1 -> best 4\n r=5 B  need[B]=3 mx=3   len 6-3=3 >1  -> shrink l\n         ... shrinks until len-mx<=1 again\n r=6 A  ...\n\\n why mx may STALL: after a shrink the true max can only\n drop, but keeping the stale (larger) mx keeps len-mx small,\n so the window stays valid. Only ever UPDATE mx upward.",
+   "cpp_vs_py": "The inner shrink loop decrements one array slot and increments one index, so the whole algorithm is a pair of sweeps over a 104-byte array that never leaves L1. C++ performs that in a handful of instructions per character, giving $O(n)$ with a very small constant. Python does the same arithmetic but each `need[s[l] - 'A'] -= 1` performs an index computation, a list lookup, an int subtraction and a list store -- roughly 12 bytecodes for work C++ does in one `dec` instruction. The subtle correctness point is that `mx` is allowed to be stale, which is safe because `mx` never decreases; that monotonicity is trivially expressible in both languages and is the whole trick.",
+   "cpp_alts": [
+    "`int need[26] = {}` on the stack beats any map; the working set is one and a half cache lines.",
+    "Hoist `mx` out of the loop as a separate variable rather than recomputing `max(*max_element(...))` each iteration.",
+    "For mixed case, `s[r] - 'A'` breaks; either normalise once or index with a 256-entry array."
+   ],
+   "py_alts": [
+    "`Counter` is much slower than a 26-element list because dict operations are hash lookups.",
+    "Tracking `mx` as a separate scalar rather than recomputing `max(count)` is essential -- `max()` over 26 slots per iteration would make it $O(26n)$.",
+    "`ord(ch) - 65` is needed for uppercase; using the character directly with a list fails."
+   ],
+   "trap": "Recomputing `mx = max(count)` after each shrink, which is both slower and -- if implemented as a stale-value reset -- wrong. `mx` must be monotonically non-decreasing: you only ever set `mx = max(mx, need[ch])` on extension.",
+   "invariant": "`mx` is the maximum frequency observed in the window at any point since the window reached its current minimum size. Because frequencies only decrease on a shrink, `len - mx` is a lower bound on the true number of replacements, so `len - mx <= k` is sufficient (never falsely invalid) for validity, and the window recorded is genuinely valid.",
+   "questions": [
+    {
+     "q": "Why is it legal to keep a stale `mx` after the window shrinks?",
+     "a": "If the true maximum drops, then `len - trueMax <= len - staleMax`, so using the larger stale value gives a smaller, still-safe replacement count. Using it can never make an invalid window look valid -- it only makes the shrink test fire later. The recorded window is checked by the true condition implicitly."
+    },
+    {
+     "q": "What happens when `k >= 26`?",
+     "a": "With a 26-letter alphabet, `len - mx <= len - 1 <= n - 1 <= k` whenever `k >= n`, and for `k >= 26` the shrink loop never fires after the first 26 characters. An early `if k >= 26: return n` short-circuits the whole sweep."
+    },
+    {
+     "q": "Why does the shrink loop need a while, not a single if?",
+     "a": "Dropping one character can reduce the window length by one while `mx` stays the same, so the excess `len - mx - k` may exceed 1 by an arbitrary amount when k is small. The while loop keeps dropping until the condition holds, and total drops across the whole run is exactly n because `l` only moves forward."
+    }
+   ]
+  },
+  {
+   "key": "03_sliding_window/0567_permutation_in_string",
+   "one_liner": "Fixed-size window with a match counter kept in O(1) per slide.",
+   "core_objective": "Return true if s2 contains a permutation of s1, that is a contiguous substring of s2 whose character multiset equals that of s1.",
+   "bounds": "1 <= s1.length, s2.length <= 1e5; s1 and s2 contain lowercase and/or uppercase English letters, so a 52-slot or 128-slot ASCII array is required -- a 26-slot array is wrong for mixed case. s1 may be longer than s2, which must return false immediately.",
+   "approaches": [
+    {
+     "name": "Fixed window + 26-array counters + matches (BEST)",
+     "aha": "Count s1 into c1[26] and the first |s1| chars of s2 into c2[26]. matches = #slots where c1[i] == c2[i]. Sliding: adding s2[i] and removing s2[i \u2212 |s1|] can each flip ONLY ONE slot's equality \u2192 matches updates in O(1) per slide. matches == 26 \u21d4 identical multisets \u21d4 true.",
+     "py": "need, win = [0]*26, [0]*26\nfor ch in s1: need[ord(ch) - 97] += 1\nfor ch in s2[:len(s1)]: win[ord(ch) - 97] += 1\nhits = sum(1 for i in range(26) if win[i] == need[i])\nfor r in range(len(s1), len(s2)):\n    a, b = ord(s2[r]) - 97, ord(s2[r-len(s1)]) - 97\n    hits += (win[a] == need[a]) - (win[b] == need[b])\n    win[a] += 1; win[b] -= 1\n    if hits == 26: return True\nreturn hits == 26",
+     "cpp": "int need[26] = {}, win[26] = {};\nfor (char ch : s1) ++need[ch - 'a'];\nfor (int i = 0; i < s1.size(); ++i) ++win[s2[i] - 'a'];\nint hits = 0;\nfor (int i = 0; i < 26; ++i) hits += (win[i] == need[i]);\nfor (int r = s1.size(); r < s2.size(); ++r) {\n    int a = s2[r] - 'a', b = s2[r - s1.size()] - 'a';\n    hits += (win[a] == need[a]) - (win[b] == need[b]);\n    ++win[a]; --win[b];\n    if (hits == 26) return true;\n}\nreturn hits == 26;",
+     "time": "O(n)",
+     "space": "O(1)",
+     "why": "one O(1) counter update per element; hence the stated bounds."
+    },
+    {
+     "name": "Fixed window + Counter (dict) comparison",
+     "aha": "Same window, but counters live in a collections.Counter and the full comparison happens every slide \u2014 O(\u03c3) per slide.",
+     "py": "if len(s1) > len(s2):\ntarget: Counter[str] = Counter(s1)\nwindow_count: Counter[str] = Counter(s2[: len(s1)])\nif window_count == target:\n    return True  # the very first window already matches\nfor i in range(len(s1), len(s2)):\n    window_count[s2[i]] += 1                  # add new char\n    left = s2[i - len(s1)]",
+     "cpp": "        if (s1.size() > s2.size()) { return false;",
+     "time": "O(n\u00b7\u03c3)",
+     "space": "O(\u03c3)",
+     "why": "one O(1) counter update per element; hence the stated bounds."
+    }
+   ],
+   "diagram": " s1 = \"ab\", s2 = \"eidbaooo\"  -> true (\"ba\" at index 3)\n\n need[26] vs win[26], window width W = len(s1) = 2\n matches = #{ i : need[i] == win[i] }   (0 or 26)\n\\n slide by one: OUT = s2[r-W], IN = s2[r]\n   matches += (win[OUT] == need[OUT])\n   win[OUT] -= 1\n   matches += (win[OUT] == need[OUT])      (after change)\n   win[IN]  += 1\n   matches += (win[IN]  == need[IN])\n\\n each slide: 3 compares + 2 increments = O(1)\n the naive version recomputes matches = sum(...) = O(26) per slide\n\\n when |s1| > |s2|  -> no window of width W exists -> False",
+   "cpp_vs_py": "The whole algorithm exists to avoid an $O(26)$ recomputation per slide, and in C++ the compare-and-adjust pattern compiles to three conditional increments on a counter in a register, with the 26-element arrays permanently in L1. That makes a slide about six instructions. Python performs the same logic with list indexing and int boxing: each `(win[out] == need[out])` yields a bool object (interned, so no allocation) but the arithmetic `matches += True - False` still creates a new int, and the list index computation `ord(s2[r]) - 97` allocates nothing but costs several bytecodes. For n = 1e5 slides this is roughly a million bytecodes in Python against well under a million cycles in C++.",
+   "cpp_alts": [
+    "Use `int need[128], win[128]` indexed by `unsigned char` -- handles mixed case without any case-folding branch.",
+    "`std::array` instead of a raw array gives you `operator[]` with no behavioural difference but clearer intent.",
+    "For the fixed 52-letter case, `memcmp(need, win, 52) == 0` per slide is 52 bytes of SIMD-comparable load, which can beat the counter for small alphabets -- but it is $O(\\sigma)$ again."
+   ],
+   "py_alts": [
+    "`Counter(s2[i:i+len(s1)]) == Counter(s1)` is correct but $O(W \\cdot \\sigma)$ per window and $O(W)$ allocations -- it times out at n = 1e5.",
+    "The `matches` counter is the whole optimization; keep it as a plain int and avoid `sum()` per slide.",
+    "For lowercase-only inputs, `[0]*26` lists beat `Counter` by a factor of several."
+   ],
+   "trap": "Using a 26-slot array and assuming lowercase. The problem explicitly allows uppercase, so \"Aa\" and \"aA\" are both permutations and a mixed-case input will corrupt the counts.",
+   "invariant": "`win[i]` is the count of character i in `s2[r-W+1 .. r]`, and `matches` is exactly the number of slots where `win[i] == need[i]`. A window is a permutation iff `matches == 26` (equivalently sigma), because equal counts at every slot means equal multisets.",
+   "questions": [
+    {
+     "q": "Why maintain a match counter instead of comparing arrays?",
+     "a": "Comparing the two arrays each slide is $O(\\sigma)$ per slide, giving $O(n \\sigma)$ overall -- 2.6 million comparisons at the limits. The counter makes each slide $O(1)$ because only two slots change, so the total drops to $O(n)$."
+    },
+    {
+     "q": "What is the order of the update when a character leaves and another enters?",
+     "a": "Remove first, then add. If the incoming and outgoing characters are the same slot you would double-count; by decrementing before incrementing and adjusting `matches` after each individual mutation, the invariant holds at every intermediate point and no special case is needed."
+    },
+    {
+     "q": "How do you adapt this to the fixed-size-anagram-inside-s1 case (567) versus arbitrary-length?",
+     "a": "Here the window width is pinned to `len(s1)`, which is what makes the check a pure frequency comparison. For arbitrary-length windows you would instead need the formed/required counter pattern of problem 76, where the requirement is a multiset rather than an exact match."
+    }
+   ]
+  }
+ ]
+}
